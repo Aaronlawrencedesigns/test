@@ -341,8 +341,12 @@
       ctx.globalAlpha = 1;
     }
     // keep the speech bubble / Zzz above his head
-    bubble.style.left = `${HEAD.x * window.innerWidth}px`;
-    bubble.style.top = `${(S.rest === 'sit' ? HEAD.y : 0.55) * window.innerHeight - 30}px`;
+    // (kept inside the window so it isn't clipped at small sizes)
+    const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+    const bx = Math.min(window.innerWidth - bw / 2 - 2, Math.max(bw / 2 + 2, HEAD.x * window.innerWidth));
+    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.55) * window.innerHeight - 0.1 * window.innerHeight);
+    bubble.style.left = `${bx}px`;
+    bubble.style.top = `${by}px`;
     zzz.style.left = `${0.74 * window.innerWidth}px`;
     zzz.style.top = `${0.48 * window.innerHeight}px`;
     autonomy(performance.now());
