@@ -4,6 +4,7 @@
   "description": "Chunky the French Bulldog lives in the corner of your Mac and watches your mouse.",
   "main": "src/main.js",
   "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
     "start": "electron .",
     "dist": "electron-builder"
   },
