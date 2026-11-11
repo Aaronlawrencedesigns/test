@@ -19,8 +19,5 @@
       "target": "dmg",
       "category": "public.app-category.entertainment"
     }
-  },
-  "dependencies": {
-    "three": "^0.187.0"
   }
 }

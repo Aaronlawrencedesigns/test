@@ -3,6 +3,9 @@ import numpy as np
 from PIL import Image
 
 GREEN = (0, 177, 64)
+# Canonical crop of the 1024px keyframe canvas (ground line y=922) used for every app asset.
+CROP_1024 = (32, 224, 992, 944)   # 960x720 (4:3)
+OUT_SIZE = (640, 480)
 
 
 def alpha_and_despill(rgb):
@@ -22,7 +25,24 @@ def alpha_and_despill(rgb):
 
 
 def clean_alpha(rgba):
-    """Remove specks: keep only the largest connected blob of solid alpha, soften edge 1px."""
+    """Remove specks: keep only the largest connected blob of solid alpha."""
+    try:
+        from scipy import ndimage
+    except ImportError:
+        return _clean_alpha_slow(rgba)
+    a = rgba[..., 3]
+    lab, n = ndimage.label(a > 128)
+    if n == 0:
+        return rgba
+    sizes = ndimage.sum_labels(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+    keep = ndimage.binary_dilation(lab == (1 + int(np.argmax(sizes))), iterations=2)
+    keep = ndimage.binary_fill_holes(keep)
+    out = rgba.copy()
+    out[..., 3] = np.where(keep, a, 0)
+    return out
+
+
+def _clean_alpha_slow(rgba):
     from collections import deque
     a = rgba[..., 3]
     solid = a > 128

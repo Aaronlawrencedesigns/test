@@ -1,0 +1,3 @@
+Recreate the first image exactly: the same French Bulldog, identical pose, identical framing, size and position in the frame, same lighting on the dog, facing the camera and looking straight into the lens.
+Only change the background: replace the entire background and floor with a perfectly flat, uniform chroma-key green screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow.
+Keep the dog photorealistic with natural fur colours (no green tint on the dog). Use the other reference photos only to keep his markings accurate. No text, no props. Square image.

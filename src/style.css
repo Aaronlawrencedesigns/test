@@ -7,7 +7,7 @@ html, body {
   -webkit-user-select: none;
 }
 
-#scene {
+#dog {
   position: absolute;
   inset: 0;
   width: 100%;

@@ -4,8 +4,8 @@
 const { app, BrowserWindow, screen, ipcMain, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 
-const WIN_W = 340;
-const WIN_H = 320;
+const WIN_W = 400; // 4:3, matches the 640x480 footage
+const WIN_H = 300;
 const MARGIN = 4;
 
 let win;
@@ -67,10 +67,9 @@ const send = (name) => () => win && win.webContents.send('action', name);
 function actionMenu() {
   return [
     { label: 'Sit', click: send('sit') },
-    { label: 'Stand up', click: send('stand') },
     { label: 'Lie down', click: send('lie') },
     { label: 'Sleep', click: send('sleep') },
-    { label: 'Wag tail', click: send('wag') },
+    { label: 'Happy wiggle', click: send('wag') },
     { label: 'Puppy eyes', click: send('puppy') },
     { label: 'Bark', click: send('bark') },
     { label: 'Poop', click: send('poop') },
