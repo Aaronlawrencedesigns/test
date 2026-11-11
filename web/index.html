@@ -1,0 +1,240 @@
+<title>Chunky</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Layout: one left-aligned column of controls and facts; Chunky lives fixed in the bottom-right corner of the page. */
+  :root {
+    --bg: #eeeaf1;          /* pale lilac, from his merle coat */
+    --surface: #faf8fb;
+    --fg: #29232e;
+    --muted: #6b6271;
+    --line: #dbd3df;
+    --accent: #b84a63;      /* inner-ear pink, deepened for contrast */
+    --accent-soft: #f3dbe1;
+    --fawn: #b8916f;
+    --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17141a; --surface: #211d25; --fg: #eee8f1; --muted: #a89eaf; --line: #37303c;
+      --accent: #f093a7; --accent-soft: #3a2630; --fawn: #d4ad8a; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17141a; --surface: #211d25; --fg: #eee8f1; --muted: #a89eaf; --line: #37303c;
+    --accent: #f093a7; --accent-soft: #3a2630; --fawn: #d4ad8a; color-scheme: dark;
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 15px/1.55 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px var(--dog-space, 320px);
+  }
+  main { max-width: 600px; display: grid; gap: 36px; margin-left: clamp(0px, 6vw, 72px); }
+
+  header { display: grid; gap: 10px; }
+  .eyebrow {
+    font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  h1 {
+    font: 800 clamp(56px, 12vw, 104px)/0.9 var(--display);
+    letter-spacing: -0.03em; margin: 0; text-wrap: balance;
+  }
+  h1 span { color: var(--accent); }
+  .lede { margin: 0; max-width: 46ch; color: var(--muted); font-size: 17px; }
+  .lede b { color: var(--fg); font-weight: 600; }
+
+  h2 { font: 800 22px/1.2 var(--display); margin: 0; letter-spacing: -0.01em; }
+
+  /* control dock */
+  .dock { display: grid; gap: 18px; }
+  .tricks { display: flex; flex-wrap: wrap; gap: 8px; }
+  button, .seg label {
+    font: 500 14px/1 var(--body); color: var(--fg); cursor: pointer;
+  }
+  .tricks button {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    padding: 10px 16px; transition: background .15s, border-color .15s, transform .1s;
+  }
+  .tricks button:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .tricks button:active { transform: translateY(1px); }
+  .tricks button.poop { border-style: dashed; }
+  button:focus-visible, .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+  .label { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); min-width: 40px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label { padding: 9px 13px; border-right: 1px solid var(--line); }
+  .seg label:last-of-type { border-right: 0; }
+  .seg input:checked + label { background: var(--fg); color: var(--bg); }
+  .linkish { background: none; border: 0; padding: 4px 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .dock.flash { animation: flash .6s ease; }
+  @keyframes flash { 30% { transform: translateX(6px); } 60% { transform: translateX(-4px); } }
+
+  /* profile */
+  .profile { display: grid; grid-template-columns: 148px 1fr; gap: 20px; align-items: start; }
+  .profile img { width: 148px; aspect-ratio: 1; object-fit: cover; border-radius: 14px; background: var(--surface); max-width: 100%; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; min-width: 0; }
+  dt { font: 500 12px/1.6 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  dd { margin: 0; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+  .tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--muted); max-width: 52ch; }
+  .tips li::before { content: "🐾"; margin-right: 8px; font-size: 12px; }
+  .tips b { color: var(--fg); font-weight: 600; }
+  footer { color: var(--muted); font-size: 13px; max-width: 52ch; }
+
+  #chunky {
+    position: fixed; border: 0; background: transparent; z-index: 50;
+    pointer-events: none; color-scheme: normal;
+  }
+
+  @media (max-width: 560px) {
+    body { padding-block: 24px var(--dog-space, 240px); }
+    .profile { grid-template-columns: 1fr; }
+    .profile img { width: 120px; }
+    .seg { flex-wrap: nowrap; }
+    .seg label { padding: 9px 9px; font-size: 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dock.flash { animation: none; } }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Desk dog · French Bulldog</div>
+    <h1>Chunky<span>.</span></h1>
+    <p class="lede">He's sitting in the bottom-right corner of this page. <b>Move your mouse around: he's watching it.</b> Click him, drag him, or ask him for a trick.</p>
+  </header>
+
+  <section class="dock" id="dock" aria-labelledby="dock-h">
+    <h2 id="dock-h">Ask Chunky to…</h2>
+    <div class="tricks">
+      <button type="button" id="act-wag" data-act="wag">Happy wiggle</button>
+      <button type="button" id="act-bark" data-act="bark">Bark</button>
+      <button type="button" id="act-puppy" data-act="puppy">Puppy eyes</button>
+      <button type="button" id="act-lie" data-act="lie">Lie down</button>
+      <button type="button" id="act-sit" data-act="sit">Sit</button>
+      <button type="button" id="act-sleep" data-act="sleep">Sleep</button>
+      <button type="button" id="act-poop" data-act="poop" class="poop">Poop</button>
+    </div>
+    <div class="row">
+      <span class="label" id="size-l">Size</span>
+      <div class="seg" role="radiogroup" aria-labelledby="size-l">
+        <input type="radio" name="size" id="size-tiny" value="tiny"><label for="size-tiny">Tiny</label>
+        <input type="radio" name="size" id="size-small" value="small"><label for="size-small">Small</label>
+        <input type="radio" name="size" id="size-medium" value="medium"><label for="size-medium">Medium</label>
+        <input type="radio" name="size" id="size-normal" value="normal"><label for="size-normal">Normal</label>
+        <input type="radio" name="size" id="size-large" value="large"><label for="size-large">Large</label>
+      </div>
+      <button type="button" class="linkish" id="corner">Back to corner</button>
+    </div>
+  </section>
+
+  <section class="profile" aria-labelledby="about-h">
+    <img src="portrait.webp" alt="Chunky, a lilac fawn merle French Bulldog, sitting and looking at the camera" width="148" height="148">
+    <div style="display:grid; gap:12px; min-width:0">
+      <h2 id="about-h">About him</h2>
+      <dl>
+        <dt>Breed</dt><dd>French Bulldog</dd>
+        <dt>Coat</dt><dd><span class="swatch" style="background: var(--fawn)"></span>Lilac fawn merle</dd>
+        <dt>Eyes</dt><dd>Pale blue-grey</dd>
+        <dt>Ears</dt><dd>Bat ears, pink and mottled inside</dd>
+        <dt>Tail</dt><dd>Stub. He wags with his whole back end.</dd>
+        <dt>Naps</dt><dd>After 30 s without a mouse move</dd>
+      </dl>
+    </div>
+  </section>
+
+  <ul class="tips">
+    <li><b>Click</b> him and he barks, wiggles or gives you puppy eyes.</li>
+    <li><b>Drag</b> him anywhere on the page. <b>Back to corner</b> puts him home.</li>
+    <li>Leave the mouse still and he lies down, yawns and <b>falls asleep</b>. Move it to wake him.</li>
+  </ul>
+
+  <footer>Every frame of Chunky is AI footage generated from four photos of the real dog. He also lives on a Mac desktop as his own app.</footer>
+</main>
+
+<iframe id="chunky" src="chunky.html" title="Chunky the dog" tabindex="-1"></iframe>
+
+<script>
+(() => {
+  const frame = document.getElementById('chunky');
+  const dock = document.getElementById('dock');
+  const SIZES = { tiny: 0.4, small: 0.6, medium: 0.8, normal: 1, large: 1.3 };
+  const narrow = () => innerWidth < 560;
+  const base = () => (narrow() ? [300, 225] : [400, 300]);   // 4:3, like his footage
+  // Safe-area insets (phones): read from a probe so the floating dog clears system bars.
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+  document.body.appendChild(probe);
+  const insets = () => { const cs = getComputedStyle(probe); return { r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0 }; };
+
+  let size = 'normal';
+  try { size = localStorage.getItem('chunky-size') || (narrow() ? 'small' : 'normal'); } catch { size = narrow() ? 'small' : 'normal'; }
+  if (!SIZES[size]) size = 'normal';
+  document.getElementById('size-' + size).checked = true;
+
+  // Position is kept as offsets from the bottom-right corner.
+  let pos = { right: 8, bottom: 0 };
+
+  const rect = () => {
+    const r = frame.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height };
+  };
+  const send = (msg) => frame.contentWindow && frame.contentWindow.postMessage(Object.assign({ chunky: true, bounds: rect() }, msg), '*');
+
+  function layout() {
+    const [bw, bh] = base();
+    const w = Math.round(bw * SIZES[size]);
+    const h = Math.round(bh * SIZES[size]);
+    pos.right = Math.min(Math.max(pos.right, -w * 0.3), innerWidth - w * 0.7);
+    pos.bottom = Math.min(Math.max(pos.bottom, 0), innerHeight - h * 0.5);
+    frame.style.width = w + 'px';
+    frame.style.height = h + 'px';
+    const ins = insets();
+    frame.style.left = (innerWidth - pos.right - ins.r - w) + 'px';
+    frame.style.top = (innerHeight - pos.bottom - ins.b - h) + 'px';
+    document.body.style.setProperty('--dog-space', (h + 24) + 'px');
+    send({ type: 'bounds' });
+  }
+
+  // cursor -> Chunky (the frame handles events itself while the pointer is over him)
+  let last = { x: innerWidth / 2, y: innerHeight / 3 };
+  addEventListener('pointermove', (e) => { last = { x: e.clientX, y: e.clientY }; send({ type: 'cursor', cursor: last }); }, { passive: true });
+  addEventListener('pointerdown', (e) => {
+    last = { x: e.clientX, y: e.clientY };
+    const r = rect();
+    const inside = last.x >= r.x && last.x <= r.x + r.width && last.y >= r.y && last.y <= r.y + r.height;
+    send({ type: inside && e.pointerType !== 'mouse' ? 'tap' : 'cursor', cursor: last });
+  }, { passive: true });
+
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m || !m.chunky || e.source !== frame.contentWindow) return;
+    if (m.type === 'hover') frame.style.pointerEvents = m.over ? 'auto' : 'none';
+    if (m.type === 'drag') { pos.right -= m.dx; pos.bottom -= m.dy; layout(); }
+    if (m.type === 'menu') { dock.classList.remove('flash'); void dock.offsetWidth; dock.classList.add('flash'); dock.querySelector('button').focus(); }
+  });
+
+  document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => send({ type: 'action', name: b.dataset.act })));
+  document.querySelectorAll('input[name=size]').forEach((r) => r.addEventListener('change', () => {
+    size = r.value;
+    try { localStorage.setItem('chunky-size', size); } catch {}
+    layout();
+  }));
+  document.getElementById('corner').addEventListener('click', () => { pos = { right: 8, bottom: 0 }; layout(); });
+
+  addEventListener('resize', layout);
+  frame.addEventListener('load', () => { layout(); send({ type: 'cursor', cursor: last }); });
+  layout();
+})();
+</script>

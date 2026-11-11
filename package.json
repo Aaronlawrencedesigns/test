@@ -1,0 +1,24 @@
+{
+  "name": "chunky",
+  "version": "1.0.0",
+  "description": "Chunky the French Bulldog lives in the corner of your Mac and watches your mouse.",
+  "main": "src/main.js",
+  "scripts": {
+    "postinstall": "node scripts/install-electron.js",
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.chunky.deskdog",
+    "productName": "Chunky",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.entertainment"
+    }
+  }
+}
