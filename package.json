@@ -1,0 +1,23 @@
+{
+  "name": "desk-dog",
+  "version": "1.0.0",
+  "description": "A desktop buddy: your dog sits in the bottom-right corner and watches your mouse.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.deskdog.app",
+    "productName": "Desk Dog",
+    "files": ["src/**/*"],
+    "mac": { "target": "dmg" },
+    "win": { "target": "nsis" },
+    "linux": { "target": "AppImage" }
+  }
+}

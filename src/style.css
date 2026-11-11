@@ -1,0 +1,218 @@
+/* ---------------------------------------------------------------
+   Recolor your dog here! These are the only colors used.
+   --------------------------------------------------------------- */
+:root {
+  --fur: #c98b4f;        /* main coat */
+  --fur-dark: #8a5a2f;   /* ears + haunches */
+  --fur-light: #f3dfc1;  /* muzzle, chest, paws, blaze */
+  --iris: #2b1a0e;
+  --nose: #2a1d17;
+  --collar: #d6453d;
+  --tag: #f2c94c;
+  --tongue: #ef7f8f;
+  --line: #3a2617;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#dog {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The dog's transparent bounding box shouldn't catch clicks; only its shapes. */
+#dog { pointer-events: none; }
+#dog #jumper * { pointer-events: visiblePainted; cursor: grab; }
+body.dragging #dog #jumper * { cursor: grabbing; }
+
+.fur        { fill: var(--fur); }
+.fur-dark   { fill: var(--fur-dark); }
+.fur-light  { fill: var(--fur-light); }
+.eye-white  { fill: #fff; }
+.iris       { fill: var(--iris); }
+.glint      { fill: #fff; }
+.nose       { fill: var(--nose); }
+.collar     { fill: var(--collar); }
+.tag        { fill: var(--tag); stroke: var(--line); stroke-width: 1; }
+.tongue     { fill: var(--tongue); }
+.tongue-line{ stroke: #c95468; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+.lid        { fill: var(--fur); }
+.shadow     { fill: rgba(0, 0, 0, 0.18); }
+.blush      { fill: #ff8fa0; opacity: 0; transition: opacity .3s; }
+.toe, .mouth, .brow, .happy-eye {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.brow { stroke-width: 2; opacity: .55; }
+.happy-eye { opacity: 0; stroke-width: 3; }
+
+/* ------------------------- transforms ------------------------- */
+#head    { transform-box: view-box; transform-origin: 120px 150px; }
+#body    { transform-box: view-box; transform-origin: 120px 230px; animation: breathe 3.2s ease-in-out infinite; }
+#jumper  { transform-box: view-box; transform-origin: 120px 232px; }
+#tail    { transform-box: view-box; transform-origin: 160px 200px; animation: wag 1.2s ease-in-out infinite; }
+#earL    { transform-box: view-box; transform-origin: 86px 76px; }
+#earR    { transform-box: view-box; transform-origin: 154px 76px; }
+#tongue  { transform-box: view-box; transform-origin: 120px 134px; transform: scaleY(0); transition: transform .2s; }
+.lid     { transform-box: fill-box; transform-origin: top; transform: translateY(-100%); transition: transform .08s; }
+.pupil   { will-change: transform; }
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.012, 1.025); }
+}
+@keyframes wag {
+  0%, 100% { transform: rotate(-8deg); }
+  50%      { transform: rotate(14deg); }
+}
+
+/* --------------------------- states --------------------------- */
+/* blink */
+.blink .lid { transform: translateY(0); }
+
+/* happy: cursor is close or hovering over the dog */
+.happy #tail { animation-duration: .35s; }
+.happy #tongue { transform: scaleY(1); }
+.happy .blush { opacity: .55; }
+
+/* petted: hover right on the head -> eyes close contentedly */
+.petted .eye { opacity: 0; }
+.petted .happy-eye { opacity: 1; }
+.petted #earL { transform: rotate(10deg); }
+.petted #earR { transform: rotate(-10deg); }
+
+/* sleeping: no mouse movement for a while */
+.sleeping .eye { opacity: 0; }
+.sleeping .happy-eye { opacity: 1; transform: scaleY(-.4); transform-box: fill-box; transform-origin: center; }
+.sleeping #tail { animation: none; transform: rotate(-12deg); }
+.sleeping #body { animation-duration: 5s; }
+.sleeping #head { transition: transform 1.2s ease; }
+.sleeping #zzz { opacity: 1; }
+
+/* startled awake */
+.startle #jumper { animation: startle .45s ease-out; }
+@keyframes startle {
+  0%   { transform: translateY(0) scale(1, 1); }
+  30%  { transform: translateY(-14px) scale(.97, 1.04); }
+  60%  { transform: translateY(0) scale(1.05, .95); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* ear twitch */
+.twitchL #earL { animation: twitchL .35s ease-in-out; }
+.twitchR #earR { animation: twitchR .35s ease-in-out; }
+@keyframes twitchL { 50% { transform: rotate(-18deg); } }
+@keyframes twitchR { 50% { transform: rotate(18deg); } }
+
+/* --- click tricks --- */
+.trick-jump #jumper { animation: jump .7s cubic-bezier(.3,.6,.4,1); }
+@keyframes jump {
+  0%   { transform: translateY(0) scale(1, 1); }
+  15%  { transform: translateY(0) scale(1.08, .9); }
+  45%  { transform: translateY(-38px) scale(.95, 1.06); }
+  75%  { transform: translateY(0) scale(1.08, .92); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+.trick-spin #jumper { animation: spin .9s ease-in-out; }
+@keyframes spin {
+  0%   { transform: translateY(0) scaleX(1); }
+  25%  { transform: translateY(-16px) scaleX(-.2); }
+  50%  { transform: translateY(-22px) scaleX(-1); }
+  75%  { transform: translateY(-16px) scaleX(.2); }
+  100% { transform: translateY(0) scaleX(1); }
+}
+
+.trick-tilt #head { animation: tilt 1.1s ease-in-out; }
+@keyframes tilt {
+  0%, 100% { transform: rotate(0); }
+  25%, 70% { transform: rotate(-18deg) translateX(-4px); }
+}
+.trick-tilt #earR { animation: twitchR 1.1s ease-in-out; }
+
+.trick-wiggle #jumper { animation: wiggle .8s ease-in-out; }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(-6deg); }
+  35% { transform: rotate(6deg); }
+  55% { transform: rotate(-5deg); }
+  75% { transform: rotate(4deg); }
+}
+
+/* being dragged: little paddle */
+.dragging #jumper { animation: carried .5s ease-in-out infinite; }
+@keyframes carried {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* ------------------------- overlays --------------------------- */
+#bubble {
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: #3a2617;
+  font: 700 16px/1.1 ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  opacity: 0;
+  transform: scale(.4) translateY(10px);
+  transform-origin: bottom right;
+  transition: opacity .15s, transform .2s cubic-bezier(.3,1.6,.5,1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+#bubble::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: -7px;
+  border: 8px solid transparent;
+  border-top-color: #fff;
+  border-bottom: 0;
+}
+#bubble.show { opacity: 1; transform: scale(1) translateY(0); }
+
+#zzz {
+  position: absolute;
+  left: 160px;
+  top: 70px;
+  opacity: 0;
+  transition: opacity .5s;
+  pointer-events: none;
+  font: 700 18px ui-rounded, "Segoe UI", system-ui, sans-serif;
+  color: #6b7fa8;
+  text-shadow: 0 1px 2px rgba(255,255,255,.8);
+}
+#zzz span {
+  position: absolute;
+  animation: float 3s linear infinite;
+  opacity: 0;
+}
+#zzz span:nth-child(2) { animation-delay: 1s; font-size: 22px; }
+#zzz span:nth-child(3) { animation-delay: 2s; font-size: 26px; }
+@keyframes float {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(24px, -40px); opacity: 0; }
+}
