@@ -1,7 +1,7 @@
 {
-  "name": "desk-dog",
+  "name": "chunky",
   "version": "1.0.0",
-  "description": "A desktop buddy: your dog sits in the bottom-right corner and watches your mouse.",
+  "description": "Chunky the French Bulldog lives in the corner of your Mac and watches your mouse.",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -13,11 +13,14 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.deskdog.app",
-    "productName": "Desk Dog",
-    "files": ["src/**/*"],
-    "mac": { "target": "dmg" },
-    "win": { "target": "nsis" },
-    "linux": { "target": "AppImage" }
+    "appId": "com.chunky.deskdog",
+    "productName": "Chunky",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.entertainment"
+    }
+  },
+  "dependencies": {
+    "three": "^0.187.0"
   }
 }

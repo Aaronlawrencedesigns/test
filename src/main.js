@@ -1,12 +1,12 @@
-// Main process: creates a small transparent, always-on-top window in the
-// bottom-right corner and streams the global cursor position to it so the
-// dog can watch the mouse anywhere on screen (not just over its own window).
+// Main process (macOS): a transparent, always-on-top window in the
+// bottom-right corner. Streams the global cursor position to the renderer so
+// Chunky can watch the mouse anywhere on screen.
 const { app, BrowserWindow, screen, ipcMain, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 
-const WIN_W = 240;
-const WIN_H = 240;
-const MARGIN = 8;
+const WIN_W = 340;
+const WIN_H = 320;
+const MARGIN = 4;
 
 let win;
 let tray;
@@ -14,14 +14,14 @@ let clickThrough = null;
 
 function cornerPosition() {
   const { workArea } = screen.getPrimaryDisplay();
-  return {
-    x: Math.round(workArea.x + workArea.width - WIN_W - MARGIN),
-    y: Math.round(workArea.y + workArea.height - WIN_H),
-  };
+  return [
+    Math.round(workArea.x + workArea.width - WIN_W - MARGIN),
+    Math.round(workArea.y + workArea.height - WIN_H),
+  ];
 }
 
 function createWindow() {
-  const { x, y } = cornerPosition();
+  const [x, y] = cornerPosition();
   win = new BrowserWindow({
     width: WIN_W,
     height: WIN_H,
@@ -33,85 +33,84 @@ function createWindow() {
     hasShadow: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    focusable: true,
+    fullscreenable: false,
     backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false, // keep animating when another app is focused
     },
   });
 
-  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(__dirname, 'index.html'));
   setClickThrough(true);
 
-  // Stream cursor position ~60fps. The renderer turns it into eye movement.
   const timer = setInterval(() => {
     if (!win || win.isDestroyed()) return clearInterval(timer);
-    const cursor = screen.getCursorScreenPoint();
-    const bounds = win.getBounds();
-    win.webContents.send('cursor', { cursor, bounds });
+    win.webContents.send('cursor', { cursor: screen.getCursorScreenPoint(), bounds: win.getBounds() });
   }, 16);
 }
 
-// The window is transparent but still a rectangle. Let clicks pass through to
-// whatever is behind it, except when the cursor is over the dog itself (the
-// renderer tells us via 'hover').
+// The window is a transparent rectangle; let clicks fall through to the apps
+// underneath except when the cursor is actually over Chunky.
 function setClickThrough(on) {
   if (!win || clickThrough === on) return;
   clickThrough = on;
   win.setIgnoreMouseEvents(on, { forward: true });
 }
 
-ipcMain.on('hover', (_e, overDog) => setClickThrough(!overDog));
+const send = (name) => () => win && win.webContents.send('action', name);
 
-ipcMain.on('context-menu', () => {
-  Menu.buildFromTemplate([
-    { label: 'Back to corner', click: () => win.setPosition(...Object.values(cornerPosition())) },
+function actionMenu() {
+  return [
+    { label: 'Sit', click: send('sit') },
+    { label: 'Stand up', click: send('stand') },
+    { label: 'Lie down', click: send('lie') },
+    { label: 'Sleep', click: send('sleep') },
+    { label: 'Wag tail', click: send('wag') },
+    { label: 'Puppy eyes', click: send('puppy') },
+    { label: 'Bark', click: send('bark') },
+    { label: 'Poop', click: send('poop') },
     { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() },
-  ]).popup({ window: win });
-});
+    { label: 'Back to corner', click: () => win.setPosition(...cornerPosition()) },
+    { label: 'Show / hide', click: () => (win.isVisible() ? win.hide() : win.show()) },
+    { type: 'separator' },
+    { label: 'Quit Chunky', role: 'quit' },
+  ];
+}
 
-// Dragging the dog around: renderer sends deltas while the mouse is held.
+ipcMain.on('hover', (_e, overDog) => setClickThrough(!overDog));
+ipcMain.on('context-menu', () => Menu.buildFromTemplate(actionMenu()).popup({ window: win }));
 ipcMain.on('drag', (_e, { dx, dy }) => {
   const [x, y] = win.getPosition();
   win.setPosition(Math.round(x + dx), Math.round(y + dy));
 });
 
 function createTray() {
-  // Draw a tiny 16x16 brown dot so there's always a way to quit, even if the
-  // dog is hidden behind something.
-  const size = 16;
+  // Small paw print drawn into a template image (adapts to light/dark menu bar)
+  const size = 18;
   const buf = Buffer.alloc(size * size * 4);
+  const blobs = [[9, 12, 4.2], [4.2, 7.5, 2], [7.3, 4.6, 2], [10.7, 4.6, 2], [13.8, 7.5, 2]];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      const inside = Math.hypot(x - 7.5, y - 7.5) < 7;
-      buf[i] = 0x4f; buf[i + 1] = 0x8b; buf[i + 2] = 0xc9; // BGRA
-      buf[i + 3] = inside ? 255 : 0;
+      const inside = blobs.some(([cx, cy, r]) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < r);
+      buf[(y * size + x) * 4 + 3] = inside ? 255 : 0;
     }
   }
   const icon = nativeImage.createFromBitmap(buf, { width: size, height: size });
+  icon.setTemplateImage(true);
   tray = new Tray(icon);
-  tray.setToolTip('Desk Dog');
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Show dog', click: () => win.show() },
-      { label: 'Hide dog', click: () => win.hide() },
-      { label: 'Back to corner', click: () => win.setPosition(...Object.values(cornerPosition())) },
-      { type: 'separator' },
-      { label: 'Quit', click: () => app.quit() },
-    ])
-  );
+  tray.setToolTip('Chunky');
+  tray.setContextMenu(Menu.buildFromTemplate(actionMenu()));
 }
 
 app.whenReady().then(() => {
-  if (process.platform === 'darwin' && app.dock) app.dock.hide();
+  if (app.dock) app.dock.hide();
   createWindow();
-  try { createTray(); } catch (_) { /* tray unsupported on some Linux setups */ }
+  createTray();
 });
 
 app.on('window-all-closed', () => app.quit());

@@ -2,103 +2,22 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-  <title>Desk Dog</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:" />
+  <title>Chunky</title>
   <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../node_modules/three/build/three.module.js",
+        "three/addons/": "../node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
-  <div id="stage">
-    <div id="bubble">Woof!</div>
-    <div id="zzz"><span>z</span><span>z</span><span>Z</span></div>
-
-    <svg id="dog" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <clipPath id="clipEyeL"><circle cx="100" cy="98" r="11" /></clipPath>
-        <clipPath id="clipEyeR"><circle cx="140" cy="98" r="11" /></clipPath>
-      </defs>
-
-      <ellipse class="shadow" cx="120" cy="232" rx="72" ry="7" />
-
-      <g id="jumper">
-        <!-- Tail (behind the body) -->
-        <g id="tail">
-          <path class="fur" d="M160 205 C 190 200, 205 180, 204 150 C 203 140, 192 140, 193 152 C 194 175, 182 188, 158 192 Z" />
-          <path class="fur-light" d="M204 150 C 203 140, 192 140, 193 152 C 196 152, 201 152, 204 150 Z" />
-        </g>
-
-        <g id="body">
-          <!-- back haunches -->
-          <ellipse class="fur-dark" cx="80" cy="212" rx="24" ry="18" />
-          <ellipse class="fur-dark" cx="160" cy="212" rx="24" ry="18" />
-          <!-- torso -->
-          <ellipse class="fur" cx="120" cy="190" rx="54" ry="44" />
-          <ellipse class="fur-light" cx="120" cy="196" rx="27" ry="32" />
-          <!-- front legs + paws -->
-          <rect class="fur" x="92" y="190" width="20" height="38" rx="9" />
-          <rect class="fur" x="128" y="190" width="20" height="38" rx="9" />
-          <ellipse class="fur-light" cx="101" cy="228" rx="15" ry="8" />
-          <ellipse class="fur-light" cx="139" cy="228" rx="15" ry="8" />
-          <path class="toe" d="M96 225 v6 M102 225 v6 M134 225 v6 M140 225 v6" />
-          <!-- collar -->
-          <path class="collar" d="M84 150 Q120 168 156 150 L156 160 Q120 178 84 160 Z" />
-          <circle class="tag" cx="120" cy="172" r="6" />
-        </g>
-
-        <!-- Head: rotates/leans toward the cursor -->
-        <g id="head">
-          <g id="earL" class="ear">
-            <path class="fur-dark" d="M82 72 C 60 70, 48 95, 52 130 C 54 145, 72 145, 76 128 C 80 110, 88 95, 92 82 Z" />
-          </g>
-          <g id="earR" class="ear">
-            <path class="fur-dark" d="M158 72 C 180 70, 192 95, 188 130 C 186 145, 168 145, 164 128 C 160 110, 152 95, 148 82 Z" />
-          </g>
-
-          <ellipse class="fur" cx="120" cy="104" rx="48" ry="44" />
-          <!-- forehead blaze -->
-          <path class="fur-light" d="M114 62 Q120 58 126 62 L130 100 Q120 106 110 100 Z" />
-          <ellipse class="fur-light" cx="120" cy="128" rx="27" ry="20" />
-
-          <!-- brows -->
-          <path id="browL" class="brow" d="M90 82 Q100 77 108 82" />
-          <path id="browR" class="brow" d="M132 82 Q140 77 150 82" />
-
-          <!-- Eyes -->
-          <g class="eye" clip-path="url(#clipEyeL)">
-            <circle class="eye-white" cx="100" cy="98" r="11" />
-            <g id="pupilL" class="pupil">
-              <circle class="iris" cx="100" cy="98" r="7" />
-              <circle class="glint" cx="102.5" cy="95.5" r="2.2" />
-            </g>
-            <rect class="lid" x="86" y="74" width="28" height="36" />
-          </g>
-          <g class="eye" clip-path="url(#clipEyeR)">
-            <circle class="eye-white" cx="140" cy="98" r="11" />
-            <g id="pupilR" class="pupil">
-              <circle class="iris" cx="140" cy="98" r="7" />
-              <circle class="glint" cx="142.5" cy="95.5" r="2.2" />
-            </g>
-            <rect class="lid" x="126" y="74" width="28" height="36" />
-          </g>
-          <!-- happy closed eyes (^ ^), shown when petted / sleeping -->
-          <path class="happy-eye" d="M90 100 Q100 90 110 100" />
-          <path class="happy-eye" d="M130 100 Q140 90 150 100" />
-
-          <!-- cheeks -->
-          <ellipse class="blush" cx="86" cy="118" rx="7" ry="4" />
-          <ellipse class="blush" cx="154" cy="118" rx="7" ry="4" />
-
-          <!-- nose + mouth -->
-          <path class="nose" d="M110 115 Q120 110 130 115 Q130 123 120 126 Q110 123 110 115 Z" />
-          <ellipse class="glint" cx="116" cy="115" rx="3" ry="1.5" />
-          <g id="tongue">
-            <path class="tongue" d="M113 134 L127 134 L127 146 Q120 154 113 146 Z" />
-            <path class="tongue-line" d="M120 136 V146" />
-          </g>
-          <path class="mouth" d="M120 126 V132 M106 132 Q113 138 120 132 Q127 138 134 132" />
-        </g>
-      </g>
-    </svg>
-  </div>
-  <script src="renderer.js"></script>
+  <canvas id="scene"></canvas>
+  <div id="bubble"></div>
+  <div id="zzz"><span>z</span><span>z</span><span>Z</span></div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
