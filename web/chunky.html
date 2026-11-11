@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chunky</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>html, body { background: transparent; }</style>
+  <script>
+    // Web stand-in for the desktop app's bridge (src/preload.js). The parent
+    // page sends cursor positions in its own coordinates plus this frame's
+    // rectangle, exactly like Electron sends screen coordinates + window bounds.
+    window.CHUNKY_ASSETS = 'assets/';
+    (function () {
+      let onCursor = () => {}, onAction = () => {}, bounds = { x: 0, y: 0, width: innerWidth, height: innerHeight };
+      const post = (msg) => parent.postMessage(Object.assign({ chunky: true }, msg), '*');
+      addEventListener('message', (e) => {
+        const m = e.data;
+        if (!m || !m.chunky) return;
+        if (m.bounds) bounds = m.bounds;
+        if (m.type === 'cursor') onCursor({ cursor: m.cursor, bounds });
+        if (m.type === 'action') onAction(m.name);
+        if (m.type === 'tap') {
+          onCursor({ cursor: m.cursor, bounds });
+          requestAnimationFrame(() => {
+            onCursor({ cursor: m.cursor, bounds });
+            dispatchEvent(new MouseEvent('mousedown', { button: 0 }));
+            dispatchEvent(new MouseEvent('mouseup', { button: 0 }));
+          });
+        }
+      });
+      // While the pointer is over Chunky this frame receives the events itself.
+      addEventListener('mousemove', (e) => onCursor({ cursor: { x: e.clientX + bounds.x, y: e.clientY + bounds.y }, bounds }));
+      window.dogApi = {
+        onCursor: (fn) => (onCursor = fn),
+        onAction: (fn) => (onAction = fn),
+        setHover: (over) => post({ type: 'hover', over }),
+        drag: (dx, dy) => post({ type: 'drag', dx, dy }),
+        contextMenu: () => post({ type: 'menu' }),
+      };
+    })();
+  </script>
+</head>
+<body>
+  <canvas id="dog"></canvas>
+  <div id="bubble"></div>
+  <div id="zzz"><span>z</span><span>z</span><span>Z</span></div>
+  <script src="app.js"></script>
+</body>
+</html>

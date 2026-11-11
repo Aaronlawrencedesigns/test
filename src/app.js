@@ -39,6 +39,8 @@
   // How to get from one resting state to another
   const ROUTES = { 'lie>sit': 'get_up', 'sit>lie': 'lie_down', 'lie>sleep': 'fall_asleep', 'sleep>sit': 'wake_up' };
 
+  // Where the footage lives (the web version sets window.CHUNKY_ASSETS).
+  const ASSETS = window.CHUNKY_ASSETS || '../assets/';
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
   const rand = (a, b) => a + Math.random() * (b - a);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -58,13 +60,13 @@
     const jobs = [];
     for (let r = 0; r < 3; r++) {
       gaze[r] = [];
-      for (let c = 0; c < 5; c++) jobs.push(loadImg(`../assets/gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
+      for (let c = 0; c < 5; c++) jobs.push(loadImg(`${ASSETS}gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
     }
-    for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`../assets/stills/${n}.webp`).then((im) => (stills[n] = im)));
+    for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`${ASSETS}stills/${n}.webp`).then((im) => (stills[n] = im)));
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
-      v.src = `../assets/clips/${name}.webm`;
+      v.src = `${ASSETS}clips/${name}.webm`;
       v.muted = true;
       v.playsInline = true;
       v.preload = 'auto';
