@@ -215,7 +215,8 @@
     S.screenCursor = cursor;
     if (moved) {
       S.lastMoveAt = now;
-      if (S.rest === 'sleep' && !S.busy && !S.dragging) act('sit', false);
+      // (if you chose Sleep yourself, he stays asleep until you pick something else)
+      if (S.rest === 'sleep' && !S.busy && !S.dragging && !S.stayAsleep) act('sit', false);
     }
     const sx = bounds.width / window.innerWidth;
     const sy = bounds.height / window.innerHeight;
@@ -247,11 +248,15 @@
     api.setHover(S.over);
     if (S.dragMoved > 4) return say('Wheee!', 900);
     S.lastMoveAt = performance.now();
+    if (S.stayAsleep) return say('zzz…', 1100);
     if (S.rest === 'sleep' || S.rest === 'lie') act('sit');
     else act(pick(['wag', 'bark', 'bark', 'puppy']));
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
-  api.onAction((name) => act(name));
+  api.onAction((name) => {
+    S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen
+    act(name);
+  });
 
   // ----------------------------------------------------------- render
   function resize() {

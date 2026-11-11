@@ -25,6 +25,8 @@ the bottom-right corner and turns his head to follow the mouse.
 - Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x480) that
   start/end on keyframes; `CLIPS` and `ROUTES` in `src/app.js` define the graph.
   Every cut is crossfaded (280 ms).
+- Sleep chosen from a menu/button (`S.stayAsleep`) lasts until another action is
+  chosen; mouse moves and clicks don't wake him. Idle-triggered naps still wake on mouse move.
 - To add an action: generate clip → convert → add to `CLIPS` in `src/app.js`,
   the menu in `src/main.js`, and a button in `web/index.html`.
 
