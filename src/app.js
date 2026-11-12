@@ -59,13 +59,12 @@
     im.src = src;
   });
   const gaze = [];
-  // Head tiles (tools/build_head_tiles.py): the head region at every head
-  // height (rowV: 0 = up, 1 = level, 2 = down; in-betweens made with optical
-  // flow) x 33 left->right positions cut from video, laid over one shared
-  // body. Regenerating the tiles? Update this from assets/head/meta.json.
-  const HEAD_TILES = {"rows": 6, "rowV": [0.0, 0.25, 0.5, 0.75, 1.0, 2.0], "cols": 33, "x": 181, "y": 192, "w": 297, "h": 282, "frame": 640};
-  const tiles = HEAD_TILES.rowV.map(() => []);
-  let headBody = null;
+  // Head-tracking frames (tools/build_look_frames.py): real video frames only,
+  // rows = head heights top->bottom, cols = far left -> far right. Exactly one
+  // is shown at a time, so there is never a blended/ghosted in-between.
+  // Regenerating them? Update this from assets/look/meta.json.
+  const LOOK = {"rows": 5, "cols": 33, "x": 165, "y": 194, "w": 311, "h": 422, "frame": 640};
+  const look = Array.from({ length: LOOK.rows }, () => []);
   const stills = {};
   const videos = {};
 
@@ -76,10 +75,10 @@
       for (let c = 0; c < 5; c++) jobs.push(loadImg(`${ASSETS}gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
     }
     for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`${ASSETS}stills/${n}.webp`).then((im) => (stills[n] = im)));
-    // head tiles load in the background; the 5x3 grid is used until they're ready
-    const tj = [loadImg(`${ASSETS}head/body.webp`).then((im) => (headBody = im))];
-    for (let r = 0; r < HEAD_TILES.rows; r++) for (let i = 0; i < HEAD_TILES.cols; i++) tj.push(loadImg(`${ASSETS}head/${r}_${i}.webp`).then((im) => (tiles[r][i] = im)));
-    Promise.all(tj).then(() => { S.sweepReady = !!headBody && tiles.every((row) => row.length === HEAD_TILES.cols && row.every(Boolean)); });
+    // tracking frames load in the background; the 5x3 grid is used until they're ready
+    const lj = [];
+    for (let r = 0; r < LOOK.rows; r++) for (let i = 0; i < LOOK.cols; i++) lj.push(loadImg(`${ASSETS}look/${r}_${i}.webp`).then((im) => (look[r][i] = im)));
+    Promise.all(lj).then(() => { S.sweepReady = look.every((row) => row.length === LOOK.cols && row.every(Boolean)); });
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
@@ -334,28 +333,20 @@
     if (a < 1) { gctx.globalAlpha = 1 - a; gctx.drawImage(gazeFrom, 0, 0); }
 
     if (smooth) {
-      // Continuous in both directions: the shared body plus the four nearest
-      // head tiles (left/right neighbours x up/down neighbours), added with
-      // weights that sum to 1. Where two heights have no in-betweens (level ->
-      // down) the blend is steepened so it never lingers half-way.
-      const M = HEAD_TILES;
+      // Show the single nearest real frame (head and body from the same video
+      // frame). Neighbouring frames are tiny steps, so switching between them
+      // at display rate reads as smooth motion with no blur. A little
+      // hysteresis stops flicker when the cursor sits on a boundary.
+      const M = LOOK;
       const x = (S.u / 4) * (M.cols - 1);
-      const c0 = Math.min(M.cols - 2, Math.floor(x)), fx = x - c0;
-      let r0 = 0;
-      while (r0 < M.rows - 2 && M.rowV[r0 + 1] < S.v) r0++;
-      const gap = M.rowV[r0 + 1] - M.rowV[r0];
-      let fv = Math.min(1, Math.max(0, (S.v - M.rowV[r0]) / gap));
-      if (gap > 0.5) fv = Math.min(1, Math.max(0, (fv - 0.5) * 3 + 0.5));
-      S.gr = Math.round(S.v); S.gc = Math.round(x);
+      const y = (S.v / 2) * (M.rows - 1);
+      const nc = S.lc != null && Math.abs(x - S.lc) < 0.6 ? S.lc : Math.round(x);
+      const nr = S.lr != null && Math.abs(y - S.lr) < 0.6 ? S.lr : Math.round(y);
+      S.lc = nc; S.lr = nr;
+      S.gr = Math.round(S.v); S.gc = nc;
       const k = gazeCanvas.width / M.frame;
-      gctx.globalAlpha = a;
-      gctx.drawImage(headBody, 0, 0, gazeCanvas.width, gazeCanvas.height);
-      for (const [r, c, wt] of [[r0, c0, (1 - fv) * (1 - fx)], [r0, c0 + 1, (1 - fv) * fx], [r0 + 1, c0, fv * (1 - fx)], [r0 + 1, c0 + 1, fv * fx]]) {
-        const im = tiles[r][c];
-        if (!im || wt < 0.004) continue;
-        gctx.globalAlpha = wt * a;
-        gctx.drawImage(im, M.x * k, M.y * k, M.w * k, M.h * k);
-      }
+      const im = look[nr][nc];
+      if (im) { gctx.globalAlpha = a; gctx.drawImage(im, M.x * k, M.y * k, M.w * k, M.h * k); }
     } else {
       // Before the sweeps load: snap to the nearest grid image (with a little
       // hysteresis) and crossfade from whatever is on screen.

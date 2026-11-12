@@ -1,6 +1,10 @@
 """Turn head-sweep clips (far left -> far right) into evenly spaced head positions.
 
-usage: python3 tools/build_sweeps.py ROW sweep.mp4 [ROW sweep.mp4 ...]
+usage: python3 tools/build_sweeps.py ROW[:REF] sweep.mp4 [ROW[:REF] sweep.mp4 ...]
+
+ROW = output row (head height, top to bottom). REF = which row of the 5x3 head-direction
+grid (assets/gaze, 0 up / 1 level / 2 down) to measure the head turn against
+(defaults to ROW).
 
 For each green-screen frame: key it, align it to the sitting still (paws),
 colour-match it to that still (video models drift warmer), then
@@ -87,15 +91,16 @@ def head_sig(rgba):
 
 os.makedirs(f'{ROOT}/assets/sweep', exist_ok=True)
 args = sys.argv[1:]
-for row, src in zip(args[::2], args[1::2]):
-    row = int(row)
+for spec, src in zip(args[::2], args[1::2]):
+    row, _, ref = spec.partition(':')
+    row, ref = int(row), int(ref or row)
     frames = decode(src)
     # ease framing drift: shift every frame so its paws sit where the still's do
     out = []
     for f in frames:
         f = shift(f, target_anchor - anchor(f))
         out.append(color_match(f, body))
-    refs = [head_sig(load_rgba(f'{ROOT}/assets/gaze/{c}_{row}.webp').astype(np.uint8)) for c in range(5)]
+    refs = [head_sig(load_rgba(f'{ROOT}/assets/gaze/{c}_{ref}.webp').astype(np.uint8)) for c in range(5)]
     us = []
     for f in out:
         s = head_sig(f)
