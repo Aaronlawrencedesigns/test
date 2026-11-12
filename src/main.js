@@ -5,8 +5,8 @@ const { app, BrowserWindow, screen, ipcMain, Menu, Tray, nativeImage } = require
 const path = require('path');
 const fs = require('fs');
 
-const WIN_W = 400; // 4:3, matches the 640x480 footage (at "Normal" size)
-const WIN_H = 300;
+const WIN_W = 400; // square, matches the 640x640 footage (at "Normal" size)
+const WIN_H = 400;
 const MARGIN = 4;
 const SIZES = [
   { label: 'Tiny', scale: 0.4 },
@@ -107,6 +107,7 @@ function actionMenu() {
     { label: 'Sit', click: send('sit') },
     { label: 'Lie down', click: send('lie') },
     { label: 'Sleep', click: send('sleep') },
+    { label: 'Stand up', click: send('stand') },
     { label: 'Happy wiggle', click: send('wag') },
     { label: 'Puppy eyes', click: send('puppy') },
     { label: 'Bark', click: send('bark') },

@@ -11,6 +11,11 @@
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const gazeCanvas = document.createElement('canvas');
   const gctx = gazeCanvas.getContext('2d');
+  // What the head-tracking showed when the last head change began; each new
+  // change fades from exactly this, so fast mouse moves never pop.
+  const gazeFrom = document.createElement('canvas');
+  const gfctx = gazeFrom.getContext('2d');
+  const GAZE_FADE_MS = 220;
   // Snapshot of the last frame shown before a cut; faded out over the new
   // picture so clip boundaries never pop even if the AI frames differ slightly.
   const fadeCanvas = document.createElement('canvas');
@@ -19,9 +24,9 @@
   let fadeStart = -1e9;
   let dogLayer = null; // what was drawn last frame (for snapshots)
 
-  // Where his head and the ground are inside the 640x480 asset frame (0..1)
-  const HEAD = { x: 0.5, y: 0.27 };
-  const GROUND_Y = 0.969;
+  // Where his head and the ground are inside the 640x640 asset frame (0..1)
+  const HEAD = { x: 0.5, y: 0.44 };
+  const GROUND_Y = 0.96;
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
   // Clip graph: every clip goes from one resting state to another.
@@ -35,6 +40,7 @@
     fall_asleep: { from: 'lie', to: 'sleep' },
     sleep_loop:  { from: 'sleep', to: 'sleep', loop: true },
     wake_up:     { from: 'sleep', to: 'sit', say: '!', sayAt: 0.3 },
+    stand:       { from: 'sit', to: 'sit' },   // stands up on his hind legs
   };
   // How to get from one resting state to another
   const ROUTES = { 'lie>sit': 'get_up', 'sit>lie': 'lie_down', 'lie>sleep': 'fall_asleep', 'sleep>sit': 'wake_up' };
@@ -53,6 +59,10 @@
     im.src = src;
   });
   const gaze = [];
+  // Head sweeps: per head height, SWEEP_N frames from far left to far right
+  // (cut from video), so the head turns smoothly instead of in 5 steps.
+  const SWEEP_N = 33;
+  const sweep = [[], [], []];
   const stills = {};
   const videos = {};
 
@@ -63,6 +73,10 @@
       for (let c = 0; c < 5; c++) jobs.push(loadImg(`${ASSETS}gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
     }
     for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`${ASSETS}stills/${n}.webp`).then((im) => (stills[n] = im)));
+    // sweeps load in the background; the 5-step grid is used until they're ready
+    const sj = [];
+    for (let r = 0; r < 3; r++) for (let i = 0; i < SWEEP_N; i++) sj.push(loadImg(`${ASSETS}sweep/${r}_${i}.webp`).then((im) => (sweep[r][i] = im)));
+    Promise.all(sj).then(() => { S.sweepReady = sweep.every((row) => row.length === SWEEP_N && row.every(Boolean)); });
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
@@ -88,7 +102,6 @@
     dragMoved: 0,
     u: 2, v: 1,           // current gaze grid position (smoothed)
     gc: 2, gr: 1,         // grid cell shown
-    pc: 2, pr: 1,         // previous cell (fading out)
     cellAt: 0,
     centerGaze: false,
   };
@@ -115,7 +128,7 @@
       if (S.rest === 'sit' && !S.clip) {
         S.centerGaze = true;
         const t0 = performance.now();
-        while ((S.gc !== 2 || S.gr !== 1 || performance.now() - S.cellAt < 140) && performance.now() - t0 < 800) await wait(16);
+        while ((Math.abs(S.u - 2) > 0.08 || S.gr !== 1 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 900) await wait(16);
       }
       v.currentTime = 0;
       try { await v.play(); } catch (err) { console.warn('clip failed', name, err); S.centerGaze = false; return resolve(false); }
@@ -194,11 +207,12 @@
     if (S.rest === 'sleep' || now < nextIdleAt) return;
     nextIdleAt = now + rand(20000, 45000);
     if (S.rest === 'lie') { act('sit', false); return; }
+    // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
     if (r < 0.03) act('poop', false);
     else if (r < 0.35) act('wag', false);
     else if (r < 0.55) act('puppy', false);
-    else if (r < 0.7) act('bark', false);
+    else if (r < 0.7) act('stand', false);
     else act('lie', false);
   }
 
@@ -250,7 +264,7 @@
     S.lastMoveAt = performance.now();
     if (S.stayAsleep) return say('zzz…', 1100);
     if (S.rest === 'sleep' || S.rest === 'lie') act('sit');
-    else act(pick(['wag', 'bark', 'bark', 'puppy']));
+    else act(pick(['wag', 'puppy', 'stand']));
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
   api.onAction((name) => {
@@ -263,8 +277,8 @@
     const d = window.devicePixelRatio || 1;
     canvas.width = Math.round(window.innerWidth * d);
     canvas.height = Math.round(window.innerHeight * d);
-    gazeCanvas.width = fadeCanvas.width = canvas.width;
-    gazeCanvas.height = fadeCanvas.height = canvas.height;
+    gazeCanvas.width = fadeCanvas.width = gazeFrom.width = canvas.width;
+    gazeCanvas.height = fadeCanvas.height = gazeFrom.height = canvas.height;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -294,25 +308,35 @@
       tu = 2 + 2 * Math.tanh(dx / 380);
       tv = 1 + Math.tanh(dy / 260);
     }
-    const k = S.centerGaze ? 0.25 : 0.12;
+    // Frame-rate independent easing; a little lazy, like a real dog's head.
+    const dt = Math.min(0.05, (t - (S.lastGazeT || t)) / 1000);
+    S.lastGazeT = t;
+    const k = 1 - Math.exp(-dt * (S.centerGaze ? 14 : 6));
     S.u += (tu - S.u) * k;
     S.v += (tv - S.v) * k;
-    // Snap to the nearest head direction (with a little hysteresis) and
-    // crossfade quickly from the previous one; blending 4 at once ghosts.
-    const nc = Math.abs(S.u - S.gc) > 0.62 ? Math.round(S.u) : S.gc;
-    const nr = Math.abs(S.v - S.gr) > 0.62 ? Math.round(S.v) : S.gr;
-    if (nc !== S.gc || nr !== S.gr) {
-      S.pc = S.gc; S.pr = S.gr; S.gc = nc; S.gr = nr; S.cellAt = t;
+    // Left/right: with the sweeps loaded, pick the matching frame directly
+    // (neighbouring frames are tiny steps, so no fade is needed). Up/down,
+    // and left/right before the sweeps load: snap to the nearest image with a
+    // little hysteresis and crossfade from whatever is on screen (never a pop).
+    const smooth = S.sweepReady;
+    const nc = smooth ? Math.round((S.u / 4) * (SWEEP_N - 1))
+      : (S.gcGrid != null && Math.abs(S.u - S.gcGrid) <= 0.6 ? S.gcGrid : Math.round(S.u));
+    const nr = Math.abs(S.v - S.gr) > 0.6 ? Math.round(S.v) : S.gr;
+    if (nr !== S.gr || (!smooth && nc !== S.gcGrid) || smooth !== S.wasSmooth) {
+      gfctx.clearRect(0, 0, gazeFrom.width, gazeFrom.height);
+      gfctx.drawImage(gazeCanvas, 0, 0);
+      S.cellAt = t;
     }
-    const a = Math.min(1, (t - S.cellAt) / 130);
+    S.wasSmooth = smooth;
+    S.gr = nr;
+    if (smooth) S.gc = nc; else S.gcGrid = nc;
+    const lin = Math.min(1, (t - S.cellAt) / GAZE_FADE_MS);
+    const a = lin * lin * (3 - 2 * lin);   // ease in-out
+    const im = smooth ? sweep[S.gr][S.gc] : gaze[S.gr]?.[S.gcGrid];
     gctx.clearRect(0, 0, gazeCanvas.width, gazeCanvas.height);
     gctx.globalCompositeOperation = 'lighter';
-    for (const [c, r, w] of [[S.pc, S.pr, 1 - a], [S.gc, S.gr, a]]) {
-      const im = gaze[r]?.[c];
-      if (!im || w < 0.002) continue;
-      gctx.globalAlpha = w;
-      gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height);
-    }
+    if (a < 1) { gctx.globalAlpha = 1 - a; gctx.drawImage(gazeFrom, 0, 0); }
+    if (im) { gctx.globalAlpha = a; gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height); }
     gctx.globalAlpha = 1;
     gctx.globalCompositeOperation = 'source-over';
     // gentle breathing
@@ -351,11 +375,11 @@
     // (kept inside the window so it isn't clipped at small sizes)
     const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
     const bx = Math.min(window.innerWidth - bw / 2 - 2, Math.max(bw / 2 + 2, HEAD.x * window.innerWidth));
-    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.55) * window.innerHeight - 0.1 * window.innerHeight);
+    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.66) * window.innerHeight - 0.08 * window.innerHeight);
     bubble.style.left = `${bx}px`;
     bubble.style.top = `${by}px`;
     zzz.style.left = `${0.74 * window.innerWidth}px`;
-    zzz.style.top = `${0.48 * window.innerHeight}px`;
+    zzz.style.top = `${0.6 * window.innerHeight}px`;
     autonomy(performance.now());
     requestAnimationFrame(frame);
   }

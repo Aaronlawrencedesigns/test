@@ -4,8 +4,8 @@ from PIL import Image
 
 GREEN = (0, 177, 64)
 # Canonical crop of the 1024px keyframe canvas (ground line y=922) used for every app asset.
-CROP_1024 = (32, 224, 992, 944)   # 960x720 (4:3)
-OUT_SIZE = (640, 480)
+CROP_1024 = (32, 0, 992, 960)     # 960x960 square: headroom for standing on his hind legs
+OUT_SIZE = (640, 640)
 
 
 def alpha_and_despill(rgb):
