@@ -11,6 +11,11 @@
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const gazeCanvas = document.createElement('canvas');
   const gctx = gazeCanvas.getContext('2d');
+  // What the head-tracking showed when the last head change began; each new
+  // change fades from exactly this, so fast mouse moves never pop.
+  const gazeFrom = document.createElement('canvas');
+  const gfctx = gazeFrom.getContext('2d');
+  const GAZE_FADE_MS = 220;
   // Snapshot of the last frame shown before a cut; faded out over the new
   // picture so clip boundaries never pop even if the AI frames differ slightly.
   const fadeCanvas = document.createElement('canvas');
@@ -88,7 +93,6 @@
     dragMoved: 0,
     u: 2, v: 1,           // current gaze grid position (smoothed)
     gc: 2, gr: 1,         // grid cell shown
-    pc: 2, pr: 1,         // previous cell (fading out)
     cellAt: 0,
     centerGaze: false,
   };
@@ -115,7 +119,7 @@
       if (S.rest === 'sit' && !S.clip) {
         S.centerGaze = true;
         const t0 = performance.now();
-        while ((S.gc !== 2 || S.gr !== 1 || performance.now() - S.cellAt < 140) && performance.now() - t0 < 800) await wait(16);
+        while ((S.gc !== 2 || S.gr !== 1 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 800) await wait(16);
       }
       v.currentTime = 0;
       try { await v.play(); } catch (err) { console.warn('clip failed', name, err); S.centerGaze = false; return resolve(false); }
@@ -263,8 +267,8 @@
     const d = window.devicePixelRatio || 1;
     canvas.width = Math.round(window.innerWidth * d);
     canvas.height = Math.round(window.innerHeight * d);
-    gazeCanvas.width = fadeCanvas.width = canvas.width;
-    gazeCanvas.height = fadeCanvas.height = canvas.height;
+    gazeCanvas.width = fadeCanvas.width = gazeFrom.width = canvas.width;
+    gazeCanvas.height = fadeCanvas.height = gazeFrom.height = canvas.height;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -294,25 +298,28 @@
       tu = 2 + 2 * Math.tanh(dx / 380);
       tv = 1 + Math.tanh(dy / 260);
     }
-    const k = S.centerGaze ? 0.25 : 0.12;
+    // Frame-rate independent easing; a little lazy, like a real dog's head.
+    const dt = Math.min(0.05, (t - (S.lastGazeT || t)) / 1000);
+    S.lastGazeT = t;
+    const k = 1 - Math.exp(-dt * (S.centerGaze ? 14 : 6));
     S.u += (tu - S.u) * k;
     S.v += (tv - S.v) * k;
     // Snap to the nearest head direction (with a little hysteresis) and
-    // crossfade quickly from the previous one; blending 4 at once ghosts.
-    const nc = Math.abs(S.u - S.gc) > 0.62 ? Math.round(S.u) : S.gc;
-    const nr = Math.abs(S.v - S.gr) > 0.62 ? Math.round(S.v) : S.gr;
+    // crossfade from whatever is on screen right now (never a pop).
+    const nc = Math.abs(S.u - S.gc) > 0.6 ? Math.round(S.u) : S.gc;
+    const nr = Math.abs(S.v - S.gr) > 0.6 ? Math.round(S.v) : S.gr;
     if (nc !== S.gc || nr !== S.gr) {
-      S.pc = S.gc; S.pr = S.gr; S.gc = nc; S.gr = nr; S.cellAt = t;
+      gfctx.clearRect(0, 0, gazeFrom.width, gazeFrom.height);
+      gfctx.drawImage(gazeCanvas, 0, 0);
+      S.gc = nc; S.gr = nr; S.cellAt = t;
     }
-    const a = Math.min(1, (t - S.cellAt) / 130);
+    const lin = Math.min(1, (t - S.cellAt) / GAZE_FADE_MS);
+    const a = lin * lin * (3 - 2 * lin);   // ease in-out
+    const im = gaze[S.gr]?.[S.gc];
     gctx.clearRect(0, 0, gazeCanvas.width, gazeCanvas.height);
     gctx.globalCompositeOperation = 'lighter';
-    for (const [c, r, w] of [[S.pc, S.pr, 1 - a], [S.gc, S.gr, a]]) {
-      const im = gaze[r]?.[c];
-      if (!im || w < 0.002) continue;
-      gctx.globalAlpha = w;
-      gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height);
-    }
+    if (a < 1) { gctx.globalAlpha = 1 - a; gctx.drawImage(gazeFrom, 0, 0); }
+    if (im) { gctx.globalAlpha = a; gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height); }
     gctx.globalAlpha = 1;
     gctx.globalCompositeOperation = 'source-over';
     // gentle breathing
