@@ -220,16 +220,23 @@
       if (S.rest !== 'sleep') { S.napping = true; act('sleep', false); }
       return;
     }
+    // When he lay down on his own, he gets back up after a short rest (if YOU
+    // chose "Lie down", he stays down until you pick something else).
+    if (S.rest === 'lie' && !S.userLie && S.lieUntil && now > S.lieUntil) {
+      S.lieUntil = 0;
+      act('sit', false);
+      return;
+    }
     if (S.rest === 'sleep' || now < nextIdleAt) return;
     nextIdleAt = now + rand(20000, 45000);
-    if (S.rest === 'lie') { act('sit', false); return; }
+    if (S.rest === 'lie') { if (!S.userLie) act('sit', false); return; }
     // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
     if (r < 0.03) act('poop', false);
     else if (r < 0.35) act('wag', false);
     else if (r < 0.55) act('puppy', false);
     else if (r < 0.7) act('stand', false);
-    else act('lie', false);
+    else act('lie', false).then(() => { S.lieUntil = performance.now() + rand(5000, 10000); });
   }
 
   // ------------------------------------------------------------ input
@@ -296,6 +303,7 @@
     S.napping = false;
     if (name === 'feed') return showTray();
     S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen
+    S.userLie = name === 'lie';       // chosen lie-down lasts until another action is chosen
     act(name);
   });
 
@@ -527,8 +535,16 @@
       drawGaze(t);
       dogLayer = gazeCanvas;
     } else if (stills[S.rest]) {
+      // lying still: gentle breathing so he never looks frozen
       dogLayer = stills[S.rest];
+      const b = 1 + Math.sin(t / 650) * 0.009;
+      const gy = canvas.height * GROUND_Y;
+      ctx.save();
+      ctx.translate(0, gy);
+      ctx.scale(1, b);
+      ctx.translate(0, -gy);
       ctx.drawImage(dogLayer, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
     }
     if (fade < 1) {
       ctx.globalAlpha = 1 - fade;
