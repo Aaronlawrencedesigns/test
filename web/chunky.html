@@ -37,6 +37,7 @@
         setHover: (over) => post({ type: 'hover', over }),
         drag: (dx, dy) => post({ type: 'drag', dx, dy }),
         contextMenu: () => post({ type: 'menu' }),
+        setExtraTop: (px) => post({ type: 'extend', px }),
       };
     })();
   </script>

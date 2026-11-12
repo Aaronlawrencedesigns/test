@@ -39,7 +39,8 @@ the bottom-right corner and turns his head to follow the mouse.
   head/body compositing were tried and dropped: both blur or ghost.
   Fallback until frames load: the 5x3 grid `assets/gaze/{col}_{row}.webp`.
 - All assets share one 640x640 frame (`CROP_1024`/`OUT_SIZE` in `tools/key.py`,
-  square so he can stand on his hind legs); the Mac window is 400x400 at Normal.
+  square so he can stand on his hind legs); the Mac window is 400x400 at Normal
+  (taller while the food tray is open).
 - Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x640) that
   start/end on keyframes; `CLIPS` and `ROUTES` in `src/app.js` define the graph.
   Every cut is crossfaded (280 ms).
@@ -52,7 +53,10 @@ the bottom-right corner and turns his head to follow the mouse.
 - Bark only plays when chosen from the menu/button: it's left out of his idle
   routine and of the random tricks on click (the owner found it distracting).
 - Feeding: menu "Feed Chunky" / web "Feed" button sends action `feed`, which
-  toggles a vertical food tray on his left (`#tray`, foods in `FOODS` in `src/app.js`). Dragging a food
+  toggles a vertical food tray standing on top of his head (`#tray`, foods in
+  `FOODS` in `src/app.js`). His square is the BOTTOM of the window (`SZ()`,
+  `stageTop()`); while the tray is open the window grows upward via
+  `dogApi.setExtraTop(px)` (Electron: `extend` IPC; web: `extend` message to the page). Dragging a food
   onto him (dog pixels or near `MOUTH`) runs `act('eat:<food>')`: three bites with
   crumbs, then the `eat` clip (chew + lick lips), then `wag`. A miss floats the food
   back. The tray and a held food count as "over" for click-through.

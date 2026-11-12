@@ -189,6 +189,7 @@
 
   // Position is kept as offsets from the bottom-right corner.
   let pos = { right: 8, bottom: 0 };
+  let extra = 0;   // extra height above his square while the food tray is open
 
   const rect = () => {
     const r = frame.getBoundingClientRect();
@@ -203,10 +204,10 @@
     pos.right = Math.min(Math.max(pos.right, -w * 0.3), innerWidth - w * 0.7);
     pos.bottom = Math.min(Math.max(pos.bottom, 0), innerHeight - h * 0.5);
     frame.style.width = w + 'px';
-    frame.style.height = h + 'px';
+    frame.style.height = (h + extra) + 'px';
     const ins = insets();
     frame.style.left = (innerWidth - pos.right - ins.r - w) + 'px';
-    frame.style.top = (innerHeight - pos.bottom - ins.b - h) + 'px';
+    frame.style.top = (innerHeight - pos.bottom - ins.b - h - extra) + 'px';
     document.body.style.setProperty('--dog-space', (h + 24) + 'px');
     send({ type: 'bounds' });
   }
@@ -226,6 +227,7 @@
     if (!m || !m.chunky || e.source !== frame.contentWindow) return;
     if (m.type === 'hover') frame.style.pointerEvents = m.over ? 'auto' : 'none';
     if (m.type === 'drag') { pos.right -= m.dx; pos.bottom -= m.dy; layout(); }
+    if (m.type === 'extend') { extra = Math.max(0, Math.min(800, +m.px || 0)); layout(); }
     if (m.type === 'menu') { dock.classList.remove('flash'); void dock.offsetWidth; dock.classList.add('flash'); dock.querySelector('button').focus(); }
   });
 
