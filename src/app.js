@@ -194,11 +194,11 @@
     if (S.rest === 'sleep' || now < nextIdleAt) return;
     nextIdleAt = now + rand(20000, 45000);
     if (S.rest === 'lie') { act('sit', false); return; }
+    // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
     if (r < 0.03) act('poop', false);
-    else if (r < 0.35) act('wag', false);
-    else if (r < 0.55) act('puppy', false);
-    else if (r < 0.7) act('bark', false);
+    else if (r < 0.4) act('wag', false);
+    else if (r < 0.65) act('puppy', false);
     else act('lie', false);
   }
 
@@ -250,7 +250,7 @@
     S.lastMoveAt = performance.now();
     if (S.stayAsleep) return say('zzz…', 1100);
     if (S.rest === 'sleep' || S.rest === 'lie') act('sit');
-    else act(pick(['wag', 'bark', 'bark', 'puppy']));
+    else act(pick(['wag', 'puppy']));
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
   api.onAction((name) => {
