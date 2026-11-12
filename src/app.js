@@ -41,6 +41,7 @@
     sleep_loop:  { from: 'sleep', to: 'sleep', loop: true },
     wake_up:     { from: 'sleep', to: 'sit', say: '!', sayAt: 0.3 },
     stand:       { from: 'sit', to: 'sit' },   // stands up on his hind legs
+    eat:         { from: 'sit', to: 'sit' },   // chews, swallows, licks his lips
   };
   // How to get from one resting state to another
   const ROUTES = { 'lie>sit': 'get_up', 'sit>lie': 'lie_down', 'lie>sleep': 'fall_asleep', 'sleep>sit': 'wake_up' };
@@ -183,7 +184,10 @@
     try {
       S.lastMoveAt = performance.now();
       if (name === 'sit' || name === 'lie' || name === 'sleep') await goTo(name);
-      else {
+      else if (name.startsWith('eat:')) {
+        await goTo('sit');
+        await eat(name.slice(4));
+      } else {
         await goTo(CLIPS[name].from);
         await playClip(name);
       }
@@ -200,7 +204,7 @@
   // --------------------------------------------------------- autonomy
   let nextIdleAt = performance.now() + rand(15000, 30000);
   function autonomy(now) {
-    if (S.busy || S.dragging || S.noAuto) return;
+    if (S.busy || S.dragging || S.noAuto || S.food) return;
     const idle = now - S.lastMoveAt;
     if (S.rest !== 'sleep' && idle > 30000) {
       act(S.rest === 'lie' ? 'sleep' : 'lie', false);
@@ -246,6 +250,9 @@
       const d = window.devicePixelRatio || 1;
       over = ctx.getImageData(Math.floor(x * d), Math.floor(y * d), 1, 1).data[3] > 40;
     }
+    const overTray = trayOpen() && inRect(tray.getBoundingClientRect(), x, y, 6);
+    S.overDog = over;
+    if (overTray || S.food) over = true;   // the tray and a food you're holding stay clickable
     if (over !== S.over) {
       S.over = over;
       api.setHover(over || S.dragging);
@@ -253,7 +260,7 @@
   });
 
   window.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || !S.over) return;
+    if (e.button !== 0 || !S.over || S.food || (e.target.closest && e.target.closest('#tray'))) return;
     S.dragging = true;
     S.dragMoved = 0;
     api.setHover(true);
@@ -270,9 +277,116 @@
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
   api.onAction((name) => {
+    if (name === 'feed') return showTray();
     S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen
     act(name);
   });
+
+
+  // ----------------------------------------------------------- feeding
+  // A tray of foods (menu: Feed Chunky). Drag one onto him: he eats it in
+  // three bites, chews and licks his lips (eat clip), then does a happy wiggle.
+  const tray = $('tray');
+  const held = $('held');
+  const FOODS = ['🍩', '🌭', '🧁', '🍕', '🍔'];
+  const CRUMBS = {
+    '🍩': ['#8a5a3b', '#f4a7c1', '#f7d774'], '🌭': ['#c97b4a', '#e8b04b', '#c0392b'],
+    '🧁': ['#f6e7b0', '#f19cc0', '#7ec8e3'], '🍕': ['#f2c14e', '#c0392b', '#e9a23b'],
+    '🍔': ['#c58b52', '#5c3a21', '#7cb342'],
+  };
+  const MOUTH = { x: 0.5, y: 0.54 };   // in the 640x640 frame, sitting
+  tray.innerHTML = FOODS.map((f) => `<span class="food" data-food="${f}" role="button" aria-label="Drag to feed Chunky">${f}</span>`).join('');
+  const inRect = (r, x, y, pad = 0) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+  const trayOpen = () => tray.classList.contains('show');
+  let trayTimer;
+  function showTray(on = !trayOpen()) {
+    tray.classList.toggle('show', on);
+    clearTimeout(trayTimer);
+    if (on) keepTray();
+  }
+  function keepTray() {   // the tray tucks itself away after a quiet minute
+    clearTimeout(trayTimer);
+    trayTimer = setTimeout(() => { if (!S.food) tray.classList.remove('show'); }, 60000);
+  }
+  function placeHeld(x, y) { held.style.left = `${x}px`; held.style.top = `${y}px`; }
+
+  tray.addEventListener('mousedown', (e) => {
+    const f = e.target.closest('.food');
+    if (!f || e.button !== 0) return;
+    e.preventDefault();
+    S.food = f.dataset.food;
+    S.foodFrom = f.getBoundingClientRect();
+    held.textContent = S.food;
+    held.style.transition = 'none';
+    held.style.transform = 'translate(-50%, -50%) scale(1)';
+    placeHeld(e.clientX, e.clientY);
+    held.classList.add('show');
+    f.classList.add('taken');
+    S.lastMoveAt = performance.now();
+    keepTray();
+    api.setHover(true);
+  });
+  window.addEventListener('mousemove', (e) => { if (S.food && !S.eating) placeHeld(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', (e) => {
+    if (!S.food || e.button !== 0 || S.eating) return;
+    const { x, y } = S.cursor;
+    const W = window.innerWidth, H = window.innerHeight;
+    const nearMouth = Math.hypot(x - MOUTH.x * W, y - MOUTH.y * H) < 0.2 * W;
+    if (S.overDog || nearMouth) {
+      S.eating = true;
+      S.stayAsleep = false;
+      act(`eat:${S.food}`);
+    } else {
+      // missed him: the food floats back to the tray
+      const r = S.foodFrom, food = S.food;
+      held.style.transition = 'left .35s ease, top .35s ease, transform .35s ease';
+      placeHeld(r.left + r.width / 2, r.top + r.height / 2);
+      held.style.transform = 'translate(-50%, -50%) scale(.8)';
+      setTimeout(() => { held.classList.remove('show'); tray.querySelector(`[data-food="${food}"]`)?.classList.remove('taken'); }, 360);
+      S.food = null;
+      api.setHover(S.over);
+    }
+  });
+
+  function crumbs(food, x, y) {
+    const colors = CRUMBS[food] || ['#c58b52'];
+    for (let i = 0; i < 7; i++) {
+      const c = document.createElement('i');
+      c.className = 'crumb';
+      c.style.left = `${x + rand(-10, 10)}px`;
+      c.style.top = `${y + rand(-4, 6)}px`;
+      c.style.background = pick(colors);
+      c.style.setProperty('--dx', `${rand(-26, 26)}px`);
+      c.style.setProperty('--dy', `${rand(18, 46)}px`);
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 800);
+    }
+  }
+
+  async function eat(food) {
+    const W = window.innerWidth, H = window.innerHeight;
+    const mx = MOUTH.x * W, my = MOUTH.y * H;
+    // look straight at you, then the food goes to his mouth
+    S.centerGaze = true;
+    held.style.transition = 'left .3s ease, top .3s ease, transform .3s ease';
+    placeHeld(mx, my);
+    await wait(330);
+    for (const k of [0.66, 0.33, 0]) {          // three bites
+      held.style.transform = `translate(-50%, -50%) scale(${k})`;
+      crumbs(food, mx, my);
+      say(pick(['nom!', 'nom nom', 'mmm!']), 450);
+      await wait(360);
+    }
+    held.classList.remove('show');
+    tray.querySelector(`[data-food="${food}"]`)?.classList.remove('taken');
+    S.food = null;
+    S.eating = false;
+    S.centerGaze = false;
+    api.setHover(S.over);
+    keepTray();
+    await playClip('eat');                          // chew, swallow, lick lips
+    await playClip('wag');                          // happy wiggle
+  }
 
   // ----------------------------------------------------------- render
   function resize() {
