@@ -27,6 +27,11 @@
   // Where his head and the ground are inside the 640x640 asset frame (0..1)
   const HEAD = { x: 0.5, y: 0.44 };
   const GROUND_Y = 0.96;
+  // Chunky lives in the square at the BOTTOM of the window. The window can be
+  // taller than that (it grows upward while the food tray is open).
+  const SZ = () => window.innerWidth;
+  const stageTop = () => Math.max(0, window.innerHeight - window.innerWidth);
+  const EAR_TOP = 0.30;   // top of his ears when sitting, in the square (0..1)
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
   // Clip graph: every clip goes from one resting state to another.
@@ -255,9 +260,10 @@
     // Click-through everywhere except on Chunky's pixels.
     let over = false;
     const { x, y } = S.cursor;
-    if (x >= 0 && y >= 0 && x < window.innerWidth && y < window.innerHeight) {
+    const yc = y - stageTop();   // y inside his square
+    if (x >= 0 && yc >= 0 && x < SZ() && yc < SZ()) {
       const d = window.devicePixelRatio || 1;
-      over = ctx.getImageData(Math.floor(x * d), Math.floor(y * d), 1, 1).data[3] > 40;
+      over = ctx.getImageData(Math.floor(x * d), Math.floor(yc * d), 1, 1).data[3] > 40;
     }
     const overTray = trayOpen() && inRect(tray.getBoundingClientRect(), x, y, 6);
     S.overDog = over;
@@ -313,10 +319,19 @@
     tray.classList.toggle('show', on);
     clearTimeout(trayTimer);
     if (on) keepTray();
+    fitTray();
+  }
+  // The tray stands on top of his head; ask for just enough extra window
+  // height above his square to fit it (0 when it's closed).
+  let extraAsked = -1;
+  function fitTray() {
+    const need = trayOpen() ? Math.ceil(tray.offsetHeight + 14 - EAR_TOP * SZ()) : 0;
+    const px = Math.max(0, need);
+    if (Math.abs(px - extraAsked) > 1) { extraAsked = px; api.setExtraTop && api.setExtraTop(px); }
   }
   function keepTray() {   // the tray tucks itself away after a quiet minute
     clearTimeout(trayTimer);
-    trayTimer = setTimeout(() => { if (!S.food) tray.classList.remove('show'); }, 60000);
+    trayTimer = setTimeout(() => { if (!S.food) showTray(false); }, 60000);
   }
   function placeHeld(x, y) { held.style.left = `${x}px`; held.style.top = `${y}px`; }
 
@@ -340,8 +355,8 @@
   window.addEventListener('mouseup', (e) => {
     if (!S.food || e.button !== 0 || S.eating) return;
     const { x, y } = S.cursor;
-    const W = window.innerWidth, H = window.innerHeight;
-    const nearMouth = Math.hypot(x - MOUTH.x * W, y - MOUTH.y * H) < 0.2 * W;
+    const W = SZ();
+    const nearMouth = Math.hypot(x - MOUTH.x * W, y - (stageTop() + MOUTH.y * W)) < 0.2 * W;
     if (S.overDog || nearMouth) {
       S.eating = true;
       S.stayAsleep = false;
@@ -374,8 +389,8 @@
   }
 
   async function eat(food) {
-    const W = window.innerWidth, H = window.innerHeight;
-    const mx = MOUTH.x * W, my = MOUTH.y * H;
+    const W = SZ();
+    const mx = MOUTH.x * W, my = stageTop() + MOUTH.y * W;
     // look straight at you, then the food goes to his mouth
     S.centerGaze = true;
     held.style.transition = 'left .3s ease, top .3s ease, transform .3s ease';
@@ -401,12 +416,12 @@
   // ----------------------------------------------------------- render
   function resize() {
     const d = window.devicePixelRatio || 1;
-    canvas.width = Math.round(window.innerWidth * d);
-    canvas.height = Math.round(window.innerHeight * d);
+    canvas.width = Math.round(SZ() * d);
+    canvas.height = Math.round(SZ() * d);
     gazeCanvas.width = fadeCanvas.width = gazeFrom.width = canvas.width;
     gazeCanvas.height = fadeCanvas.height = gazeFrom.height = canvas.height;
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => { resize(); fitTray(); });
   resize();
 
   function drawShadow(w) {
@@ -426,11 +441,11 @@
 
   function drawGaze(t) {
     // target grid position from the cursor's direction relative to his head
-    const W = window.innerWidth, H = window.innerHeight;
+    const W = SZ();
     let tu = 2, tv = 1;
     if (!S.centerGaze) {
       const dx = S.cursor.x - HEAD.x * W;
-      const dy = S.cursor.y - HEAD.y * H;
+      const dy = S.cursor.y - (stageTop() + HEAD.y * W);
       tu = 2 + 2 * Math.tanh(dx / 380);
       tv = 1 + Math.tanh(dy / 260);
     }
@@ -522,12 +537,14 @@
     // keep the speech bubble / Zzz above his head
     // (kept inside the window so it isn't clipped at small sizes)
     const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
-    const bx = Math.min(window.innerWidth - bw / 2 - 2, Math.max(bw / 2 + 2, HEAD.x * window.innerWidth));
-    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.66) * window.innerHeight - 0.08 * window.innerHeight);
+    const W = SZ(), top = stageTop();
+    const side = trayOpen() ? 0.27 * W : 0;   // tray is above his head: speak from beside it
+    const bx = Math.min(W - bw / 2 - 2, Math.max(bw / 2 + 2, HEAD.x * W + side));
+    const by = Math.max(bh + 2, top + ((S.rest === 'sit' ? HEAD.y : 0.66) - 0.08) * W);
     bubble.style.left = `${bx}px`;
     bubble.style.top = `${by}px`;
-    zzz.style.left = `${0.74 * window.innerWidth}px`;
-    zzz.style.top = `${0.6 * window.innerHeight}px`;
+    zzz.style.left = `${0.74 * W}px`;
+    zzz.style.top = `${top + 0.6 * W}px`;
     autonomy(performance.now());
     requestAnimationFrame(frame);
   }

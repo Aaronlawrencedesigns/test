@@ -29,9 +29,10 @@ function saveSettings(s) {
   try { fs.writeFileSync(settingsFile(), JSON.stringify(s)); } catch { /* not fatal */ }
 }
 let settings = {};
+let extraTop = 0;   // extra height above his square (food tray open)
 const winSize = () => {
   const k = settings.scale || 1;
-  return [Math.round(WIN_W * k), Math.round(WIN_H * k)];
+  return [Math.round(WIN_W * k), Math.round(WIN_H * k) + extraTop];
 };
 
 function cornerPosition() {
@@ -44,16 +45,19 @@ function cornerPosition() {
 }
 
 // Resize around the bottom-right corner, so he stays put on his "floor".
+function applySize() {
+  if (!win) return;
+  const b = win.getBounds();
+  const [w, h] = winSize();
+  win.setResizable(true);
+  win.setBounds({ x: b.x + b.width - w, y: b.y + b.height - h, width: w, height: h });
+  win.setResizable(false);
+}
+
 function setScale(scale) {
   settings.scale = scale;
   saveSettings(settings);
-  if (win) {
-    const b = win.getBounds();
-    const [w, h] = winSize();
-    win.setResizable(true);
-    win.setBounds({ x: b.x + b.width - w, y: b.y + b.height - h, width: w, height: h });
-    win.setResizable(false);
-  }
+  applySize();
   refreshTrayMenu();
 }
 
@@ -132,6 +136,11 @@ function actionMenu() {
 }
 
 ipcMain.on('hover', (_e, overDog) => setClickThrough(!overDog));
+// the food tray needs room above his head: grow the window upward (bottom stays put)
+ipcMain.on('extend', (_e, px) => {
+  extraTop = Math.max(0, Math.min(800, Math.round(Number(px) || 0)));
+  applySize();
+});
 ipcMain.on('context-menu', () => Menu.buildFromTemplate(actionMenu()).popup({ window: win }));
 ipcMain.on('drag', (_e, { dx, dy }) => {
   const [x, y] = win.getPosition();

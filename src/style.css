@@ -7,11 +7,14 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* Chunky's square sits at the bottom of the window (the window grows upward
+   while the food tray is open) */
 #dog {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vw;
   display: block;
 }
 
@@ -62,11 +65,11 @@ html, body {
 }
 
 /* food tray (Feed Chunky) */
-/* a vertical column on his left (toward the middle of the screen) */
+/* a vertical column standing on top of his head */
 #tray {
   position: absolute;
-  left: 3%;
-  top: 50%;
+  left: 50%;
+  bottom: calc(70vw + 6px);   /* 70vw = from the window bottom to the top of his ears */
   display: flex;
   flex-direction: column;
   gap: 0.3em;
@@ -77,12 +80,13 @@ html, body {
   font-size: clamp(14px, 7vw, 32px);
   line-height: 1;
   opacity: 0;
-  transform: translate(-8px, -50%) scale(0.92);
+  transform: translate(-50%, 8px) scale(0.92);
+  transform-origin: bottom center;
   transition: opacity 0.2s, transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
   pointer-events: none;
   z-index: 4;
 }
-#tray.show { opacity: 1; transform: translate(0, -50%) scale(1); pointer-events: auto; }
+#tray.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
 .food { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform 0.15s, opacity 0.15s; }
 .food:hover { transform: scale(1.18) rotate(-6deg); }
 .food.taken { opacity: 0.25; }
