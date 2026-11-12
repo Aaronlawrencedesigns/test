@@ -69,7 +69,9 @@ html, body {
 #tray {
   position: absolute;
   left: 50%;
-  bottom: calc(70vw + 6px);   /* 70vw = from the window bottom to the top of his ears */
+  /* 70vw = window bottom to the top of his ears; + a lift of half his width
+     (200px at Normal size). Keep in sync with TRAY_LIFT in app.js. */
+  bottom: calc(70vw + 6px + 50vw);
   display: flex;
   flex-direction: column;
   gap: 0.3em;
