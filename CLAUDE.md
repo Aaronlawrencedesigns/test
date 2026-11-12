@@ -45,10 +45,14 @@ the bottom-right corner and turns his head to follow the mouse.
   Every cut is crossfaded (280 ms).
 - Sleep chosen from a menu/button (`S.stayAsleep`) lasts until another action is
   chosen; mouse moves and clicks don't wake him. Idle-triggered naps still wake on mouse move.
+- Nap: after `NAP_AFTER_MS` (30 s) without mouse movement he goes to sleep
+  (`S.napping`) and wakes as soon as the mouse moves. Only the owner's activity
+  resets the timer (`act(..., fromUser)`); his own idle tricks don't, and tricks
+  only happen while the owner is active.
 - Bark only plays when chosen from the menu/button: it's left out of his idle
   routine and of the random tricks on click (the owner found it distracting).
 - Feeding: menu "Feed Chunky" / web "Feed" button sends action `feed`, which
-  toggles a food tray (`#tray`, foods in `FOODS` in `src/app.js`). Dragging a food
+  toggles a vertical food tray on his left (`#tray`, foods in `FOODS` in `src/app.js`). Dragging a food
   onto him (dog pixels or near `MOUTH`) runs `act('eat:<food>')`: three bites with
   crumbs, then the `eat` clip (chew + lick lips), then `wag`. A miss floats the food
   back. The tray and a held food count as "over" for click-through.
