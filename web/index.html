@@ -118,6 +118,7 @@
   <section class="dock" id="dock" aria-labelledby="dock-h">
     <h2 id="dock-h">Ask Chunky to…</h2>
     <div class="tricks">
+      <button type="button" id="act-stand" data-act="stand">Stand up</button>
       <button type="button" id="act-wag" data-act="wag">Happy wiggle</button>
       <button type="button" id="act-bark" data-act="bark">Bark</button>
       <button type="button" id="act-puppy" data-act="puppy">Puppy eyes</button>
@@ -155,7 +156,7 @@
   </section>
 
   <ul class="tips">
-    <li><b>Click</b> him for a happy wiggle or puppy eyes. He only barks when you ask.</li>
+    <li><b>Click</b> him for a happy wiggle, puppy eyes or a stand-up. He only barks when you ask.</li>
     <li><b>Drag</b> him anywhere on the page. <b>Back to corner</b> puts him home.</li>
     <li>Leave the mouse still and he lies down, yawns and <b>falls asleep</b>. Move it to wake him.</li>
   </ul>
@@ -171,7 +172,7 @@
   const dock = document.getElementById('dock');
   const SIZES = { tiny: 0.4, small: 0.6, medium: 0.8, normal: 1, large: 1.3 };
   const narrow = () => innerWidth < 560;
-  const base = () => (narrow() ? [300, 225] : [400, 300]);   // 4:3, like his footage
+  const base = () => (narrow() ? [300, 300] : [400, 400]);   // square, like his footage
   // Safe-area insets (phones): read from a probe so the floating dog clears system bars.
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)';

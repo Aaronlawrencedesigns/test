@@ -15,14 +15,19 @@ the bottom-right corner and turns his head to follow the mouse.
   Published at https://claude.ai/artifact/CxY7zRmwo3guYXh3Uf5Qoc. To update,
   publish `web/index.html` again with the same `url` and the same `files` map
   (chunky.html, portrait.webp, app.js ← src/app.js, style.css ← src/style.css,
-  and every file under assets/gaze, assets/stills, assets/clips).
+  and every file under assets/gaze, assets/stills, assets/clips, assets/sweep).
 - **Shared engine:** `src/app.js` (both use it). `window.CHUNKY_ASSETS` sets the asset path.
 
 ## How the animation works
-- Resting states `sit | lie | sleep`. Sitting = 5x3 grid of head directions
-  (`assets/gaze/{col}_{row}.webp`, col 0 = looking to image-left, row 0 = up),
-  snapped to the nearest one with a 130 ms crossfade.
-- Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x480) that
+- Resting states `sit | lie | sleep`. Sitting head-tracking: left/right is
+  continuous from head-sweep frames (`assets/sweep/{row}_{i}.webp`, 33 per row,
+  i = far left → far right, row 0 = up / 1 = level / 2 = down; built by
+  `tools/build_sweeps.py` from Seedance sweep clips, colour-matched to the sit
+  still). Rows switch with a 220 ms eased crossfade. Until sweeps load it falls
+  back to the 5x3 grid `assets/gaze/{col}_{row}.webp`.
+- All assets share one 640x640 frame (`CROP_1024`/`OUT_SIZE` in `tools/key.py`,
+  square so he can stand on his hind legs); the Mac window is 400x400 at Normal.
+- Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x640) that
   start/end on keyframes; `CLIPS` and `ROUTES` in `src/app.js` define the graph.
   Every cut is crossfaded (280 ms).
 - Sleep chosen from a menu/button (`S.stayAsleep`) lasts until another action is
@@ -61,3 +66,4 @@ the bottom-right corner and turns his head to follow the mouse.
 
 ## Ideas not done yet
 More tricks (stretch, roll over, head tilt), sound, a signed/notarised .dmg.
+The `stand` clip is him standing on his hind legs (the model's reading of "stand up").

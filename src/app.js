@@ -24,9 +24,9 @@
   let fadeStart = -1e9;
   let dogLayer = null; // what was drawn last frame (for snapshots)
 
-  // Where his head and the ground are inside the 640x480 asset frame (0..1)
-  const HEAD = { x: 0.5, y: 0.27 };
-  const GROUND_Y = 0.969;
+  // Where his head and the ground are inside the 640x640 asset frame (0..1)
+  const HEAD = { x: 0.5, y: 0.44 };
+  const GROUND_Y = 0.96;
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
   // Clip graph: every clip goes from one resting state to another.
@@ -40,6 +40,7 @@
     fall_asleep: { from: 'lie', to: 'sleep' },
     sleep_loop:  { from: 'sleep', to: 'sleep', loop: true },
     wake_up:     { from: 'sleep', to: 'sit', say: '!', sayAt: 0.3 },
+    stand:       { from: 'sit', to: 'sit' },   // stands up on his hind legs
   };
   // How to get from one resting state to another
   const ROUTES = { 'lie>sit': 'get_up', 'sit>lie': 'lie_down', 'lie>sleep': 'fall_asleep', 'sleep>sit': 'wake_up' };
@@ -58,6 +59,10 @@
     im.src = src;
   });
   const gaze = [];
+  // Head sweeps: per head height, SWEEP_N frames from far left to far right
+  // (cut from video), so the head turns smoothly instead of in 5 steps.
+  const SWEEP_N = 33;
+  const sweep = [[], [], []];
   const stills = {};
   const videos = {};
 
@@ -68,6 +73,10 @@
       for (let c = 0; c < 5; c++) jobs.push(loadImg(`${ASSETS}gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
     }
     for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`${ASSETS}stills/${n}.webp`).then((im) => (stills[n] = im)));
+    // sweeps load in the background; the 5-step grid is used until they're ready
+    const sj = [];
+    for (let r = 0; r < 3; r++) for (let i = 0; i < SWEEP_N; i++) sj.push(loadImg(`${ASSETS}sweep/${r}_${i}.webp`).then((im) => (sweep[r][i] = im)));
+    Promise.all(sj).then(() => { S.sweepReady = sweep.every((row) => row.length === SWEEP_N && row.every(Boolean)); });
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
@@ -119,7 +128,7 @@
       if (S.rest === 'sit' && !S.clip) {
         S.centerGaze = true;
         const t0 = performance.now();
-        while ((S.gc !== 2 || S.gr !== 1 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 800) await wait(16);
+        while ((Math.abs(S.u - 2) > 0.08 || S.gr !== 1 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 900) await wait(16);
       }
       v.currentTime = 0;
       try { await v.play(); } catch (err) { console.warn('clip failed', name, err); S.centerGaze = false; return resolve(false); }
@@ -201,8 +210,9 @@
     // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
     if (r < 0.03) act('poop', false);
-    else if (r < 0.4) act('wag', false);
-    else if (r < 0.65) act('puppy', false);
+    else if (r < 0.35) act('wag', false);
+    else if (r < 0.55) act('puppy', false);
+    else if (r < 0.7) act('stand', false);
     else act('lie', false);
   }
 
@@ -254,7 +264,7 @@
     S.lastMoveAt = performance.now();
     if (S.stayAsleep) return say('zzz…', 1100);
     if (S.rest === 'sleep' || S.rest === 'lie') act('sit');
-    else act(pick(['wag', 'puppy']));
+    else act(pick(['wag', 'puppy', 'stand']));
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
   api.onAction((name) => {
@@ -304,18 +314,25 @@
     const k = 1 - Math.exp(-dt * (S.centerGaze ? 14 : 6));
     S.u += (tu - S.u) * k;
     S.v += (tv - S.v) * k;
-    // Snap to the nearest head direction (with a little hysteresis) and
-    // crossfade from whatever is on screen right now (never a pop).
-    const nc = Math.abs(S.u - S.gc) > 0.6 ? Math.round(S.u) : S.gc;
+    // Left/right: with the sweeps loaded, pick the matching frame directly
+    // (neighbouring frames are tiny steps, so no fade is needed). Up/down,
+    // and left/right before the sweeps load: snap to the nearest image with a
+    // little hysteresis and crossfade from whatever is on screen (never a pop).
+    const smooth = S.sweepReady;
+    const nc = smooth ? Math.round((S.u / 4) * (SWEEP_N - 1))
+      : (S.gcGrid != null && Math.abs(S.u - S.gcGrid) <= 0.6 ? S.gcGrid : Math.round(S.u));
     const nr = Math.abs(S.v - S.gr) > 0.6 ? Math.round(S.v) : S.gr;
-    if (nc !== S.gc || nr !== S.gr) {
+    if (nr !== S.gr || (!smooth && nc !== S.gcGrid) || smooth !== S.wasSmooth) {
       gfctx.clearRect(0, 0, gazeFrom.width, gazeFrom.height);
       gfctx.drawImage(gazeCanvas, 0, 0);
-      S.gc = nc; S.gr = nr; S.cellAt = t;
+      S.cellAt = t;
     }
+    S.wasSmooth = smooth;
+    S.gr = nr;
+    if (smooth) S.gc = nc; else S.gcGrid = nc;
     const lin = Math.min(1, (t - S.cellAt) / GAZE_FADE_MS);
     const a = lin * lin * (3 - 2 * lin);   // ease in-out
-    const im = gaze[S.gr]?.[S.gc];
+    const im = smooth ? sweep[S.gr][S.gc] : gaze[S.gr]?.[S.gcGrid];
     gctx.clearRect(0, 0, gazeCanvas.width, gazeCanvas.height);
     gctx.globalCompositeOperation = 'lighter';
     if (a < 1) { gctx.globalAlpha = 1 - a; gctx.drawImage(gazeFrom, 0, 0); }
@@ -358,11 +375,11 @@
     // (kept inside the window so it isn't clipped at small sizes)
     const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
     const bx = Math.min(window.innerWidth - bw / 2 - 2, Math.max(bw / 2 + 2, HEAD.x * window.innerWidth));
-    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.55) * window.innerHeight - 0.1 * window.innerHeight);
+    const by = Math.max(bh + 2, (S.rest === 'sit' ? HEAD.y : 0.66) * window.innerHeight - 0.08 * window.innerHeight);
     bubble.style.left = `${bx}px`;
     bubble.style.top = `${by}px`;
     zzz.style.left = `${0.74 * window.innerWidth}px`;
-    zzz.style.top = `${0.48 * window.innerHeight}px`;
+    zzz.style.top = `${0.6 * window.innerHeight}px`;
     autonomy(performance.now());
     requestAnimationFrame(frame);
   }
