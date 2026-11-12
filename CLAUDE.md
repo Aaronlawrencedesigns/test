@@ -28,8 +28,12 @@ the bottom-right corner and turns his head to follow the mouse.
   the box in `LOOK` in `src/app.js` (copy from `assets/look/meta.json` if rebuilt).
   Pipeline: Seedance head-sweep clips (far-left → far-right keyframes
   `assets/keyframes/gaze_{0|4}_{0|1|2|hu|hd}.png`, made by
-  `tools/gaze_keyframes.py`) → `tools/build_sweeps.py ROW:REF clip.mp4 …`
-  (rows/refs used: `0:0 up, 1:0 hu, 2:1 level, 3:1 hd, 4:2 down`) →
+  `tools/gaze_keyframes.py`) → `tools/build_sweeps.py ROW:REF[:U0-U1] clip.mp4 …`
+  (turn progress = accumulated head movement; half-sweeps fill halves where a
+  full sweep turned too fast. Used: `0:0 sweep_0, 0:0:0-2 half_up_left,
+  1:0 sweep_hu, 1:0:0-2 half_hu_left, 2:1 sweep_1, 2:1:2-4 half_lvl_right,
+  3:1 sweep_hd, 3:1:2-4 half_hd_right, 4:2 sweep_2`; every row has 33
+  distinct frames) →
   `tools/build_look_frames.py`. Head follows the cursor with a critically damped
   spring (stiffness 24); cursor polled at ~120 Hz. Optical-flow in-betweens and
   head/body compositing were tried and dropped: both blur or ghost.
