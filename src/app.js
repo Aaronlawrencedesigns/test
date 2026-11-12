@@ -32,7 +32,7 @@
   const SZ = () => window.innerWidth;
   const stageTop = () => Math.max(0, window.innerHeight - window.innerWidth);
   const EAR_TOP = 0.30;   // top of his ears when sitting, in the square (0..1)
-  const TRAY_LIFT = 1.0;  // gap between his ears and the food tray (x his width; 400px at Normal)
+  const TRAY_LIFT = 0.5;  // gap between his ears and the food tray (x his width; 200px at Normal)
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
   // Clip graph: every clip goes from one resting state to another.
