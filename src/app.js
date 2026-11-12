@@ -63,7 +63,7 @@
   // rows = head heights top->bottom, cols = far left -> far right. Exactly one
   // is shown at a time, so there is never a blended/ghosted in-between.
   // Regenerating them? Update this from assets/look/meta.json.
-  const LOOK = {"rows": 5, "cols": 33, "x": 165, "y": 194, "w": 311, "h": 422, "frame": 640};
+  const LOOK = {"rows": 5, "cols": 33, "x": 162, "y": 191, "w": 317, "h": 425, "frame": 640};
   const look = Array.from({ length: LOOK.rows }, () => []);
   const stills = {};
   const videos = {};

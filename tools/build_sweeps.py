@@ -1,13 +1,16 @@
 """Turn head-sweep clips (far left -> far right) into evenly spaced head positions.
 
-usage: python3 tools/build_sweeps.py ROW[:REF] sweep.mp4 [ROW[:REF] sweep.mp4 ...]
+usage: python3 tools/build_sweeps.py ROW[:REF[:U0-U1]] sweep.mp4 [...]
 
 ROW = output row (head height, top to bottom). REF = which row of the 5x3 head-direction
 grid (assets/gaze, 0 up / 1 level / 2 down) to measure the head turn against
-(defaults to ROW).
+(defaults to ROW). U0-U1 = the part of the turn the clip covers (0 = far left,
+2 = straight ahead, 4 = far right; default 0-4). Several clips may feed one row:
+half-sweeps (e.g. 0-2) are denser, so they win where they cover a position.
 
 For each green-screen frame: key it, align it to the sitting still (paws),
-colour-match it to that still (video models drift warmer), then
+colour-match it to that still (video models drift warmer), then measure how far
+through the turn each frame is (accumulated head movement), then
 estimate how far the head is turned by comparing it with the 5 head-direction
 images of that row. Frames are picked at N evenly spaced positions and saved as
 assets/sweep/{row}_{i}.webp (i = 0 far left .. N-1 far right).
@@ -91,9 +94,12 @@ def head_sig(rgba):
 
 os.makedirs(f'{ROOT}/assets/sweep', exist_ok=True)
 args = sys.argv[1:]
+clips = {}   # row -> list of (u0, u1, per-frame u, frames)
 for spec, src in zip(args[::2], args[1::2]):
-    row, _, ref = spec.partition(':')
-    row, ref = int(row), int(ref or row)
+    parts = spec.split(':')
+    row = int(parts[0])
+    ref = int(parts[1]) if len(parts) > 1 and parts[1] else row
+    u0, u1 = (float(v) for v in parts[2].split('-')) if len(parts) > 2 else (0.0, 4.0)
     frames = decode(src)
     # ease framing drift: shift every frame so its paws sit where the still's do
     out = []
@@ -103,21 +109,34 @@ for spec, src in zip(args[::2], args[1::2]):
     refs = [head_sig(load_rgba(f'{ROOT}/assets/gaze/{c}_{ref}.webp').astype(np.uint8)) for c in range(5)]
     us = []
     for f in out:
-        s = head_sig(f)
-        d = np.array([np.mean((s - r) ** 2) for r in refs])
+        sg = head_sig(f)
+        d = np.array([np.mean((sg - r) ** 2) for r in refs])
         i = int(np.argmin(d))
         if 0 < i < 4:   # parabolic refinement between neighbours
             den = d[i - 1] - 2 * d[i] + d[i + 1]
             i = i + (0.5 * (d[i - 1] - d[i + 1]) / den if den > 1e-6 else 0)
         us.append(float(i))
     us = np.array(us)
-    # monotonic (left -> right), smoothed, stretched to 0..4
-    k = np.ones(5) / 5
-    sm = np.convolve(np.pad(us, 2, mode='edge'), k, mode='valid')
-    mono = np.maximum.accumulate(sm)
-    mono = (mono - mono[0]) / max(1e-3, mono[-1] - mono[0]) * 4
+    # Progress through the turn = accumulated head movement (frame-to-frame
+    # change of the head region). Unlike matching against 5 reference images,
+    # this is continuous, so every frame of real movement gets its own spot.
+    sigs = [head_sig(f) for f in out]
+    move = np.array([0.0] + [float(np.abs(sigs[i] - sigs[i - 1]).mean()) for i in range(1, len(sigs))])
+    move = np.convolve(move, np.ones(3) / 3, mode='same')
+    mono = np.cumsum(move)
+    mono = u0 + (mono - mono[0]) / max(1e-6, mono[-1] - mono[0]) * (u1 - u0)
+    clips.setdefault(row, []).append((u0, u1, mono, out))
+    print(f'row {row} [{u0:g}-{u1:g}] {os.path.basename(src)}: {len(frames)} frames, raw head estimate {us.min():.1f}..{us.max():.1f}')
+
+# For each position use the clip with the narrowest range that covers it
+# (half-sweeps are denser than full sweeps), and its nearest frame.
+for row, cl in clips.items():
+    used = set()
     for j in range(N):
         u = j * 4 / (N - 1)
+        covering = [c for c in cl if c[0] - 1e-6 <= u <= c[1] + 1e-6] or cl
+        u0, u1, mono, out = min(covering, key=lambda c: c[1] - c[0])
         fi = int(np.argmin(np.abs(mono - u)))
+        used.add((id(out), fi))
         Image.fromarray(out[fi]).save(f'{ROOT}/assets/sweep/{row}_{j}.webp', quality=86, method=6)
-    print(f'row {row}: {len(frames)} frames, raw head estimate {us.min():.1f}..{us.max():.1f}')
+    print(f'row {row}: {len(used)} distinct frames across {N} positions')
