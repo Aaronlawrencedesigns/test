@@ -104,6 +104,8 @@ const send = (name) => () => win && win.webContents.send('action', name);
 
 function actionMenu() {
   return [
+    { label: 'Feed Chunky 🍩', click: send('feed') },
+    { type: 'separator' },
     { label: 'Sit', click: send('sit') },
     { label: 'Lie down', click: send('lie') },
     { label: 'Sleep', click: send('sleep') },

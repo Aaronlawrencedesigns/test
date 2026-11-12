@@ -47,6 +47,11 @@ the bottom-right corner and turns his head to follow the mouse.
   chosen; mouse moves and clicks don't wake him. Idle-triggered naps still wake on mouse move.
 - Bark only plays when chosen from the menu/button: it's left out of his idle
   routine and of the random tricks on click (the owner found it distracting).
+- Feeding: menu "Feed Chunky" / web "Feed" button sends action `feed`, which
+  toggles a food tray (`#tray`, foods in `FOODS` in `src/app.js`). Dragging a food
+  onto him (dog pixels or near `MOUTH`) runs `act('eat:<food>')`: three bites with
+  crumbs, then the `eat` clip (chew + lick lips), then `wag`. A miss floats the food
+  back. The tray and a held food count as "over" for click-through.
 - To add an action: generate clip → convert → add to `CLIPS` in `src/app.js`,
   the menu in `src/main.js`, and a button in `web/index.html`.
 

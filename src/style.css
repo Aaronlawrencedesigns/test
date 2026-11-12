@@ -60,3 +60,48 @@ html, body {
   20% { opacity: 1; }
   100% { transform: translate(26px, -44px); opacity: 0; }
 }
+
+/* food tray (Feed Chunky) */
+#tray {
+  position: absolute;
+  left: 50%;
+  top: 3%;
+  display: flex;
+  gap: 0.3em;
+  padding: 0.28em 0.55em;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  font-size: clamp(14px, 7.2vw, 34px);
+  line-height: 1;
+  opacity: 0;
+  transform: translate(-50%, -8px) scale(0.92);
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
+  pointer-events: none;
+  z-index: 4;
+}
+#tray.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.food { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform 0.15s, opacity 0.15s; }
+.food:hover { transform: scale(1.18) rotate(-6deg); }
+.food.taken { opacity: 0.25; }
+#held {
+  position: absolute;
+  font-size: clamp(16px, 8.5vw, 40px);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+#held.show { opacity: 1; }
+.crumb {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  animation: crumb 0.7s ease-in forwards;
+}
+@keyframes crumb { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
