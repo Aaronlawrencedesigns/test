@@ -15,20 +15,25 @@ the bottom-right corner and turns his head to follow the mouse.
   Published at https://claude.ai/artifact/CxY7zRmwo3guYXh3Uf5Qoc. To update,
   publish `web/index.html` again with the same `url` and the same `files` map
   (chunky.html, portrait.webp, app.js ← src/app.js, style.css ← src/style.css,
-  and every file under assets/gaze, assets/stills, assets/clips, assets/head).
+  and every file under assets/gaze, assets/stills, assets/clips, assets/look).
+  The artifact still holds unused old files under assets/head and assets/sweep;
+  remove them (map each path to null) if a publish ever hits the 511-file limit.
 - **Shared engine:** `src/app.js` (both use it). `window.CHUNKY_ASSETS` sets the asset path.
 
 ## How the animation works
-- Resting states `sit | lie | sleep`. Sitting head-tracking is continuous in
-  both directions: `assets/head/body.webp` (shared sitting body) + head tiles
-  `assets/head/{R}_{i}.webp` (R = head height, see `rowV` in `HEAD_TILES` in
-  `src/app.js`; i = 0..32 far left → far right), blended additively. Built by
-  `tools/build_sweeps.py` (Seedance head-sweep clips → `assets/sweep/`) then
-  `tools/build_head_tiles.py` (optical-flow in-between heights up→level; the
-  level→down gap has none because flow ghosts there). If tiles are rebuilt,
-  copy `assets/head/meta.json` into `HEAD_TILES`. Head follows the cursor with a
-  critically damped spring (stiffness 24); cursor is polled at ~120 Hz.
-  Fallback until tiles load: the 5x3 grid `assets/gaze/{col}_{row}.webp`.
+- Resting states `sit | lie | sleep`. Sitting head-tracking shows exactly ONE
+  real video frame at a time (never blended → never blurry/ghosted):
+  `assets/look/{row}_{i}.webp`, rows = 5 head heights (0 up, 1 slightly up,
+  2 level, 3 slightly down, 4 down), i = 0..32 far left → far right, cropped to
+  the box in `LOOK` in `src/app.js` (copy from `assets/look/meta.json` if rebuilt).
+  Pipeline: Seedance head-sweep clips (far-left → far-right keyframes
+  `assets/keyframes/gaze_{0|4}_{0|1|2|hu|hd}.png`, made by
+  `tools/gaze_keyframes.py`) → `tools/build_sweeps.py ROW:REF clip.mp4 …`
+  (rows/refs used: `0:0 up, 1:0 hu, 2:1 level, 3:1 hd, 4:2 down`) →
+  `tools/build_look_frames.py`. Head follows the cursor with a critically damped
+  spring (stiffness 24); cursor polled at ~120 Hz. Optical-flow in-betweens and
+  head/body compositing were tried and dropped: both blur or ghost.
+  Fallback until frames load: the 5x3 grid `assets/gaze/{col}_{row}.webp`.
 - All assets share one 640x640 frame (`CROP_1024`/`OUT_SIZE` in `tools/key.py`,
   square so he can stand on his hind legs); the Mac window is 400x400 at Normal.
 - Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x640) that
