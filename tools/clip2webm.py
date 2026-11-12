@@ -1,6 +1,6 @@
 """Turn a green-screen clip (mp4) into a transparent VP9 WebM in Chunky's canonical frame.
 
-usage: python3 tools/clip2webm.py in.mp4 out.webm [--fit-start sit] [--fit-end lie]
+usage: python3 tools/clip2webm.py in.mp4 out.webm [--fit-start sit] [--fit-end lie] [--spread]
 
 --fit-start/--fit-end STILL: over the first/last second, ease a scale+offset so the
 dog's silhouette lands exactly on assets/stills/STILL.webp. This hides the small
@@ -17,6 +17,9 @@ ap.add_argument('src'); ap.add_argument('dst')
 ap.add_argument('--fps', type=float, default=24)
 ap.add_argument('--fit-start'); ap.add_argument('--fit-end')
 ap.add_argument('--ramp', type=float, default=1.0, help='seconds to ease the fit over')
+ap.add_argument('--spread', action='store_true',
+                help='with --fit-start and --fit-end: correct size/position gradually across the WHOLE clip '
+                     '(cancels a slow camera zoom instead of shrinking/growing him at the end)')
 args = ap.parse_args()
 
 OW, OH = OUT_SIZE
@@ -57,6 +60,30 @@ def warp(rgba, scale, pc, tc, w):
 
 n = len(frames)
 ramp = max(1, int(args.ramp * args.fps))
+
+
+def affine_from_fit(sc, pc, tc):
+    # X' = sc * X + o  maps the clip's anchor pc onto the still's anchor tc
+    return sc, tc - sc * pc
+
+
+if args.spread and args.fit_start and args.fit_end:
+    s0, o0 = affine_from_fit(*fit(frames[0], args.fit_start))
+    s1, o1 = affine_from_fit(*fit(frames[-1], args.fit_end))
+    # Spend the correction while he's moving (silhouette changing), so it's
+    # hidden by the motion and nothing changes while he holds still.
+    alph = [f[..., 3].astype(np.float32) / 255 for f in frames]
+    motion = np.array([0.0] + [float(np.abs(alph[i] - alph[i - 1]).mean()) for i in range(1, n)])
+    motion = np.convolve(motion, np.ones(5) / 5, mode='same') + 1e-6
+    lams = np.cumsum(motion) / motion.sum()
+    lams = (lams - lams[0]) / max(1e-6, lams[-1] - lams[0])
+    for i in range(n):
+        lam = float(lams[i])
+        sc = s0 + (s1 - s0) * lam
+        o = o0 + (o1 - o0) * lam
+        a = 1 / sc   # PIL wants the inverse map: src = (dst - o) / sc
+        frames[i] = np.asarray(Image.fromarray(frames[i]).transform((OW, OH), Image.AFFINE, (a, 0, -o[0] * a, 0, a, -o[1] * a), Image.BICUBIC))
+    args.fit_start = args.fit_end = None   # done
 smooth = lambda x: x * x * (3 - 2 * x)
 if args.fit_end:
     sc, pc, tc = fit(frames[-1], args.fit_end)
