@@ -16,6 +16,8 @@ the bottom-right corner and turns his head to follow the mouse.
   publish `web/index.html` again with the same `url` and the same `files` map
   (chunky.html, portrait.webp, app.js ← src/app.js, style.css ← src/style.css,
   and every file under assets/gaze, assets/stills, assets/clips, assets/look).
+  The artifact still holds unused old files under assets/head and assets/sweep;
+  remove them (map each path to null) if a publish ever hits the 511-file limit.
 - **Shared engine:** `src/app.js` (both use it). `window.CHUNKY_ASSETS` sets the asset path.
 
 ## How the animation works
