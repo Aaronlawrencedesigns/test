@@ -62,25 +62,27 @@ html, body {
 }
 
 /* food tray (Feed Chunky) */
+/* a vertical column on his left (toward the middle of the screen) */
 #tray {
   position: absolute;
-  left: 50%;
-  top: 3%;
+  left: 3%;
+  top: 50%;
   display: flex;
+  flex-direction: column;
   gap: 0.3em;
-  padding: 0.28em 0.55em;
+  padding: 0.5em 0.3em;
   background: #fff;
   border-radius: 999px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
-  font-size: clamp(14px, 7.2vw, 34px);
+  font-size: clamp(14px, 7vw, 32px);
   line-height: 1;
   opacity: 0;
-  transform: translate(-50%, -8px) scale(0.92);
+  transform: translate(-8px, -50%) scale(0.92);
   transition: opacity 0.2s, transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
   pointer-events: none;
   z-index: 4;
 }
-#tray.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+#tray.show { opacity: 1; transform: translate(0, -50%) scale(1); pointer-events: auto; }
 .food { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform 0.15s, opacity 0.15s; }
 .food:hover { transform: scale(1.18) rotate(-6deg); }
 .food.taken { opacity: 0.25; }

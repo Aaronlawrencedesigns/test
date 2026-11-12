@@ -182,7 +182,7 @@
     }
     S.busy = true;
     try {
-      S.lastMoveAt = performance.now();
+      if (fromUser) S.lastMoveAt = performance.now();   // only YOUR activity resets the nap timer
       if (name === 'sit' || name === 'lie' || name === 'sleep') await goTo(name);
       else if (name.startsWith('eat:')) {
         await goTo('sit');
@@ -202,12 +202,16 @@
   }
 
   // --------------------------------------------------------- autonomy
+  // No mouse movement for NAP_AFTER_MS: he lies down and falls asleep, and stays
+  // asleep until the mouse moves again. His little tricks only happen while
+  // you're around (mouse moved recently).
+  const NAP_AFTER_MS = 30000;
   let nextIdleAt = performance.now() + rand(15000, 30000);
   function autonomy(now) {
     if (S.busy || S.dragging || S.noAuto || S.food) return;
     const idle = now - S.lastMoveAt;
-    if (S.rest !== 'sleep' && idle > 30000) {
-      act(S.rest === 'lie' ? 'sleep' : 'lie', false);
+    if (idle > NAP_AFTER_MS) {
+      if (S.rest !== 'sleep') { S.napping = true; act('sleep', false); }
       return;
     }
     if (S.rest === 'sleep' || now < nextIdleAt) return;
@@ -235,8 +239,13 @@
     S.screenCursor = cursor;
     if (moved) {
       S.lastMoveAt = now;
-      // (if you chose Sleep yourself, he stays asleep until you pick something else)
-      if (S.rest === 'sleep' && !S.busy && !S.dragging && !S.stayAsleep) act('sit', false);
+      // Mouse moved: wake him from a nap (even if he's still settling down; the
+      // wake-up is queued). If you chose Sleep yourself, he stays asleep until
+      // you pick something else.
+      if ((S.rest === 'sleep' || S.napping) && !S.dragging && !S.stayAsleep) {
+        S.napping = false;
+        act('sit');
+      }
     }
     const sx = bounds.width / window.innerWidth;
     const sy = bounds.height / window.innerHeight;
@@ -277,6 +286,7 @@
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
   api.onAction((name) => {
+    S.napping = false;
     if (name === 'feed') return showTray();
     S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen
     act(name);
