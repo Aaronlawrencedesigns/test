@@ -53,7 +53,8 @@ the bottom-right corner and turns his head to follow the mouse.
 - Bark only plays when chosen from the menu/button: it's left out of his idle
   routine and of the random tricks on click (the owner found it distracting).
 - Feeding: menu "Feed Chunky" / web "Feed" button sends action `feed`, which
-  toggles a vertical food tray standing on top of his head (`#tray`, foods in
+  toggles a vertical food tray floating above his head (`TRAY_LIFT` = gap, half his
+  width; `#tray`, foods in
   `FOODS` in `src/app.js`). His square is the BOTTOM of the window (`SZ()`,
   `stageTop()`); while the tray is open the window grows upward via
   `dogApi.setExtraTop(px)` (Electron: `extend` IPC; web: `extend` message to the page). Dragging a food

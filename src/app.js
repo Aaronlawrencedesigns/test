@@ -32,6 +32,7 @@
   const SZ = () => window.innerWidth;
   const stageTop = () => Math.max(0, window.innerHeight - window.innerWidth);
   const EAR_TOP = 0.30;   // top of his ears when sitting, in the square (0..1)
+  const TRAY_LIFT = 0.5;  // gap between his ears and the food tray (x his width; 200px at Normal)
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
   // Clip graph: every clip goes from one resting state to another.
@@ -325,7 +326,7 @@
   // height above his square to fit it (0 when it's closed).
   let extraAsked = -1;
   function fitTray() {
-    const need = trayOpen() ? Math.ceil(tray.offsetHeight + 14 - EAR_TOP * SZ()) : 0;
+    const need = trayOpen() ? Math.ceil(tray.offsetHeight + 14 + TRAY_LIFT * SZ() - EAR_TOP * SZ()) : 0;
     const px = Math.max(0, need);
     if (Math.abs(px - extraAsked) > 1) { extraAsked = px; api.setExtraTop && api.setExtraTop(px); }
   }
