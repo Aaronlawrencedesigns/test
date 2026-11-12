@@ -50,6 +50,8 @@ the bottom-right corner and turns his head to follow the mouse.
   (`S.napping`) and wakes as soon as the mouse moves. Only the owner's activity
   resets the timer (`act(..., fromUser)`); his own idle tricks don't, and tricks
   only happen while the owner is active.
+- Lying down on his own: he gets back up after 5–10 s (`S.lieUntil`). "Lie down"
+  chosen from the menu (`S.userLie`) lasts until another action. The lie still breathes.
 - Bark only plays when chosen from the menu/button: it's left out of his idle
   routine and of the random tricks on click (the owner found it distracting).
 - Feeding: menu "Feed Chunky" / web "Feed" button sends action `feed`, which
