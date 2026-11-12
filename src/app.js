@@ -15,7 +15,7 @@
   // change fades from exactly this, so fast mouse moves never pop.
   const gazeFrom = document.createElement('canvas');
   const gfctx = gazeFrom.getContext('2d');
-  const GAZE_FADE_MS = 220;
+  const GAZE_FADE_MS = 160;
   // Snapshot of the last frame shown before a cut; faded out over the new
   // picture so clip boundaries never pop even if the AI frames differ slightly.
   const fadeCanvas = document.createElement('canvas');
@@ -59,10 +59,13 @@
     im.src = src;
   });
   const gaze = [];
-  // Head sweeps: per head height, SWEEP_N frames from far left to far right
-  // (cut from video), so the head turns smoothly instead of in 5 steps.
-  const SWEEP_N = 33;
-  const sweep = [[], [], []];
+  // Head tiles (tools/build_head_tiles.py): the head region at every head
+  // height (rowV: 0 = up, 1 = level, 2 = down; in-betweens made with optical
+  // flow) x 33 left->right positions cut from video, laid over one shared
+  // body. Regenerating the tiles? Update this from assets/head/meta.json.
+  const HEAD_TILES = {"rows": 6, "rowV": [0.0, 0.25, 0.5, 0.75, 1.0, 2.0], "cols": 33, "x": 181, "y": 192, "w": 297, "h": 282, "frame": 640};
+  const tiles = HEAD_TILES.rowV.map(() => []);
+  let headBody = null;
   const stills = {};
   const videos = {};
 
@@ -73,10 +76,10 @@
       for (let c = 0; c < 5; c++) jobs.push(loadImg(`${ASSETS}gaze/${c}_${r}.webp`).then((im) => (gaze[r][c] = im)));
     }
     for (const n of ['sit', 'lie', 'sleep']) jobs.push(loadImg(`${ASSETS}stills/${n}.webp`).then((im) => (stills[n] = im)));
-    // sweeps load in the background; the 5-step grid is used until they're ready
-    const sj = [];
-    for (let r = 0; r < 3; r++) for (let i = 0; i < SWEEP_N; i++) sj.push(loadImg(`${ASSETS}sweep/${r}_${i}.webp`).then((im) => (sweep[r][i] = im)));
-    Promise.all(sj).then(() => { S.sweepReady = sweep.every((row) => row.length === SWEEP_N && row.every(Boolean)); });
+    // head tiles load in the background; the 5x3 grid is used until they're ready
+    const tj = [loadImg(`${ASSETS}head/body.webp`).then((im) => (headBody = im))];
+    for (let r = 0; r < HEAD_TILES.rows; r++) for (let i = 0; i < HEAD_TILES.cols; i++) tj.push(loadImg(`${ASSETS}head/${r}_${i}.webp`).then((im) => (tiles[r][i] = im)));
+    Promise.all(tj).then(() => { S.sweepReady = !!headBody && tiles.every((row) => row.length === HEAD_TILES.cols && row.every(Boolean)); });
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
@@ -128,7 +131,7 @@
       if (S.rest === 'sit' && !S.clip) {
         S.centerGaze = true;
         const t0 = performance.now();
-        while ((Math.abs(S.u - 2) > 0.08 || S.gr !== 1 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 900) await wait(16);
+        while ((Math.abs(S.u - 2) > 0.06 || Math.abs(S.v - 1) > 0.06 || performance.now() - S.cellAt < GAZE_FADE_MS + 20) && performance.now() - t0 < 700) await wait(16);
       }
       v.currentTime = 0;
       try { await v.play(); } catch (err) { console.warn('clip failed', name, err); S.centerGaze = false; return resolve(false); }
@@ -308,35 +311,65 @@
       tu = 2 + 2 * Math.tanh(dx / 380);
       tv = 1 + Math.tanh(dy / 260);
     }
-    // Frame-rate independent easing; a little lazy, like a real dog's head.
+    // Critically damped spring: snappy start, settles without overshoot.
     const dt = Math.min(0.05, (t - (S.lastGazeT || t)) / 1000);
     S.lastGazeT = t;
-    const k = 1 - Math.exp(-dt * (S.centerGaze ? 14 : 6));
-    S.u += (tu - S.u) * k;
-    S.v += (tv - S.v) * k;
-    // Left/right: with the sweeps loaded, pick the matching frame directly
-    // (neighbouring frames are tiny steps, so no fade is needed). Up/down,
-    // and left/right before the sweeps load: snap to the nearest image with a
-    // little hysteresis and crossfade from whatever is on screen (never a pop).
+    const w = S.centerGaze ? 30 : 24;           // stiffness (higher = snappier)
+    S.vu = (S.vu || 0) + (w * w * (tu - S.u) - 2 * w * (S.vu || 0)) * dt;
+    S.vv = (S.vv || 0) + (w * w * (tv - S.v) - 2 * w * (S.vv || 0)) * dt;
+    S.u = Math.min(4, Math.max(0, S.u + S.vu * dt));
+    S.v = Math.min(2, Math.max(0, S.v + S.vv * dt));
+
     const smooth = S.sweepReady;
-    const nc = smooth ? Math.round((S.u / 4) * (SWEEP_N - 1))
-      : (S.gcGrid != null && Math.abs(S.u - S.gcGrid) <= 0.6 ? S.gcGrid : Math.round(S.u));
-    const nr = Math.abs(S.v - S.gr) > 0.6 ? Math.round(S.v) : S.gr;
-    if (nr !== S.gr || (!smooth && nc !== S.gcGrid) || smooth !== S.wasSmooth) {
+    if (smooth !== S.wasSmooth) {               // grid -> sweeps switch: fade once
       gfctx.clearRect(0, 0, gazeFrom.width, gazeFrom.height);
       gfctx.drawImage(gazeCanvas, 0, 0);
       S.cellAt = t;
+      S.wasSmooth = smooth;
     }
-    S.wasSmooth = smooth;
-    S.gr = nr;
-    if (smooth) S.gc = nc; else S.gcGrid = nc;
     const lin = Math.min(1, (t - S.cellAt) / GAZE_FADE_MS);
     const a = lin * lin * (3 - 2 * lin);   // ease in-out
-    const im = smooth ? sweep[S.gr][S.gc] : gaze[S.gr]?.[S.gcGrid];
     gctx.clearRect(0, 0, gazeCanvas.width, gazeCanvas.height);
     gctx.globalCompositeOperation = 'lighter';
     if (a < 1) { gctx.globalAlpha = 1 - a; gctx.drawImage(gazeFrom, 0, 0); }
-    if (im) { gctx.globalAlpha = a; gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height); }
+
+    if (smooth) {
+      // Continuous in both directions: the shared body plus the four nearest
+      // head tiles (left/right neighbours x up/down neighbours), added with
+      // weights that sum to 1. Where two heights have no in-betweens (level ->
+      // down) the blend is steepened so it never lingers half-way.
+      const M = HEAD_TILES;
+      const x = (S.u / 4) * (M.cols - 1);
+      const c0 = Math.min(M.cols - 2, Math.floor(x)), fx = x - c0;
+      let r0 = 0;
+      while (r0 < M.rows - 2 && M.rowV[r0 + 1] < S.v) r0++;
+      const gap = M.rowV[r0 + 1] - M.rowV[r0];
+      let fv = Math.min(1, Math.max(0, (S.v - M.rowV[r0]) / gap));
+      if (gap > 0.5) fv = Math.min(1, Math.max(0, (fv - 0.5) * 3 + 0.5));
+      S.gr = Math.round(S.v); S.gc = Math.round(x);
+      const k = gazeCanvas.width / M.frame;
+      gctx.globalAlpha = a;
+      gctx.drawImage(headBody, 0, 0, gazeCanvas.width, gazeCanvas.height);
+      for (const [r, c, wt] of [[r0, c0, (1 - fv) * (1 - fx)], [r0, c0 + 1, (1 - fv) * fx], [r0 + 1, c0, fv * (1 - fx)], [r0 + 1, c0 + 1, fv * fx]]) {
+        const im = tiles[r][c];
+        if (!im || wt < 0.004) continue;
+        gctx.globalAlpha = wt * a;
+        gctx.drawImage(im, M.x * k, M.y * k, M.w * k, M.h * k);
+      }
+    } else {
+      // Before the sweeps load: snap to the nearest grid image (with a little
+      // hysteresis) and crossfade from whatever is on screen.
+      const nc = S.gcGrid != null && Math.abs(S.u - S.gcGrid) <= 0.6 ? S.gcGrid : Math.round(S.u);
+      const nr = Math.abs(S.v - S.gr) > 0.6 ? Math.round(S.v) : S.gr;
+      if (nr !== S.gr || nc !== S.gcGrid) {
+        gfctx.clearRect(0, 0, gazeFrom.width, gazeFrom.height);
+        gfctx.drawImage(gazeCanvas, 0, 0);
+        S.cellAt = t;
+      }
+      S.gr = nr; S.gcGrid = nc;
+      const im = gaze[S.gr]?.[S.gcGrid];
+      if (im) { gctx.globalAlpha = a; gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height); }
+    }
     gctx.globalAlpha = 1;
     gctx.globalCompositeOperation = 'source-over';
     // gentle breathing

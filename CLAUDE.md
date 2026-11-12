@@ -15,16 +15,20 @@ the bottom-right corner and turns his head to follow the mouse.
   Published at https://claude.ai/artifact/CxY7zRmwo3guYXh3Uf5Qoc. To update,
   publish `web/index.html` again with the same `url` and the same `files` map
   (chunky.html, portrait.webp, app.js ← src/app.js, style.css ← src/style.css,
-  and every file under assets/gaze, assets/stills, assets/clips, assets/sweep).
+  and every file under assets/gaze, assets/stills, assets/clips, assets/head).
 - **Shared engine:** `src/app.js` (both use it). `window.CHUNKY_ASSETS` sets the asset path.
 
 ## How the animation works
-- Resting states `sit | lie | sleep`. Sitting head-tracking: left/right is
-  continuous from head-sweep frames (`assets/sweep/{row}_{i}.webp`, 33 per row,
-  i = far left → far right, row 0 = up / 1 = level / 2 = down; built by
-  `tools/build_sweeps.py` from Seedance sweep clips, colour-matched to the sit
-  still). Rows switch with a 220 ms eased crossfade. Until sweeps load it falls
-  back to the 5x3 grid `assets/gaze/{col}_{row}.webp`.
+- Resting states `sit | lie | sleep`. Sitting head-tracking is continuous in
+  both directions: `assets/head/body.webp` (shared sitting body) + head tiles
+  `assets/head/{R}_{i}.webp` (R = head height, see `rowV` in `HEAD_TILES` in
+  `src/app.js`; i = 0..32 far left → far right), blended additively. Built by
+  `tools/build_sweeps.py` (Seedance head-sweep clips → `assets/sweep/`) then
+  `tools/build_head_tiles.py` (optical-flow in-between heights up→level; the
+  level→down gap has none because flow ghosts there). If tiles are rebuilt,
+  copy `assets/head/meta.json` into `HEAD_TILES`. Head follows the cursor with a
+  critically damped spring (stiffness 24); cursor is polled at ~120 Hz.
+  Fallback until tiles load: the 5x3 grid `assets/gaze/{col}_{row}.webp`.
 - All assets share one 640x640 frame (`CROP_1024`/`OUT_SIZE` in `tools/key.py`,
   square so he can stand on his hind legs); the Mac window is 400x400 at Normal.
 - Actions are transparent VP9 WebM clips (`assets/clips/*.webm`, 640x640) that
@@ -54,7 +58,9 @@ the bottom-right corner and turns his head to follow the mouse.
 - Node's fetch needs `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`
   in the cloud container.
 - Convert: `python3 tools/clip2webm.py in.mp4 assets/clips/x.webm --fit-start sit --fit-end sit`
-  (chroma key + eases framing drift onto the keyframes). Stills/gaze:
+  (chroma key + eases framing drift onto the keyframes). Use `--spread` for clips
+  whose framing drifts a lot (lie_down, get_up, wake_up): the correction is spent
+  while he moves, so he never visibly shrinks/grows at the end. Stills/gaze:
   `tools/build_stills.py`. Shared crop/size: `CROP_1024`, `OUT_SIZE` in `tools/key.py`.
 - Green-screen keyframes: `assets/keyframes/` (sit, lie, sleep, sleep_side, master_studio).
 

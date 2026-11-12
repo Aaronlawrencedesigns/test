@@ -89,7 +89,7 @@ function createWindow() {
   const timer = setInterval(() => {
     if (!win || win.isDestroyed()) return clearInterval(timer);
     win.webContents.send('cursor', { cursor: screen.getCursorScreenPoint(), bounds: win.getBounds() });
-  }, 16);
+  }, 8); // ~120 Hz, so head-tracking keeps up on ProMotion displays
 }
 
 // The window is a transparent rectangle; let clicks fall through to the apps
