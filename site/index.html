@@ -231,13 +231,15 @@
   .trick.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .trick svg { width: 14px; height: 14px; }
   /* arranged in an arc around his head, left side (he lives in the corner) */
-  .trick[data-act="stand"] { left: 50%; top: 8%; }
-  .trick[data-act="sit"]   { left: 17%; top: 21%; }
-  .trick[data-act="feed"]  { left: 5%;  top: 38%; }
-  .trick[data-act="sleep"] { left: 3%;  top: 56%; }
-  .trick[data-act="poop"]  { left: 11%; top: 74%; }
+  .trick[data-act="stand"] { left: 54%; top: 4%; }
+  .trick[data-act="sit"]   { left: 30%; top: 10%; }
+  .trick[data-act="wag"]   { left: 12%; top: 21%; }
+  .trick[data-act="feed"]  { left: 1%;  top: 34%; }
+  .trick[data-act="puppy"] { left: -4%; top: 48%; }
+  .trick[data-act="sleep"] { left: -1%; top: 62%; }
+  .trick[data-act="poop"]  { left: 7%;  top: 76%; }
   .hello {
-    position: absolute; right: 100%; bottom: 44%; margin-right: 44px; width: 180px; pointer-events: none;
+    position: absolute; right: 100%; bottom: 44%; margin-right: 96px; width: 180px; pointer-events: none;
     font: 500 12.5px/1.35 var(--body); color: var(--muted); text-align: right;
   }
   .hello b { display: block; font: 800 15px/1.2 var(--display); color: var(--ink); }
@@ -343,7 +345,9 @@
     <div class="tricks" role="group" aria-label="Tricks for Chunky">
       <button type="button" class="trick" data-act="stand">Stand</button>
       <button type="button" class="trick" data-act="sit">Sit</button>
-      <button type="button" class="trick" data-act="feed">Feed</button>
+      <button type="button" class="trick" data-act="wag">Happy wiggle</button>
+    <button type="button" class="trick" data-act="feed">Feed</button>
+    <button type="button" class="trick" data-act="puppy">Puppy eyes</button>
     <button type="button" class="trick" data-act="sleep">Sleep</button>
       <button type="button" class="trick" data-act="poop">Poop</button>
     </div>
@@ -542,7 +546,7 @@
     if (m.type === 'extend') { extra = Math.max(0, Math.min(800, +m.px || 0)); frame.style.height = `calc(100% + ${extra}px)`; send({ type: 'bounds' }); }
     if (m.type === 'menu') document.querySelector('.trick').focus();
   });
-  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing', feed: 'hungry' };
+  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing', feed: 'hungry', wag: 'wiggling', puppy: 'pleading' };
   let statusTimer;
   document.querySelectorAll('.trick').forEach((b) => b.addEventListener('click', () => {
     send({ type: 'action', name: b.dataset.act });
