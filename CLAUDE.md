@@ -97,6 +97,14 @@ the owner's Keychain, notarized via the Keychain profile `chunky-notary`
 Without credentials, notarization is skipped silently. Steps are in README.md.
 Signing can only run on the owner's Mac (not in the cloud container).
 
+## Product: Desktop Sidekicks (desktopsidekicks.com)
+The owner is turning this into a product: customers upload 4 pet photos, pay, and
+get their own desk pet. Milestone 1 is `petgen/` (see petgen/README.md): photos →
+pet pack + preview + QA report, automated with quality gates and retries, cached.
+The engine reads per-pet measurements from `window.PET` (manifest: look, head,
+mouth, earTop); Chunky's values are the defaults. Test for free with `--replay`.
+Never use `--host git` for real customers (public repo).
+
 ## Owner's Mac setup quirks (already solved)
 - `~/.npm` had root-owned files → fixed with `sudo chown -R $(id -u):$(id -g) ~/.npm`.
 - Newer npm skips dependency install scripts and Electron's downloader is silent

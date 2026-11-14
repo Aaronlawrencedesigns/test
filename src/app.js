@@ -25,13 +25,15 @@
   let dogLayer = null; // what was drawn last frame (for snapshots)
 
   // Where his head and the ground are inside the 640x640 asset frame (0..1)
-  const HEAD = { x: 0.5, y: 0.44 };
+  // A generated pet (petgen) ships its own measurements in window.PET; Chunky's are the defaults.
+  const PET = window.PET || {};
+  const HEAD = PET.head || { x: 0.5, y: 0.44 };
   const GROUND_Y = 0.96;
   // Chunky lives in the square at the BOTTOM of the window. The window can be
   // taller than that (it grows upward while the food tray is open).
   const SZ = () => window.innerWidth;
   const stageTop = () => Math.max(0, window.innerHeight - window.innerWidth);
-  const EAR_TOP = 0.30;   // top of his ears when sitting, in the square (0..1)
+  const EAR_TOP = PET.earTop || 0.30;   // top of his ears when sitting, in the square (0..1)
   const TRAY_LIFT = 0.25; // gap between his ears and the food tray (x his width; 100px at Normal)
   const SHADOW_W = { sit: 0.19, lie: 0.36, sleep: 0.36 };
 
@@ -70,7 +72,7 @@
   // rows = head heights top->bottom, cols = far left -> far right. Exactly one
   // is shown at a time, so there is never a blended/ghosted in-between.
   // Regenerating them? Update this from assets/look/meta.json.
-  const LOOK = {"rows": 5, "cols": 33, "x": 162, "y": 191, "w": 317, "h": 425, "frame": 640};
+  const LOOK = PET.look || {"rows": 5, "cols": 33, "x": 162, "y": 191, "w": 317, "h": 425, "frame": 640};
   const look = Array.from({ length: LOOK.rows }, () => []);
   const stills = {};
   const videos = {};
@@ -319,7 +321,7 @@
     '🧁': ['#f6e7b0', '#f19cc0', '#7ec8e3'], '🍕': ['#f2c14e', '#c0392b', '#e9a23b'],
     '🍔': ['#c58b52', '#5c3a21', '#7cb342'],
   };
-  const MOUTH = { x: 0.5, y: 0.54 };   // in the 640x640 frame, sitting
+  const MOUTH = PET.mouth || { x: 0.5, y: 0.54 };   // in the 640x640 frame, sitting
   tray.innerHTML = FOODS.map((f) => `<span class="food" data-food="${f}" role="button" aria-label="Drag to feed Chunky">${f}</span>`).join('');
   const inRect = (r, x, y, pad = 0) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
   const trayOpen = () => tray.classList.contains('show');
@@ -506,7 +508,7 @@
         S.cellAt = t;
       }
       S.gr = nr; S.gcGrid = nc;
-      const im = gaze[S.gr]?.[S.gcGrid];
+      const im = gaze[S.gr]?.[S.gcGrid] || stills.sit;   // (generated pets have no 5x3 grid)
       if (im) { gctx.globalAlpha = a; gctx.drawImage(im, 0, 0, gazeCanvas.width, gazeCanvas.height); }
     }
     gctx.globalAlpha = 1;
