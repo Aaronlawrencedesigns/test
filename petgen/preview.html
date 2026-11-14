@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>__NAME__ preview</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    html, body { background: #eceaf0; }
+    #stage { position: fixed; right: 16px; bottom: 0; width: 400px; height: 400px; }
+    #stage iframe { border: 0; width: 100%; height: 100%; background: transparent; }
+    .bar { position: fixed; left: 16px; top: 16px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 520px; font: 14px system-ui, sans-serif; }
+    .bar h1 { width: 100%; margin: 0 0 6px; font-size: 22px; }
+    .bar button { padding: 8px 12px; border-radius: 999px; border: 1px solid #cfc8d6; background: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- the pet runs in its own document so it keeps the full-window coordinates it expects -->
+  <div class="bar">
+    <h1>__NAME__</h1>
+    <button data-a="wag">Happy wiggle</button><button data-a="puppy">Puppy eyes</button><button data-a="stand">Stand up</button>
+    <button data-a="bark">Bark</button><button data-a="lie">Lie down</button><button data-a="sit">Sit</button>
+    <button data-a="sleep">Sleep</button><button data-a="poop">Poop</button><button data-a="feed">Feed</button>
+  </div>
+  <div id="stage"><iframe id="pet" srcdoc=""></iframe></div>
+  <script>
+    const PET = __PET__;
+    const frame = document.getElementById('pet');
+    const base = location.href.replace(/[^/]*$/, '');
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${base}">
+      <link rel="stylesheet" href="style.css"><style>html,body{background:transparent}</style>
+      <script>window.CHUNKY_ASSETS='pet/';window.PET=${JSON.stringify(PET)};
+      (function(){let oc=()=>{},oa=()=>{};let b={x:0,y:0,width:innerWidth,height:innerHeight};
+       addEventListener('message',e=>{const m=e.data||{};if(m.bounds)b=m.bounds;if(m.t==='c')oc({cursor:m.c,bounds:b});if(m.t==='a')oa(m.a);});
+       addEventListener('mousemove',e=>oc({cursor:{x:e.clientX+b.x,y:e.clientY+b.y},bounds:b}));
+       window.dogApi={onCursor:f=>oc=f,onAction:f=>oa=f,setHover(){},drag(){},contextMenu(){},setExtraTop(){}};})();<\/script>
+      </head><body><canvas id="dog"></canvas><div id="bubble"></div><div id="zzz"><span>z</span><span>z</span><span>Z</span></div>
+      <div id="tray"></div><div id="held"></div><script src="app.js"><\/script></body></html>`;
+    const rect = () => { const r = frame.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; };
+    addEventListener('mousemove', (e) => frame.contentWindow.postMessage({ t: 'c', c: { x: e.clientX, y: e.clientY }, bounds: rect() }, '*'));
+    document.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => frame.contentWindow.postMessage({ t: 'a', a: b.dataset.a, bounds: rect() }, '*'));
+  </script>
+</body>
+</html>
