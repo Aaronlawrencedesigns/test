@@ -105,6 +105,8 @@ class ReplayProvider:
 
     def _get(self, key, out_path):
         src = self.map.get(key)
+        if src is None and '@' in key and '__' not in key:   # clips from derived poses: match by name
+            src = self.map.get(key.split('@')[0])
         if not src or not os.path.exists(src):
             self.misses.append(key)
             raise FileNotFoundError(f'replay: nothing recorded for {key}')

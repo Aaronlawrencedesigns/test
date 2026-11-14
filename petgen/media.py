@@ -79,16 +79,13 @@ def place(k, scale, ground=GROUND):
     return np.asarray(canvas)
 
 
-def normalise_keyframes(k_sit, k_lie, k_sleep):
-    """Same scale + ground line for all poses (sit = 60% of the canvas height)."""
+def normalise_keyframes(k_sit, k_lie):
+    """Same scale + ground line for sit and lie (sit = 60% of the canvas height)."""
     x0, y0, x1, y1 = bbox(k_sit)
     base = (0.6 * S) / (y1 - y0)
     sit = place(k_sit, base)
     lie = place(k_lie, base * ear_span(k_sit) / max(1, ear_span(k_lie)))
-    sx0, _, sx1, _ = bbox(sit)
-    lx0, _, lx1, _ = bbox(k_sleep)
-    sleep = place(k_sleep, 1.1 * (sx1 - sx0) / max(1, lx1 - lx0))   # sleeping: ~1.1x the sitting width
-    return sit, lie, sleep
+    return sit, lie
 
 
 def composite_head(turned, base):

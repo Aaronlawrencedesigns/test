@@ -68,8 +68,13 @@ class Job:
 
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
         # clips that start from a pose derived from another clip get their own cache entry
+        def tag(kf):    # derived poses change per run/attempt: tag them by content
+            import hashlib
+            return f'{kf[3:]}.' + hashlib.md5(open(f'{self.kfdir}/{kf}.png', 'rb').read()).hexdigest()[:6]
         if first.endswith('_end'):
-            key = f'{key}@{first[3:]}'
+            key = f'{key}@{tag(first)}'
+            if last and last.endswith('_end') and last != first:
+                key += f'-{tag(last)}'
         p = self._gen_path(key, attempt, 'mp4')
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
@@ -164,8 +169,8 @@ class Job:
             p, k, att = self.with_retries(key, attempt_fn)
             self.best_attempt[key] = att
             self.kf['raw_' + key.split('_')[1]] = k
-        sit, lie, sleep = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'], self.kf['raw_sleep'])
-        for n, k in (('sit', sit), ('lie', lie), ('sleep', sleep)):
+        sit, lie = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'])
+        for n, k in (('sit', sit), ('lie', lie)):
             self.kf[n] = k
             media.save_green(k, f'{self.kfdir}/kf_{n}.png')
         self.still['sit'] = self.to_still(sit)
@@ -219,10 +224,31 @@ class Job:
         k[cy0:cy1, cx0:cx1] = np.asarray(still.resize((cx1 - cx0, cy1 - cy0), Image.LANCZOS))
         return k
 
+    def sleep_pose(self):
+        """Sleeping pose = image edit of the actual lying frame (same spot and scale)."""
+        def attempt_fn(attempt):
+            p = self.gen_image('sleep_edit', plan.SLEEP_EDIT, [f'{self.kfdir}/kf_lie_end.png'], attempt)
+            k, st = media.key_file(p)
+            problems = media.keyframe_ok(st)
+            x0, y0, x1, y1 = media.bbox(k)
+            if (x1 - x0) < 1.05 * (y1 - y0):
+                problems.append('not lying down')
+            lx0, ly0, lx1, ly1 = media.bbox(self.kf['lie_end'])
+            if (y1 - y0) > 1.15 * (ly1 - ly0):     # asleep (head down) is never taller than lying
+                problems.append('bigger than the lying pose (scale changed)')
+            return k, problems, st
+        k = self.with_retries('sleep pose', attempt_fn)
+        self.kf['sleep_end'] = k
+        media.save_green(k, f'{self.kfdir}/kf_sleep_end.png')
+        self.still['sleep'] = self.to_still(k)
+        media.save_still(k, f'{self.pet}/stills/sleep.webp')
+
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
         derive = opts.get('derive')
+        if opts.get('sleep_edit'):
+            self.sleep_pose()
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)

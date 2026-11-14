@@ -28,9 +28,13 @@ GREEN_LIE = ("Same {species} as in the first image, photorealistic, same camera 
              "same lighting. It is now lying down on its belly in a relaxed sphinx pose, front legs stretched forward, "
              "head up, awake, looking straight into the camera, mouth closed, whole body inside the frame, centred. " + GREEN_BG)
 
-GREEN_SLEEP = ("Same {species} as in the first image, photorealistic, same camera position, same distance and framing, "
-               "same lighting. It is lying down on its belly, fast asleep: chin resting on its front paws, eyes fully "
-               "closed, ears relaxed, peaceful, whole body inside the frame, centred. " + GREEN_BG)
+# The sleeping pose is an EDIT of the pet's actual lying frame (end of lie_down), so it
+# keeps the same scale and spot (measuring head size across poses is unreliable: ears fold).
+SLEEP_EDIT = ("Edit this photo. Keep the same {species} with the same markings, in exactly the same spot, at exactly "
+              "the same size and scale, same camera position and framing, same lighting and the same flat chroma-key "
+              "green background. Only change its pose: it is now fast asleep, still lying on its belly in the same "
+              "place, chin resting on its front paws, eyes fully closed, ears relaxed, peaceful. Photorealistic. "
+              "Square image, same size.")
 
 H_DIR = {0: "far toward the LEFT side of the image (head turned about 40 degrees to the image's left)",
          2: "straight ahead at the camera",
@@ -54,7 +58,6 @@ def image_items():
         ('master', ['photos'], MASTER),
         ('green_sit', ['master', 'photos'], GREEN_SIT),
         ('green_lie', ['master', 'photos'], GREEN_LIE),
-        ('green_sleep', ['master', 'photos'], GREEN_SLEEP),
     ]
     return items
 
@@ -92,17 +95,17 @@ ACTIONS = {
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat with its tail raised as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
     'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it walks its front paws forward and lowers itself onto its belly, ending lying in a relaxed sphinx pose, front legs stretched forward, head up looking at the camera, exactly matching the final frame.", {'spread': True, 'derive': 'lie'}),
-    # The resting poses 'lie' and 'sleep' are taken from the LAST FRAME of the clip that
-    # leads into them ('derive'), resized to the standard scale, so clips always connect
-    # exactly (an image-generated pose never quite matches where a video ends).
+    # 'lie' is taken from the LAST FRAME of lie_down ('derive'), so clips connect exactly
+    # (an image-generated pose never quite matches where a video ends). 'sleep' is an
+    # image edit of that lying frame (SLEEP_EDIT), made before fall_asleep runs.
     'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
-    'fall_asleep': ('kf_lie_end', 'kf_sleep', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep.", {'spread': True, 'derive': 'sleep'}),
+    'fall_asleep': ('kf_lie_end', 'kf_sleep_end', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep, ending exactly like the final frame.", {'spread': True, 'sleep_edit': True}),
     # starts and ends on the (resized) sleeping pose so it loops seamlessly
     'sleep_loop': ('kf_sleep_end', 'kf_sleep_end', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
     'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
 }
 # still each clip should end on (for the end-pose check); derived clips define their own
-ACTION_END_STILL = {'lie_down': None, 'get_up': 'sit', 'fall_asleep': None, 'sleep_loop': 'sleep', 'wake_up': 'sit'}
+ACTION_END_STILL = {'lie_down': None, 'get_up': 'sit', 'fall_asleep': 'sleep', 'sleep_loop': 'sleep', 'wake_up': 'sit'}
 # clips that need another clip to finish first (they start from its last frame)
 DEPENDS = {'get_up': 'lie_down', 'fall_asleep': 'lie_down', 'sleep_loop': 'fall_asleep', 'wake_up': 'fall_asleep'}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
