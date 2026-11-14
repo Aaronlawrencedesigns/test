@@ -1,0 +1,17 @@
+[Unit]
+Description=Desktop Sidekicks worker (makes pets for paid orders)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=sidekicks
+EnvironmentFile=/etc/sidekicks.env
+WorkingDirectory=/opt/sidekicks
+# pick up code updates from main on every (re)start
+ExecStartPre=+/usr/bin/git -C /opt/sidekicks pull -q --ff-only
+ExecStart=/opt/sidekicks-venv/bin/python -m petgen.worker
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

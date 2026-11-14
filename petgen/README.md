@@ -53,3 +53,15 @@ step, gate and the packaging at $0.
 ## Next (milestone 2+)
 Website + Stripe checkout + uploads, a worker queue, a signed "Desktop Sidekicks" app that
 downloads a customer's pet pack by personal link, email delivery, owner approve-before-send.
+
+## Worker (makes pets for paid orders)
+`petgen/worker.py` runs on the DigitalOcean server as the `sidekicks-worker` systemd service. It
+watches the R2 queue the website's Stripe webhook writes (`queue/paid/<id>`), runs the pipeline
+with GPTProto + R2-hosted keyframes, uploads `orders/<id>/pet.zip` and `report.html`, and emails
+the owner (`OWNER_EMAIL`) the verdict and links. Orders then wait in `queue/review/` for the owner.
+Test-mode (Stripe sandbox) orders are skipped unless `ALLOW_TEST_ORDERS=1`.
+
+    curl -fsSL https://raw.githubusercontent.com/Aaronlawrencedesigns/test/main/petgen/deploy/setup.sh | sudo bash
+    sudo nano /etc/sidekicks.env && sudo systemctl restart sidekicks-worker
+    journalctl -u sidekicks-worker -f
+    sudo sidekicks-requeue <order id>     # retry a failed order / make a skipped test order
