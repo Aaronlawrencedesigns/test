@@ -31,6 +31,7 @@ class Job:
         self.max_retries, self.workers = max_retries, workers
         self._log = log
         self.lock = threading.Lock()
+        self.upload_lock = threading.Lock()
         self.work = f'{self.out}/work'
         self.gen = f'{self.work}/gen'
         self.kfdir = f'{self.work}/kf'
@@ -77,13 +78,12 @@ class Job:
         return p
 
     def url(self, kfname):
-        with self.lock:
-            if kfname in self.urls:
-                return self.urls[kfname]
-        u = self.uploader.upload(f'{self.kfdir}/{kfname}.png', f'{self.name.lower()}-{int(self.t0)}/{kfname}.png')
-        with self.lock:
-            self.urls[kfname] = u
-        return u
+        # one upload per keyframe, one at a time (parallel clips share their start frames)
+        with self.upload_lock:
+            if kfname not in self.urls:
+                self.urls[kfname] = self.uploader.upload(f'{self.kfdir}/{kfname}.png',
+                                                         f'{self.name.lower()}-{int(self.t0)}/{kfname}.png')
+            return self.urls[kfname]
 
     def record(self, item, attempt, problems, metrics=None):
         with self.lock:
@@ -303,6 +303,16 @@ class Job:
             'earTop': round(ear, 3), 'head': {'x': 0.5, 'y': round(ear + 0.14, 3)}, 'mouth': {'x': 0.5, 'y': round(ear + 0.24, 3)},
             'clips': sorted(os.path.splitext(f)[0] for f in os.listdir(f'{self.pet}/clips')),
         }
+        manifest['features'] = plan.FEATURES
+        # completeness: every pet ships with everything Chunky has
+        missing = [f'clip: {c}' for c in plan.REQUIRED_CLIPS if c not in manifest['clips']]
+        missing += [f'still: {n}' for n in plan.REQUIRED_STILLS if not os.path.exists(f'{self.pet}/stills/{n}.webp')]
+        if self.look.get('rows', 0) < plan.REQUIRED_ROWS:
+            missing.append(f'head tracking: {self.look.get("rows")} heights (need {plan.REQUIRED_ROWS})')
+        if not os.path.exists(f'{HERE}/engine/app.js') or 'eat:' not in open(f'{HERE}/engine/app.js').read():
+            missing.append('feed mode missing from the player')
+        self.missing = missing
+        self.record('complete set (Chunky parity)', 1, missing, {'clips': len(manifest['clips']), 'look rows': self.look.get('rows')})
         json.dump(manifest, open(f'{self.pet}/manifest.json', 'w'), indent=1)
         # playable preview: the product's player (petgen/engine) + this pet's assets
         pv = f'{self.out}/preview'

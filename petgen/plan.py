@@ -102,6 +102,12 @@ ACTIONS = {
 ACTION_END_STILL = {'lie_down': 'lie', 'get_up': 'sit', 'fall_asleep': None, 'sleep_loop': 'sleep',
                     'wake_up': 'sit'}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
+# Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
+REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)
+REQUIRED_STILLS = ['sit', 'lie', 'sleep']
+REQUIRED_ROWS = 5                                  # head-tracking heights
+FEATURES = ['head tracking (5 heights x 33 positions)', 'feed mode (treat tray, drag to feed, eat + wiggle)',
+            'naps when the mouse is still', 'gets up after lying down', 'bark only on request']
 
 # rough GPTProto prices (USD) for the cost estimate in the report
 PRICE_IMAGE = 0.0804
