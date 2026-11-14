@@ -304,11 +304,11 @@ class Job:
             'clips': sorted(os.path.splitext(f)[0] for f in os.listdir(f'{self.pet}/clips')),
         }
         json.dump(manifest, open(f'{self.pet}/manifest.json', 'w'), indent=1)
-        # playable preview: the real engine (src/app.js) + this pet's assets
+        # playable preview: the product's player (petgen/engine) + this pet's assets
         pv = f'{self.out}/preview'
         os.makedirs(pv, exist_ok=True)
-        for f in ('app.js', 'style.css'):
-            shutil.copy(f'{ROOT}/src/{f}', f'{pv}/{f}')
+        for f in ('app.js', 'style.css'):          # the product's own copy of the player (never Chunky's src/)
+            shutil.copy(f'{HERE}/engine/{f}', f'{pv}/{f}')
         if os.path.exists(f'{pv}/pet'):
             shutil.rmtree(f'{pv}/pet')
         shutil.copytree(self.pet, f'{pv}/pet')
