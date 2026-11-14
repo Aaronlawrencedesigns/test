@@ -215,6 +215,47 @@ def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None):
 
 
 # ------------------------------------------------------------ head sweeps
+def dog_stats(rgba):
+    """Per-channel mean / std of the pet's pixels (alpha > 200)."""
+    m = rgba[..., 3] > 200
+    px = rgba[..., :3][m].astype(np.float32)
+    return px.mean(0), px.std(0) + 1e-3
+
+
+def tf_to(src_stats, ref_stats):
+    """Per-channel linear colour transform (a, b) that maps src statistics onto ref."""
+    (ms, ss), (mr, sr) = src_stats, ref_stats
+    a = sr / ss
+    return a, mr - a * ms
+
+
+def apply_tf(rgba, tf, w=1.0):
+    if w <= 0.002:
+        return rgba
+    a, b = tf
+    out = rgba.astype(np.float32)
+    out[..., :3] = out[..., :3] * (1 + w * (a - 1)) + w * b
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def blend_clip_colours(frames, start_ref=None, end_ref=None, seconds=1.0, fps=24):
+    """Colour-match a clip's first / last second to the stills it starts / ends on
+    (so there's never a colour jump between clips); the middle keeps its own lighting."""
+    n = len(frames)
+    r = max(1, min(int(seconds * fps), n // 3))
+    sm = lambda x: x * x * (3 - 2 * x)
+    t0 = tf_to(dog_stats(frames[0]), dog_stats(start_ref)) if start_ref is not None else None
+    t1 = tf_to(dog_stats(frames[-1]), dog_stats(end_ref)) if end_ref is not None else None
+    out = []
+    for i, f in enumerate(frames):
+        if t0 is not None:
+            f = apply_tf(f, t0, sm(max(0.0, 1 - i / r)))
+        if t1 is not None:
+            f = apply_tf(f, t1, sm(max(0.0, (i - (n - r) + 1) / r)))
+        out.append(f)
+    return out
+
+
 def colour_match(f, ref):
     f = f.astype(np.float32)
     mf, mr = f[..., 3] > 200, ref[..., 3] > 200
@@ -239,7 +280,7 @@ def head_sig(rgba, box):
     return (v - v.mean()) / (v.std() + 1e-3)
 
 
-def sweep_frames(src, body):
+def sweep_frames(src, body, match=True):
     """Keyed, aligned, colour-matched frames of a head-sweep clip + turn progress (0..1)."""
     frames, stats = decode_keyed(src)
     tgt, _ = anchor(body)
@@ -248,7 +289,7 @@ def sweep_frames(src, body):
         c, _ = anchor(f)
         d = tgt - c
         f = affine(f, 1.0, d) if abs(d).max() > 0.25 else f
-        out.append(colour_match(f, body))
+        out.append(colour_match(f, body) if match else f)
     box = head_box(body)
     sigs = [head_sig(f, box) for f in out]
     move = np.array([0.0] + [float(np.abs(sigs[i] - sigs[i - 1]).mean()) for i in range(1, len(sigs))])

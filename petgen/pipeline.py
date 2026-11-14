@@ -240,8 +240,11 @@ class Job:
         k = self.with_retries('sleep pose', attempt_fn)
         self.kf['sleep_end'] = k
         media.save_green(k, f'{self.kfdir}/kf_sleep_end.png')
-        self.still['sleep'] = self.to_still(k)
-        media.save_still(k, f'{self.pet}/stills/sleep.webp')
+        sleep = self.to_still(k)
+        if 'lie' in self.still:          # image edit -> match the video look of the lying pose
+            sleep = media.apply_tf(sleep, media.tf_to(media.dog_stats(sleep), media.dog_stats(self.still['lie'])))
+        self.still['sleep'] = sleep
+        Image.fromarray(self.still['sleep']).save(f'{self.pet}/stills/sleep.webp', quality=90, method=6)
 
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
@@ -276,6 +279,9 @@ class Job:
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
             self.still[derive] = self.to_still(pose_k)
             media.save_still(pose_k, f'{self.pet}/stills/{derive}.webp')
+        start_ref = self.still_for(first)
+        end_ref = self.still.get(derive) if derive else (self.still.get(end_name) if end_name else None)
+        fixed = media.blend_clip_colours(fixed, start_ref, end_ref)
         media.encode_webm(fixed, f'{self.pet}/clips/{key}.webm')
         media.sheet(fixed, f'{self.work}/sheets/{key}.jpg')
         return src
@@ -291,7 +297,7 @@ class Job:
             src = self.gen_video(it['key'], it['prompt'], it['first'], it['last'], it['seconds'], attempt)
             frames, prog, info = media.sweep_frames(src, self.still['sit'])
             problems = []
-            need = 0.35 * (1.0 if (c0, c1) == (0, 4) else 0.6)
+            need = 0.25 * (1.0 if (c0, c1) == (0, 4) else 0.6)   # (tuned on Chunky + Chewie: good turns >= 0.33)
             if info['turn'] < need:
                 problems.append(f'head barely turns (turn {info["turn"]:.2f} < {need:.2f})')
             areas = np.array([s['area'] for s in info['stats']])
@@ -325,12 +331,35 @@ class Job:
         for r, row in zip(self.rows, rows):
             media.sheet(row, f'{self.work}/sheets/look_{r}.jpg', n=11)
 
+    def reference_colours(self):
+        """The pet's true colours = the video look of the level head sweep (same sitting pose).
+        The sitting still comes from the image model, which renders colours a little
+        differently, so it's recoloured to match; everything else follows from it."""
+        if getattr(self, 'ref_stats', None) is not None:
+            return
+        it = plan.sweep_item('level', 0, 4)
+        for kfname in (it['first'], it['last']):
+            if kfname.startswith('kf_gaze_'):
+                _, _, col, r = kfname.split('_', 3)
+                self.gaze_kf(int(col), r)
+        src = self.gen_video(it['key'], it['prompt'], it['first'], it['last'], it['seconds'])
+        frames, _, _ = media.sweep_frames(src, self.still['sit'], match=False)
+        mid = frames[len(frames) // 4: 3 * len(frames) // 4]
+        px = np.concatenate([f[..., :3][f[..., 3] > 200].astype(np.float32) for f in mid[::4]])
+        self.ref_stats = (px.mean(0), px.std(0) + 1e-3)
+        before = media.dog_stats(self.still['sit'])
+        self.still['sit'] = media.apply_tf(self.still['sit'], media.tf_to(before, self.ref_stats))
+        Image.fromarray(self.still['sit']).save(f'{self.pet}/stills/sit.webp', quality=90, method=6)
+        self.log('       colours: sitting pose matched to the video look '
+                 f'(mean RGB {np.round(before[0]).astype(int).tolist()} -> {np.round(self.ref_stats[0]).astype(int).tolist()})')
+
     def clips(self):
         acts = [a for a in self.actions if a in plan.ACTIONS]
         # gaze keyframes for the sweeps first (cheap), so the video queue starts full
         for row in self.rows:
             for col in (0, 4):
                 self.gaze_kf(col, row)
+        self.reference_colours()
         from concurrent.futures import wait, FIRST_COMPLETED
         done, waiting = set(), list(acts)
         with ThreadPoolExecutor(self.workers) as ex:
