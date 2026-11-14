@@ -7,6 +7,11 @@ echo "== installing packages"
 apt-get update -qq
 apt-get install -y -qq git ffmpeg python3-venv >/dev/null
 id sidekicks >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/sidekicks --shell /usr/sbin/nologin sidekicks
+if ! swapon --show | grep -q .; then
+  echo "== adding 4 GB swap (making a pet needs more memory than a small server has)"
+  fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap -q /swapfile && swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
 echo "== getting the code"
 if [ -d /opt/sidekicks/.git ]; then git -C /opt/sidekicks pull -q --ff-only; else git clone -q --depth 1 https://github.com/Aaronlawrencedesigns/test.git /opt/sidekicks; fi
 echo "== installing Python libraries (a few minutes)"

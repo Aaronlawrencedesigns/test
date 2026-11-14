@@ -10,7 +10,8 @@ Order flow in the R2 bucket (written by the website's Stripe webhook, site/funct
 Results: orders/<id>/pet.zip, orders/<id>/report.html. Generation keyframes: orders/<id>/kf/*.
 
 Env (/etc/sidekicks.env): GPTPROTO_API_KEY, S3_ENDPOINT, S3_BUCKET, AWS_ACCESS_KEY_ID,
-AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK.
+AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK,
+PETGEN_WORKERS (clips made at once; default 3, each needs ~0.5-1 GB of memory).
 """
 import datetime, json, os, shutil, sys, time, traceback
 
@@ -116,7 +117,8 @@ def make(oid):
         photos.append(dest)
 
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
-              S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'))
+              S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
+              workers=int(os.environ.get('PETGEN_WORKERS', '3')))
     job.run()
     ok, failed, warn, cost = verdict(job)
 
