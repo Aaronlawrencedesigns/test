@@ -10,7 +10,9 @@ SITE = os.path.join(ROOT, 'site')
 DIST = os.path.join(SITE, 'dist')
 
 FILES = {'index.html': 'site/index.html', 'pet.html': 'site/pet.html',
-         'app.js': 'petgen/engine/app.js', 'style.css': 'petgen/engine/style.css'}
+         'app.js': 'petgen/engine/app.js',
+         'favicon.svg': 'site/favicon.svg', 'favicon-32.png': 'site/favicon-32.png', 'favicon.ico': 'site/favicon.ico',
+         'apple-touch-icon.png': 'site/apple-touch-icon.png', 'style.css': 'petgen/engine/style.css'}
 ASSET_DIRS = ['assets/look', 'assets/gaze', 'assets/stills', 'assets/clips']
 
 
