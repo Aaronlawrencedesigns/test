@@ -1,0 +1,592 @@
+<title>Desktop Sidekicks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Your pet, living on your Mac. Upload 4 photos and get a real-footage desk pet that follows your mouse.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: a computer desktop. Menu bar on top, icon columns at the edges, draggable windows
+     floating in between, and the demo pet living in the bottom-right corner with its trick buttons. */
+  :root {
+    --desk: #e6e1ea;          /* lilac grey desktop (from a merle coat) */
+    --bone: #cfc6d6;          /* the bone pattern, barely there */
+    --win: #fcfbfa;           /* window paper */
+    --bar: #f1edf3;           /* title bars, menu bar */
+    --ink: #221d27;
+    --muted: #6a6170;
+    --line: #d3cad9;
+    --accent: #2f45c4;        /* collar blue: the one action colour */
+    --accent-ink: #ffffff;
+    --tag: #ffd25e;           /* name-tag yellow, for the Create highlight */
+    --tag-ink: #2b2208;
+    --shadow: 0 1px 0 rgba(34, 29, 39, .06), 0 14px 40px -12px rgba(34, 29, 39, .28);
+    --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --desk: #1b1820; --bone: #2a2531; --win: #24202a; --bar: #2c2733; --ink: #efeaf3; --muted: #a79daf;
+      --line: #3b3443; --accent: #8a9bff; --accent-ink: #12142a; --tag: #f5c84c; --tag-ink: #2b2208;
+      --shadow: 0 1px 0 rgba(0,0,0,.3), 0 18px 44px -12px rgba(0,0,0,.7); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --desk: #1b1820; --bone: #2a2531; --win: #24202a; --bar: #2c2733; --ink: #efeaf3; --muted: #a79daf;
+    --line: #3b3443; --accent: #8a9bff; --accent-ink: #12142a; --tag: #f5c84c; --tag-ink: #2b2208;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 18px 44px -12px rgba(0,0,0,.7); color-scheme: dark;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--desk); color: var(--ink);
+    font: 400 15px/1.55 var(--body);
+    overflow: hidden;
+  }
+  /* bone wallpaper: an SVG tile used as a mask so it follows the theme colour */
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: var(--bone);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='%23000'%3E%3Cg transform='translate%2838 42%29 rotate%28-28%29'%3E%3Crect x='-10' y='-2.6' width='20' height='5.2'/%3E%3Ccircle cx='-10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='-10' cy='3.2' r='3.6'/%3E%3Ccircle cx='10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='10' cy='3.2' r='3.6'/%3E%3C/g%3E%3Cg transform='translate%28118 122%29 rotate%2832%29'%3E%3Crect x='-10' y='-2.6' width='20' height='5.2'/%3E%3Ccircle cx='-10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='-10' cy='3.2' r='3.6'/%3E%3Ccircle cx='10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='10' cy='3.2' r='3.6'/%3E%3C/g%3E%3Cg transform='translate%28120 38%29'%3E%3Cellipse cx='0' cy='3' rx='4' ry='3.2'/%3E%3Ccircle cx='-5' cy='-2' r='1.8'/%3E%3Ccircle cx='-1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='5' cy='-2' r='1.8'/%3E%3C/g%3E%3Cg transform='translate%2840 120%29'%3E%3Cellipse cx='0' cy='3' rx='4' ry='3.2'/%3E%3Ccircle cx='-5' cy='-2' r='1.8'/%3E%3Ccircle cx='-1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='5' cy='-2' r='1.8'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 160px 160px repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='%23000'%3E%3Cg transform='translate%2838 42%29 rotate%28-28%29'%3E%3Crect x='-10' y='-2.6' width='20' height='5.2'/%3E%3Ccircle cx='-10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='-10' cy='3.2' r='3.6'/%3E%3Ccircle cx='10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='10' cy='3.2' r='3.6'/%3E%3C/g%3E%3Cg transform='translate%28118 122%29 rotate%2832%29'%3E%3Crect x='-10' y='-2.6' width='20' height='5.2'/%3E%3Ccircle cx='-10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='-10' cy='3.2' r='3.6'/%3E%3Ccircle cx='10' cy='-3.2' r='3.6'/%3E%3Ccircle cx='10' cy='3.2' r='3.6'/%3E%3C/g%3E%3Cg transform='translate%28120 38%29'%3E%3Cellipse cx='0' cy='3' rx='4' ry='3.2'/%3E%3Ccircle cx='-5' cy='-2' r='1.8'/%3E%3Ccircle cx='-1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='5' cy='-2' r='1.8'/%3E%3C/g%3E%3Cg transform='translate%2840 120%29'%3E%3Cellipse cx='0' cy='3' rx='4' ry='3.2'/%3E%3Ccircle cx='-5' cy='-2' r='1.8'/%3E%3Ccircle cx='-1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='1.8' cy='-5' r='1.8'/%3E%3Ccircle cx='5' cy='-2' r='1.8'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 160px 160px repeat;
+  }
+  body::before {   /* safe-area band above the menu bar on phones */
+    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--bar);
+  }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------------- menu bar */
+  .menubar {
+    position: fixed; z-index: 50; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 40px;
+    display: flex; align-items: center; gap: 4px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+    background: color-mix(in srgb, var(--bar) 88%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    font: 500 13px/1 var(--body);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font: 800 15px/1 var(--display); letter-spacing: -.01em; margin-right: 10px; white-space: nowrap; }
+  .brand svg { width: 22px; height: 22px; }
+  .menubar nav { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+  .menubar nav button, .menubar .status { background: none; border: 0; padding: 7px 10px; border-radius: 6px; white-space: nowrap; }
+  .menubar nav button:hover { background: var(--line); }
+  .menubar .spacer { flex: 1; }
+  .menubar .status { font: 500 12px/1 var(--mono); color: var(--muted); padding: 7px 6px; }
+  .menubar .status b { color: var(--ink); font-weight: 500; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 8px;
+    padding: 10px 16px; font: 600 14px/1 var(--body);
+    background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 1px 0 rgba(0,0,0,.12), inset 0 -2px 0 rgba(0,0,0,.18);
+    transition: transform .1s, filter .15s;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(1px); }
+  .btn.small { padding: 8px 12px; font-size: 13px; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.ghost:hover { background: var(--bar); filter: none; }
+
+  /* ---------------- desktop + icons */
+  .desktop { position: fixed; inset: calc(40px + env(safe-area-inset-top, 0px)) 0 0; z-index: 1; }
+  .icons { position: absolute; top: 18px; display: grid; gap: 6px; }
+  .icons.left { left: max(14px, env(safe-area-inset-left, 0px)); }
+  .icons.right { right: max(14px, env(safe-area-inset-right, 0px)); }
+  .icon {
+    width: 92px; display: grid; justify-items: center; gap: 6px; padding: 8px 4px 6px;
+    background: none; border: 0; border-radius: 8px; text-align: center;
+    font: 500 12.5px/1.25 var(--body);
+  }
+  .icon svg { width: 52px; height: 52px; filter: drop-shadow(0 2px 2px rgba(34,29,39,.15)); transition: transform .15s; }
+  .icon span { padding: 2px 6px; border-radius: 4px; }
+  .icon:hover svg { transform: translateY(-2px); }
+  .icon:focus-visible { outline: none; }
+  .icon:focus-visible span, .icon.sel span { background: var(--accent); color: var(--accent-ink); }
+  .icon.hot span { background: var(--tag); color: var(--tag-ink); font-weight: 600; }
+
+  /* ---------------- windows */
+  .win {
+    position: absolute; z-index: 10; width: min(520px, calc(100vw - 32px));
+    background: var(--win); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+    display: flex; flex-direction: column; max-height: calc(100% - 32px);
+    animation: pop .18s cubic-bezier(.2,1.4,.5,1);
+  }
+  .win[hidden] { display: none; }
+  @keyframes pop { from { transform: scale(.96); opacity: 0; } }
+  .titlebar {
+    display: flex; align-items: center; gap: 10px; height: 38px; flex: none;
+    padding: 0 10px 0 12px; background: var(--bar); border-bottom: 1px solid var(--line);
+    cursor: grab; touch-action: none; user-select: none;
+  }
+  .titlebar:active { cursor: grabbing; }
+  .titlebar .t { flex: 1; font: 500 12.5px/1 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .win.front .titlebar .t { color: var(--ink); }
+  .close {
+    width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted);
+  }
+  .close:hover { background: var(--line); color: var(--ink); }
+  .close svg { width: 12px; height: 12px; }
+  .body { padding: 22px 24px 24px; overflow: auto; display: grid; gap: 16px; min-height: 0; }
+  .body p { margin: 0; max-width: 62ch; }
+  .muted { color: var(--muted); }
+  h1, h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; letter-spacing: -.02em; }
+  h1 { font-weight: 800; font-size: clamp(34px, 4.4vw, 48px); line-height: .98; }
+  h2 { font-weight: 800; font-size: 26px; line-height: 1.05; }
+  h3 { font-weight: 600; font-size: 16px; letter-spacing: -.01em; }
+  .eyebrow { font: 500 11.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .hint { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .hint svg { width: 18px; height: 18px; flex: none; }
+
+  /* welcome window */
+  #w-welcome { width: min(560px, calc(100vw - 32px)); }
+  #w-welcome h1 em { font-style: normal; background: linear-gradient(transparent 62%, var(--tag) 62%); padding: 0 2px; }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .facts div { background: var(--win); padding: 12px 14px; display: grid; gap: 2px; }
+  .facts b { font: 800 22px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .facts span { font-size: 12.5px; color: var(--muted); line-height: 1.3; }
+
+  /* steps */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: s; }
+  .steps li { display: grid; grid-template-columns: 34px 1fr; gap: 2px 12px; counter-increment: s; }
+  .steps li::before {
+    content: counter(s); grid-row: span 2; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--bar); border: 1px solid var(--line);
+    font: 600 13px/1 var(--mono);
+  }
+  .steps h3 { align-self: center; }
+  .steps p { color: var(--muted); font-size: 14px; }
+
+  /* about: folder listing */
+  .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .file { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 4px; background: var(--win); }
+  .file .n { font: 500 11.5px/1 var(--mono); color: var(--muted); }
+  .file p { font-size: 13.5px; }
+
+  /* pricing */
+  .price { display: flex; align-items: baseline; gap: 8px; }
+  .price b { font: 800 56px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .ticks li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; font-size: 14px; }
+  .ticks li::before { content: ""; width: 16px; height: 16px; margin-top: 3px; border-radius: 4px; background: var(--accent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' stroke='%23000' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' stroke='%23000' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+
+  /* faq */
+  details { border-top: 1px solid var(--line); padding: 12px 0 0; }
+  details:first-of-type { border-top: 0; padding-top: 0; }
+  summary { cursor: pointer; font-weight: 600; list-style-position: outside; }
+  details p { margin-top: 6px !important; color: var(--muted); font-size: 14px; }
+
+  /* create */
+  #w-create { width: min(600px, calc(100vw - 32px)); }
+  .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .slot {
+    position: relative; aspect-ratio: 1; max-width: 100%; border: 1.5px dashed var(--line); border-radius: 10px;
+    display: grid; place-items: center; text-align: center; padding: 6px; cursor: pointer; overflow: hidden;
+    background: var(--bar); transition: border-color .15s;
+  }
+  .slot:hover, .slot.drag { border-color: var(--accent); }
+  .slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .slot:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .slot .l { font: 600 13px/1.2 var(--body); pointer-events: none; }
+  .slot .l small { display: block; font: 400 11.5px/1.3 var(--body); color: var(--muted); margin-top: 3px; }
+  .slot.has { border-style: solid; border-color: var(--accent); }
+  .slot.has .l { position: absolute; left: 6px; bottom: 6px; background: var(--win); padding: 3px 6px; border-radius: 5px; font-size: 11.5px; }
+  .slot.has .l small { display: none; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fields label { display: grid; gap: 5px; font-size: 13px; font-weight: 500; }
+  .fields input, .fields select {
+    font: 400 14px/1.2 var(--body); color: var(--ink); background: var(--win);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px; min-width: 0;
+  }
+  .fields .wide { grid-column: 1 / -1; }
+  .summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .summary .total { font: 800 22px/1 var(--display); }
+  .summary .total small { font: 400 13px/1 var(--body); color: var(--muted); margin-left: 6px; }
+  .note { font-size: 13.5px; padding: 10px 12px; border-radius: 8px; background: var(--bar); border: 1px solid var(--line); }
+  .note[data-kind="ok"] { border-color: var(--accent); }
+
+  /* ---------------- the pet */
+  #pet {
+    position: fixed; z-index: 9000; pointer-events: none;
+    right: max(8px, env(safe-area-inset-right, 0px)); bottom: env(safe-area-inset-bottom, 0px);
+    width: var(--pet); height: var(--pet); --pet: 380px;
+  }
+  #pet iframe { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; border: 0; pointer-events: none; background: transparent; }
+  .tricks { position: absolute; inset: 0; pointer-events: none; }
+  .trick {
+    position: absolute; pointer-events: auto; z-index: 2;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 13px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--win); box-shadow: 0 6px 16px -8px rgba(34,29,39,.45);
+    font: 600 13px/1 var(--body); transform: translate(-50%, -50%);
+    transition: transform .12s, background .15s, border-color .15s;
+  }
+  .trick:hover { border-color: var(--accent); transform: translate(-50%, -50%) scale(1.06); }
+  .trick:active { transform: translate(-50%, -50%) scale(.97); }
+  .trick.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .trick svg { width: 14px; height: 14px; }
+  /* arranged in an arc around his head, left side (he lives in the corner) */
+  .trick[data-act="stand"] { left: 50%; top: 9%; }
+  .trick[data-act="sit"]   { left: 15%; top: 24%; }
+  .trick[data-act="sleep"] { left: 5%;  top: 48%; }
+  .trick[data-act="poop"]  { left: 9%;  top: 72%; }
+  .hello {
+    position: absolute; right: 100%; bottom: 46%; margin-right: 18px; width: 170px; pointer-events: none;
+    font: 500 12.5px/1.35 var(--body); color: var(--muted); text-align: right;
+  }
+  .hello b { display: block; font: 800 15px/1.2 var(--display); color: var(--ink); }
+  .hello svg { display: block; margin: 6px 0 0 auto; width: 60px; height: 24px; color: var(--muted); }
+
+  /* ---------------- small screens: a scrolling page instead of a desktop */
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    .menubar nav, .menubar .status { display: none; }
+    .desktop {
+      position: relative; inset: auto; padding-top: calc(52px + env(safe-area-inset-top, 0px));
+      padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-bottom: 32px; display: grid; gap: 16px;
+    }
+    .icons { position: static; display: flex; flex-wrap: wrap; gap: 2px; justify-content: space-between; }
+    .icons.right { order: -1; justify-content: flex-start; }
+    .icon { width: 76px; }
+    .icon svg { width: 42px; height: 42px; }
+    .win { position: relative; left: auto !important; top: auto !important; width: 100% !important; max-height: none; z-index: auto !important; }
+    .titlebar { cursor: default; }
+    .facts { grid-template-columns: 1fr; }
+    .slots { grid-template-columns: repeat(2, 1fr); }
+    .fields { grid-template-columns: 1fr; }
+    #pet { position: relative; right: auto; bottom: auto; --pet: min(300px, 80vw); margin: -8px 0 0 auto; }
+    .hello { display: none; }
+    .trick { padding: 7px 11px; font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .win { animation: none; } .icon svg, .trick, .btn { transition: none; } }
+</style>
+
+<header class="menubar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="3" fill="var(--accent)"/><rect x="8" y="19" width="8" height="2" rx="1" fill="var(--ink)"/><path d="M8.5 13.5c0-2 1.6-3.2 3.5-3.2s3.5 1.2 3.5 3.2c0 .9-.8 1.3-1.7 1H10.2c-.9.3-1.7-.1-1.7-1z" fill="var(--tag)"/><circle cx="8.3" cy="9" r="1.2" fill="var(--tag)"/><circle cx="10.6" cy="7.2" r="1.2" fill="var(--tag)"/><circle cx="13.4" cy="7.2" r="1.2" fill="var(--tag)"/><circle cx="15.7" cy="9" r="1.2" fill="var(--tag)"/></svg>
+    Desktop Sidekicks
+  </div>
+  <nav aria-label="Sections">
+    <button type="button" data-open="about">About</button>
+    <button type="button" data-open="how">How it works</button>
+    <button type="button" data-open="pricing">Pricing</button>
+    <button type="button" data-open="faq">FAQ</button>
+  </nav>
+  <div class="spacer"></div>
+  <span class="status" aria-live="polite">Chunky: <b id="pet-status">sitting</b></span>
+  <span class="status" id="clock">9:41</span>
+  <button type="button" class="btn small" data-open="create">Create your pet</button>
+</header>
+
+<main class="desktop" id="desktop">
+  <div class="icons left">
+    <button type="button" class="icon" data-open="about">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M4 12a3 3 0 0 1 3-3h13l4 5h21a3 3 0 0 1 3 3v24a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#5d79e6"/><path d="M4 19a3 3 0 0 1 3-3h38a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#7d95f2"/><path d="M21 31.5c0-2.3 2.2-3.8 5-3.8s5 1.5 5 3.8c0 1-1 1.6-2.2 1.2h-5.6c-1.2.4-2.2-.2-2.2-1.2z" fill="#fff" opacity=".9"/><circle cx="20.6" cy="26" r="1.6" fill="#fff" opacity=".9"/><circle cx="24" cy="23.6" r="1.6" fill="#fff" opacity=".9"/><circle cx="28" cy="23.6" r="1.6" fill="#fff" opacity=".9"/><circle cx="31.4" cy="26" r="1.6" fill="#fff" opacity=".9"/></svg>
+      <span>About</span>
+    </button>
+    <button type="button" class="icon" data-open="how">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M11 5h22l9 9v31a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="#fff" stroke="#c9c0cf"/><path d="M33 5v9h9" fill="#ece7ef" stroke="#c9c0cf"/><g fill="#2f45c4"><circle cx="16" cy="22" r="2"/><circle cx="16" cy="29" r="2"/><circle cx="16" cy="36" r="2"/></g><g fill="#b9b0c0"><rect x="21" y="21" width="15" height="2" rx="1"/><rect x="21" y="28" width="13" height="2" rx="1"/><rect x="21" y="35" width="15" height="2" rx="1"/></g></svg>
+      <span>How it works</span>
+    </button>
+    <button type="button" class="icon" data-open="pricing">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M8 26 26 8h16a2 2 0 0 1 2 2v16L26 44a2 2 0 0 1-2.8 0L8 28.8a2 2 0 0 1 0-2.8z" fill="#ffd25e" stroke="#d9a92c"/><circle cx="36" cy="16" r="3" fill="#fff" stroke="#d9a92c"/><text x="25" y="32" text-anchor="middle" font-family="Bricolage Grotesque, system-ui" font-weight="800" font-size="13" fill="#5a4410" transform="rotate(-45 25 28)">$</text></svg>
+      <span>Pricing</span>
+    </button>
+    <button type="button" class="icon" data-open="faq">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M8 12a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4v19a4 4 0 0 1-4 4H22l-9 8v-8h-1a4 4 0 0 1-4-4z" fill="#f08aa0"/><text x="26" y="28.5" text-anchor="middle" font-family="Bricolage Grotesque, system-ui" font-weight="800" font-size="19" fill="#fff">?</text></svg>
+      <span>FAQ</span>
+    </button>
+  </div>
+
+  <div class="icons right">
+    <button type="button" class="icon hot" data-open="create">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><rect x="5" y="8" width="42" height="30" rx="5" fill="#2f45c4"/><rect x="18" y="41" width="16" height="4" rx="2" fill="#5b536a"/><path d="M19 28c0-3.3 3.1-5.4 7-5.4s7 2.1 7 5.4c0 1.4-1.3 2.1-2.9 1.6h-8.2c-1.6.5-2.9-.2-2.9-1.6z" fill="#ffd25e"/><circle cx="18.6" cy="20" r="2.1" fill="#ffd25e"/><circle cx="23" cy="16.8" r="2.1" fill="#ffd25e"/><circle cx="29" cy="16.8" r="2.1" fill="#ffd25e"/><circle cx="33.4" cy="20" r="2.1" fill="#ffd25e"/><circle cx="42" cy="10" r="7" fill="#ffd25e" stroke="#fff" stroke-width="2"/><path d="M42 6.5v7M38.5 10h7" stroke="#2b2208" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Create your pet</span>
+    </button>
+    <button type="button" class="icon" data-open="welcome">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M11 5h22l9 9v31a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="#fff" stroke="#c9c0cf"/><path d="M33 5v9h9" fill="#ece7ef" stroke="#c9c0cf"/><g fill="#b9b0c0"><rect x="15" y="20" width="21" height="2" rx="1"/><rect x="15" y="26" width="18" height="2" rx="1"/><rect x="15" y="32" width="21" height="2" rx="1"/><rect x="15" y="38" width="11" height="2" rx="1"/></g></svg>
+      <span>Welcome.txt</span>
+    </button>
+  </div>
+
+  <!-- Welcome -->
+  <section class="win" id="w-welcome" data-win="welcome" style="left: 150px; top: 36px;" aria-labelledby="welcome-h">
+    <div class="titlebar"><span class="t">Welcome.txt</span><button type="button" class="close" aria-label="Close Welcome"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="body">
+      <span class="eyebrow">A desk pet made from 4 photos</span>
+      <h1 id="welcome-h">Your pet, living on <em>your desktop.</em></h1>
+      <p>Send us four photos of your dog or cat. We turn them into a real-footage version of your pet that sits in the corner of your Mac, follows your mouse with its head, naps when you step away and eats the treats you drag to it.</p>
+      <div class="facts" aria-label="What every pet gets">
+        <div><b>165</b><span>real head positions that follow your cursor</span></div>
+        <div><b>11</b><span>tricks, from happy wiggles to naps</span></div>
+        <div><b>4</b><span>photos is all we need from you</span></div>
+      </div>
+      <div class="row">
+        <button type="button" class="btn" data-open="create">Create your pet</button>
+        <button type="button" class="btn ghost" data-open="how">How it works</button>
+      </div>
+      <p class="hint"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2l11 6-5 1.4L7 14z" fill="currentColor"/></svg>That's Chunky in the corner. Move your mouse, or give him something to do.</p>
+    </div>
+  </section>
+
+  <!-- The demo pet: the same player customers get, playing Chunky's footage -->
+  <div id="pet">
+    <iframe id="pet-frame" src="pet.html" title="Chunky, a demo Desktop Sidekick" tabindex="-1"></iframe>
+    <div class="hello"><b>Hi, I'm Chunky.</b>Try a trick, or let your mouse rest for 30 seconds.<svg viewBox="0 0 60 24" aria-hidden="true"><path d="M2 4c18 0 34 4 50 15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M45 20l8 0-3-7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="tricks" role="group" aria-label="Tricks for Chunky">
+      <button type="button" class="trick" data-act="stand">Stand</button>
+      <button type="button" class="trick" data-act="sit">Sit</button>
+      <button type="button" class="trick" data-act="sleep">Sleep</button>
+      <button type="button" class="trick" data-act="poop">Poop</button>
+    </div>
+  </div>
+
+  <!-- About -->
+  <section class="win" id="w-about" data-win="about" hidden style="left: 220px; top: 70px;" aria-labelledby="about-h">
+    <div class="titlebar"><span class="t">About</span><button type="button" class="close" aria-label="Close About"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="body">
+      <h2 id="about-h">A sidekick that looks exactly like yours</h2>
+      <p>Desktop Sidekicks started with Chunky, a lilac merle French Bulldog with pale blue eyes. We wanted him on the desk all day, so we built a small Mac app where he sits in the corner, watches the cursor and does his tricks. People kept asking for their own, so now anyone can have one.</p>
+      <p class="muted">Your pet isn't a cartoon or a 3D model. Every frame is photo-real footage generated from your photos, then checked by a quality pipeline before it's sent to you.</p>
+      <div class="files">
+        <div class="file"><span class="n">head_tracking/</span><h3>Follows your mouse</h3><p class="muted">5 head heights &times; 33 positions, one real frame at a time, so it never looks blurry.</p></div>
+        <div class="file"><span class="n">tricks/</span><h3>11 animations</h3><p class="muted">Sit, lie down, sleep, stand, wiggle, puppy eyes, bark, poop and more.</p></div>
+        <div class="file"><span class="n">feed_mode/</span><h3>Treat tray</h3><p class="muted">Drag a treat onto your pet: three bites, a lick of the lips, a happy wiggle.</p></div>
+        <div class="file"><span class="n">naps/</span><h3>Naps when you do</h3><p class="muted">Leave the mouse alone for 30 seconds and it curls up to sleep until you're back.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="win" id="w-how" data-win="how" hidden style="left: 260px; top: 90px;" aria-labelledby="how-h">
+    <div class="titlebar"><span class="t">How it works</span><button type="button" class="close" aria-label="Close How it works"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="body">
+      <h2 id="how-h">From four photos to a desk pet</h2>
+      <ol class="steps">
+        <li><h3>Upload 4 photos</h3><p>Front, side, back and sitting. Good light, whole pet in frame, no other animals.</p></li>
+        <li><h3>Check out</h3><p>One payment. No subscription.</p></li>
+        <li><h3>We make your pet</h3><p>We generate a portrait, poses, head-turn footage and every trick, then run quality checks on size, colour and framing. Anything that fails is remade.</p></li>
+        <li><h3>Check your email</h3><p>You get a download link for your Sidekick, a signed Mac app with your pet inside. Open it and your pet appears in the corner.</p></li>
+      </ol>
+      <div class="row"><button type="button" class="btn" data-open="create">Start with your photos</button></div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="win" id="w-pricing" data-win="pricing" hidden style="left: 300px; top: 60px; width: min(420px, calc(100vw - 32px));" aria-labelledby="pricing-h">
+    <div class="titlebar"><span class="t">Pricing</span><button type="button" class="close" aria-label="Close Pricing"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="body">
+      <span class="eyebrow">One pet, yours to keep</span>
+      <div class="price"><b>$49</b><span class="muted">one time</span></div>
+      <ul class="ticks">
+        <li>Head tracking with 165 real positions</li>
+        <li>All 11 tricks, including sleep and naps</li>
+        <li>Feed mode with a treat tray</li>
+        <li>Signed Mac app (macOS 12 or later)</li>
+        <li>A free remake if your pet doesn't look right</li>
+      </ul>
+      <button type="button" class="btn" data-open="create">Create your pet</button>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="win" id="w-faq" data-win="faq" hidden style="left: 340px; top: 80px;" aria-labelledby="faq-h">
+    <div class="titlebar"><span class="t">FAQ</span><button type="button" class="close" aria-label="Close FAQ"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="body">
+      <h2 id="faq-h">Questions</h2>
+      <details open><summary>Does it work on Windows?</summary><p>Not yet. Sidekicks run on macOS today. Windows is next.</p></details>
+      <details><summary>What photos work best?</summary><p>Four clear, well-lit photos of the same pet: from the front, from the side, from behind and sitting. The whole pet in frame, no other animals or people.</p></details>
+      <details><summary>Will it slow down my Mac?</summary><p>No. Your pet is a small app that plays short clips and shows one still frame at a time while it follows the mouse.</p></details>
+      <details><summary>Does it get in the way?</summary><p>Clicks pass straight through everywhere except your pet itself. You can resize it, move it, or put it to sleep from the menu.</p></details>
+      <details><summary>What happens to my photos?</summary><p>We use them only to make your pet. They're never shared or shown publicly.</p></details>
+      <details><summary>How long does it take?</summary><p>Usually within a day. We email you as soon as your pet passes its checks.</p></details>
+    </div>
+  </section>
+
+  <!-- Create your pet -->
+  <section class="win" id="w-create" data-win="create" hidden style="left: 200px; top: 40px;" aria-labelledby="create-h">
+    <div class="titlebar"><span class="t">Create your pet</span><button type="button" class="close" aria-label="Close Create your pet"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <form class="body" id="create-form" novalidate>
+      <h2 id="create-h">Create your pet</h2>
+      <p class="muted">Add one photo for each view. Drop a file on a box or tap it to choose.</p>
+      <div class="slots">
+        <label class="slot"><input type="file" id="photo-front" name="front" accept="image/*"><span class="l">Front<small>facing you</small></span></label>
+        <label class="slot"><input type="file" id="photo-side" name="side" accept="image/*"><span class="l">Side<small>full profile</small></span></label>
+        <label class="slot"><input type="file" id="photo-back" name="back" accept="image/*"><span class="l">Back<small>from behind</small></span></label>
+        <label class="slot"><input type="file" id="photo-sit" name="sit" accept="image/*"><span class="l">Sitting<small>whole body</small></span></label>
+      </div>
+      <div class="fields">
+        <label>Pet's name<input type="text" id="pet-name" name="name" placeholder="Chunky" autocomplete="off"></label>
+        <label>Species<select id="pet-species" name="species"><option>Dog</option><option>Cat</option><option>Other</option></select></label>
+        <label class="wide">Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
+      </div>
+      <p class="note" id="create-note" hidden></p>
+      <div class="summary">
+        <span class="total">$49 <small>one time, Mac app</small></span>
+        <button type="submit" class="btn">Continue to checkout</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+
+<script>
+(() => {
+  // ------------------------------------------------ windows
+  const desk = document.getElementById('desktop');
+  const wins = {};
+  document.querySelectorAll('.win').forEach((w) => (wins[w.dataset.win] = w));
+  let z = 20;
+  const small = () => matchMedia('(max-width: 760px)').matches;
+
+  function front(w) {
+    document.querySelectorAll('.win.front').forEach((x) => x.classList.remove('front'));
+    w.classList.add('front');
+    w.style.zIndex = ++z;
+  }
+  function keepInside(w) {
+    if (small()) return;
+    const W = desk.clientWidth, H = desk.clientHeight;
+    const x = Math.min(Math.max(parseFloat(w.style.left) || 0, 8 - w.offsetWidth + 120), W - 120);
+    const y = Math.min(Math.max(parseFloat(w.style.top) || 0, 8), H - 60);
+    w.style.left = x + 'px'; w.style.top = y + 'px';
+  }
+  function open(id) {
+    const w = wins[id];
+    if (!w) return;
+    const was = w.hidden;
+    w.hidden = false;
+    front(w);
+    if (was) keepInside(w);
+    if (small()) w.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else w.querySelector('.close').focus({ preventScroll: true });
+  }
+  function close(w) {
+    w.hidden = true;
+    const rest = [...document.querySelectorAll('.win:not([hidden])')].sort((a, b) => (+b.style.zIndex || 0) - (+a.style.zIndex || 0));
+    if (rest[0]) front(rest[0]);
+  }
+  document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.icon.sel').forEach((i) => i.classList.remove('sel'));
+    if (b.classList.contains('icon')) b.classList.add('sel');
+    open(b.dataset.open);
+  }));
+  document.querySelectorAll('.win').forEach((w) => {
+    w.querySelector('.close').addEventListener('click', () => close(w));
+    w.addEventListener('pointerdown', () => front(w));
+    const bar = w.querySelector('.titlebar');
+    bar.addEventListener('pointerdown', (e) => {
+      if (small() || e.target.closest('button')) return;
+      e.preventDefault();
+      bar.setPointerCapture(e.pointerId);
+      const sx = e.clientX - w.offsetLeft, sy = e.clientY - w.offsetTop;
+      const move = (ev) => { w.style.left = ev.clientX - sx + 'px'; w.style.top = ev.clientY - sy + 'px'; keepInside(w); };
+      const up = () => { bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); };
+      bar.addEventListener('pointermove', move);
+      bar.addEventListener('pointerup', up);
+      bar.addEventListener('pointercancel', up);
+    });
+  });
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const top = document.querySelector('.win.front:not([hidden])');
+    if (top) close(top);
+  });
+  addEventListener('resize', () => Object.values(wins).forEach((w) => !w.hidden && keepInside(w)));
+  // place the welcome window sensibly on wide screens
+  function placeWelcome() {
+    if (small()) return;
+    const w = wins.welcome, W = desk.clientWidth;
+    w.style.left = Math.max(130, Math.min(W * 0.16, W - w.offsetWidth - 440)) + 'px';
+    w.style.top = Math.max(24, Math.min(64, (desk.clientHeight - w.offsetHeight) * 0.3)) + 'px';
+  }
+  placeWelcome();
+  front(wins.welcome);
+  // open a window from the link hash (e.g. #pricing)
+  const fromHash = () => { const id = location.hash.slice(1); if (wins[id]) open(id); };
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  // ------------------------------------------------ clock
+  const clock = document.getElementById('clock');
+  const tick = () => (clock.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+  tick(); setInterval(tick, 15000);
+
+  // ------------------------------------------------ the pet (same bridge as the desktop app)
+  const frame = document.getElementById('pet-frame');
+  const pet = document.getElementById('pet');
+  const status = document.getElementById('pet-status');
+  let extra = 0;
+  const rect = () => { const r = frame.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; };
+  const send = (msg) => frame.contentWindow && frame.contentWindow.postMessage(Object.assign({ chunky: true, bounds: rect() }, msg), '*');
+  let last = { x: innerWidth / 2, y: innerHeight / 3 };
+  addEventListener('pointermove', (e) => { last = { x: e.clientX, y: e.clientY }; send({ type: 'cursor', cursor: last }); }, { passive: true });
+  addEventListener('pointerdown', (e) => {
+    last = { x: e.clientX, y: e.clientY };
+    const r = rect();
+    const inside = last.x >= r.x && last.x <= r.x + r.width && last.y >= r.y && last.y <= r.y + r.height && !e.target.closest('button');
+    send({ type: inside && e.pointerType !== 'mouse' ? 'tap' : 'cursor', cursor: last });
+  }, { passive: true });
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m || !m.chunky || e.source !== frame.contentWindow) return;
+    if (m.type === 'hover') frame.style.pointerEvents = m.over ? 'auto' : 'none';
+    if (m.type === 'extend') { extra = Math.max(0, Math.min(800, +m.px || 0)); frame.style.height = `calc(100% + ${extra}px)`; send({ type: 'bounds' }); }
+    if (m.type === 'menu') document.querySelector('.trick').focus();
+  });
+  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing' };
+  let statusTimer;
+  document.querySelectorAll('.trick').forEach((b) => b.addEventListener('click', () => {
+    send({ type: 'action', name: b.dataset.act });
+    document.querySelectorAll('.trick.on').forEach((x) => x.classList.remove('on'));
+    if (b.dataset.act === 'sleep') b.classList.add('on');
+    status.textContent = LABEL[b.dataset.act];
+    clearTimeout(statusTimer);
+    if (b.dataset.act === 'poop' || b.dataset.act === 'stand') statusTimer = setTimeout(() => (status.textContent = 'sitting'), 8000);
+  }));
+  frame.addEventListener('load', () => send({ type: 'cursor', cursor: last }));
+  addEventListener('resize', () => send({ type: 'bounds' }));
+  addEventListener('scroll', () => send({ type: 'cursor', cursor: last }), { passive: true });
+
+  // ------------------------------------------------ create your pet (checkout not connected yet)
+  const form = document.getElementById('create-form');
+  const note = document.getElementById('create-note');
+  form.querySelectorAll('.slot').forEach((slot) => {
+    const input = slot.querySelector('input');
+    const show = (file) => {
+      if (!file || !file.type.startsWith('image/')) return;
+      let img = slot.querySelector('img');
+      if (!img) { img = document.createElement('img'); img.alt = ''; slot.prepend(img); }
+      img.src = URL.createObjectURL(file);
+      slot.classList.add('has');
+    };
+    input.addEventListener('change', () => show(input.files[0]));
+    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag'));
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault(); slot.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (!f) return;
+      try { const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; } catch {}
+      show(f);
+    });
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const missing = [...form.querySelectorAll('.slot')].filter((s) => !s.classList.contains('has')).map((s) => s.querySelector('.l').firstChild.textContent.trim().toLowerCase());
+    const email = document.getElementById('owner-email').value.trim();
+    note.hidden = false;
+    if (missing.length) { note.dataset.kind = 'warn'; note.textContent = `Add a photo for: ${missing.join(', ')}.`; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { note.dataset.kind = 'warn'; note.textContent = 'Add your email so we can send your pet when it\'s ready.'; return; }
+    const name = document.getElementById('pet-name').value.trim() || 'your pet';
+    note.dataset.kind = 'ok';
+    note.textContent = `Photos of ${name} look good. Checkout opens here once payments are connected; nothing has been uploaded or charged.`;
+  });
+})();
+</script>
