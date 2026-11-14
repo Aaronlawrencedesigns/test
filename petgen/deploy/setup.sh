@@ -17,6 +17,13 @@ if [ ! -f /etc/sidekicks.env ]; then
   install -m 600 /opt/sidekicks/petgen/deploy/sidekicks.env.example /etc/sidekicks.env
 fi
 install -m 644 /opt/sidekicks/petgen/deploy/sidekicks-worker.service /etc/systemd/system/sidekicks-worker.service
+cat > /usr/local/bin/sidekicks-requeue <<'SH'
+#!/bin/sh
+# usage: sudo sidekicks-requeue <order id>   (retry a failed order, or make a skipped test order)
+set -a; . /etc/sidekicks.env; set +a
+cd /opt/sidekicks && exec runuser -u sidekicks -- /opt/sidekicks-venv/bin/python -m petgen.worker requeue "$1"
+SH
+chmod 755 /usr/local/bin/sidekicks-requeue
 systemctl daemon-reload
 systemctl enable -q sidekicks-worker
 ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libvpx-vp9 && echo "== ffmpeg has VP9: ok"

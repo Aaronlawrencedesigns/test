@@ -64,4 +64,4 @@ Test-mode (Stripe sandbox) orders are skipped unless `ALLOW_TEST_ORDERS=1`.
     curl -fsSL https://raw.githubusercontent.com/Aaronlawrencedesigns/test/main/petgen/deploy/setup.sh | sudo bash
     sudo nano /etc/sidekicks.env && sudo systemctl restart sidekicks-worker
     journalctl -u sidekicks-worker -f
-    cd /opt/sidekicks && sudo -u sidekicks env $(sudo cat /etc/sidekicks.env | grep -v '^#' | xargs) /opt/sidekicks-venv/bin/python -m petgen.worker requeue <order id>
+    sudo sidekicks-requeue <order id>     # retry a failed order / make a skipped test order
