@@ -5,3 +5,4 @@ tools/generate/gaze/
 __pycache__/
 out/
 .petgen-uploads/
+site/dist/

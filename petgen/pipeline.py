@@ -31,6 +31,7 @@ class Job:
         self.max_retries, self.workers = max_retries, workers
         self._log = log
         self.lock = threading.Lock()
+        self.upload_lock = threading.Lock()
         self.work = f'{self.out}/work'
         self.gen = f'{self.work}/gen'
         self.kfdir = f'{self.work}/kf'
@@ -66,6 +67,14 @@ class Job:
         return p
 
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
+        # clips that start from a pose derived from another clip get their own cache entry
+        def tag(kf):    # derived poses change per run/attempt: tag them by content
+            import hashlib
+            return f'{kf[3:]}.' + hashlib.md5(open(f'{self.kfdir}/{kf}.png', 'rb').read()).hexdigest()[:6]
+        if first.endswith('_end'):
+            key = f'{key}@{tag(first)}'
+            if last and last.endswith('_end') and last != first:
+                key += f'-{tag(last)}'
         p = self._gen_path(key, attempt, 'mp4')
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
@@ -77,13 +86,12 @@ class Job:
         return p
 
     def url(self, kfname):
-        with self.lock:
-            if kfname in self.urls:
-                return self.urls[kfname]
-        u = self.uploader.upload(f'{self.kfdir}/{kfname}.png', f'{self.name.lower()}-{int(self.t0)}/{kfname}.png')
-        with self.lock:
-            self.urls[kfname] = u
-        return u
+        # one upload per keyframe, one at a time (parallel clips share their start frames)
+        with self.upload_lock:
+            if kfname not in self.urls:
+                self.urls[kfname] = self.uploader.upload(f'{self.kfdir}/{kfname}.png',
+                                                         f'{self.name.lower()}-{int(self.t0)}/{kfname}.png')
+            return self.urls[kfname]
 
     def record(self, item, attempt, problems, metrics=None):
         with self.lock:
@@ -100,6 +108,9 @@ class Job:
             except FileNotFoundError as e:       # replay has no recording for a retry
                 self.log(f'       {item}: {e}')
                 break
+            except Exception as e:  # noqa: BLE001 - provider rejected / failed: count it as a failed try
+                self.record(item, attempt, [f'generation failed: {str(e)[:160]}'])
+                continue
             self.record(item, attempt, problems, metrics)
             if best is None or len(problems) < len(best[1]):
                 best = (res, problems)
@@ -158,8 +169,8 @@ class Job:
             p, k, att = self.with_retries(key, attempt_fn)
             self.best_attempt[key] = att
             self.kf['raw_' + key.split('_')[1]] = k
-        sit, lie, sleep = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'], self.kf['raw_sleep'])
-        for n, k in (('sit', sit), ('lie', lie), ('sleep', sleep)):
+        sit, lie = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'])
+        for n, k in (('sit', sit), ('lie', lie)):
             self.kf[n] = k
             media.save_green(k, f'{self.kfdir}/kf_{n}.png')
         self.still['sit'] = self.to_still(sit)
@@ -187,25 +198,90 @@ class Job:
 
     def still_for(self, kfname):
         n = kfname.replace('kf_', '')
+        if n.endswith('_end'):
+            n = n[:-4]                     # kf_lie_end -> still 'lie' (derived from a clip)
         return self.still.get(n)
+
+    def derive_pose(self, frames, start_still):
+        """The resting pose a clip ends in, at the clip's own scale (fitted at its start),
+        with camera zoom during the clip undone using head size (ear span), within limits.
+        Returns the pose on the 1024 canvas (for the next clip's start image)."""
+        s0, _ = media.fit(frames[0], start_still)
+        try:
+            r = media.ear_span(frames[0]) / max(1, media.ear_span(frames[-1]))
+        except ValueError:
+            r = 1.0
+        sc = s0 * min(1.33, max(0.75, r))
+        last = frames[-1]
+        x0, y0, x1, y1 = media.bbox(last)
+        crop = Image.fromarray(last).crop((x0, y0, x1 + 1, y1 + 1))
+        crop = crop.resize((max(1, round(crop.width * sc)), max(1, round(crop.height * sc))), Image.LANCZOS)
+        _, _, _, gy = media.bbox(start_still)                       # same ground line as the start pose
+        still = Image.new('RGBA', media.OUT_SIZE, (0, 0, 0, 0))
+        still.alpha_composite(crop, (media.OW // 2 - crop.width // 2, max(0, gy - crop.height)))
+        k = np.zeros((media.S, media.S, 4), np.uint8)
+        cx0, cy0, cx1, cy1 = media.CROP_1024
+        k[cy0:cy1, cx0:cx1] = np.asarray(still.resize((cx1 - cx0, cy1 - cy0), Image.LANCZOS))
+        return k
+
+    def sleep_pose(self):
+        """Sleeping pose = image edit of the actual lying frame (same spot and scale)."""
+        def attempt_fn(attempt):
+            p = self.gen_image('sleep_edit', plan.SLEEP_EDIT, [f'{self.kfdir}/kf_lie_end.png'], attempt)
+            k, st = media.key_file(p)
+            problems = media.keyframe_ok(st)
+            x0, y0, x1, y1 = media.bbox(k)
+            if (x1 - x0) < 1.05 * (y1 - y0):
+                problems.append('not lying down')
+            lx0, ly0, lx1, ly1 = media.bbox(self.kf['lie_end'])
+            if (y1 - y0) > 1.15 * (ly1 - ly0):     # asleep (head down) is never taller than lying
+                problems.append('bigger than the lying pose (scale changed)')
+            return k, problems, st
+        k = self.with_retries('sleep pose', attempt_fn)
+        self.kf['sleep_end'] = k
+        media.save_green(k, f'{self.kfdir}/kf_sleep_end.png')
+        sleep = self.to_still(k)
+        if 'lie' in self.still:          # image edit -> match the video look of the lying pose
+            sleep = media.apply_tf(sleep, media.tf_to(media.dog_stats(sleep), media.dog_stats(self.still['lie'])))
+        self.still['sleep'] = sleep
+        Image.fromarray(self.still['sleep']).save(f'{self.pet}/stills/sleep.webp', quality=90, method=6)
 
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
+        derive = opts.get('derive')
+        if opts.get('sleep_edit'):
+            self.sleep_pose()
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
             frames, stats = media.decode_keyed(src)
             start_still = self.still_for(first)
-            end_still = self.still.get(end_name) if end_name else None
+            problems_extra, pose_k = [], None
+            if derive:
+                pose_k = self.derive_pose(frames, start_still)
+                end_still = self.to_still(pose_k)
+                x0, y0, x1, y1 = media.bbox(end_still)
+                if (x1 - x0) < 1.05 * (y1 - y0):
+                    problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
+            else:
+                end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
-            raw_end_iou = None
-            if end_still is not None:
+            fitted_end = None
+            if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
-                raw_end_iou = media.affine(frames[-1], sc, o)
-            problems = media.clip_qa(frames, stats, metrics, end_still, [raw_end_iou] if raw_end_iou is not None else None)
-            return (src, fixed), problems, metrics
-        src, fixed = self.with_retries(key, attempt_fn)
+                fitted_end = [media.affine(frames[-1], sc, o)]
+            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end) + problems_extra
+            return (src, fixed, pose_k), problems, metrics
+        src, fixed, pose_k = self.with_retries(key, attempt_fn)
+        if derive:     # the chosen clip defines the resting pose the next clips start from
+            self.kf[f'{derive}_end'] = pose_k
+            media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
+            self.still[derive] = self.to_still(pose_k)
+            media.save_still(pose_k, f'{self.pet}/stills/{derive}.webp')
+        start_ref = self.still_for(first)
+        end_ref = self.still.get(derive) if derive else (self.still.get(end_name) if end_name else None)
+        fixed = media.blend_clip_colours(fixed, start_ref, end_ref)
         media.encode_webm(fixed, f'{self.pet}/clips/{key}.webm')
         media.sheet(fixed, f'{self.work}/sheets/{key}.jpg')
         return src
@@ -221,7 +297,7 @@ class Job:
             src = self.gen_video(it['key'], it['prompt'], it['first'], it['last'], it['seconds'], attempt)
             frames, prog, info = media.sweep_frames(src, self.still['sit'])
             problems = []
-            need = 0.35 * (1.0 if (c0, c1) == (0, 4) else 0.6)
+            need = 0.25 * (1.0 if (c0, c1) == (0, 4) else 0.6)   # (tuned on Chunky + Chewie: good turns >= 0.33)
             if info['turn'] < need:
                 problems.append(f'head barely turns (turn {info["turn"]:.2f} < {need:.2f})')
             areas = np.array([s['area'] for s in info['stats']])
@@ -255,34 +331,54 @@ class Job:
         for r, row in zip(self.rows, rows):
             media.sheet(row, f'{self.work}/sheets/look_{r}.jpg', n=11)
 
+    def reference_colours(self):
+        """The pet's true colours = the video look of the level head sweep (same sitting pose).
+        The sitting still comes from the image model, which renders colours a little
+        differently, so it's recoloured to match; everything else follows from it."""
+        if getattr(self, 'ref_stats', None) is not None:
+            return
+        it = plan.sweep_item('level', 0, 4)
+        for kfname in (it['first'], it['last']):
+            if kfname.startswith('kf_gaze_'):
+                _, _, col, r = kfname.split('_', 3)
+                self.gaze_kf(int(col), r)
+        src = self.gen_video(it['key'], it['prompt'], it['first'], it['last'], it['seconds'])
+        frames, _, _ = media.sweep_frames(src, self.still['sit'], match=False)
+        mid = frames[len(frames) // 4: 3 * len(frames) // 4]
+        px = np.concatenate([f[..., :3][f[..., 3] > 200].astype(np.float32) for f in mid[::4]])
+        self.ref_stats = (px.mean(0), px.std(0) + 1e-3)
+        before = media.dog_stats(self.still['sit'])
+        self.still['sit'] = media.apply_tf(self.still['sit'], media.tf_to(before, self.ref_stats))
+        Image.fromarray(self.still['sit']).save(f'{self.pet}/stills/sit.webp', quality=90, method=6)
+        self.log('       colours: sitting pose matched to the video look '
+                 f'(mean RGB {np.round(before[0]).astype(int).tolist()} -> {np.round(self.ref_stats[0]).astype(int).tolist()})')
+
     def clips(self):
         acts = [a for a in self.actions if a in plan.ACTIONS]
-        later = [a for a in acts if plan.ACTIONS[a][0] == 'kf_sleep_side']
-        first_wave = [a for a in acts if a not in later]
         # gaze keyframes for the sweeps first (cheap), so the video queue starts full
         for row in self.rows:
             for col in (0, 4):
                 self.gaze_kf(col, row)
+        self.reference_colours()
+        from concurrent.futures import wait, FIRST_COMPLETED
+        done, waiting = set(), list(acts)
         with ThreadPoolExecutor(self.workers) as ex:
-            futs = {ex.submit(self.action, a): a for a in first_wave}
-            futs[ex.submit(self.head_tracking)] = 'head tracking'
-            late_futs = []
-            for f in as_completed(list(futs)):
-                name = futs[f]
-                f.result()
-                if name == 'fall_asleep' and later:
-                    # sleeping pose = the last frame of falling asleep, so the clips connect exactly
-                    src = self._latest('fall_asleep', 'mp4')
-                    media.last_frame_1024(src, f'{self.work}/fall_asleep_last.png')
-                    k, _ = media.key_file(f'{self.work}/fall_asleep_last.png')
-                    self.kf['sleep_side'] = k
-                    media.save_green(k, f'{self.kfdir}/kf_sleep_side.png')
-                    self.still['sleep_side'] = self.to_still(k)
-                    self.still['sleep'] = self.still['sleep_side']
-                    media.save_still(k, f'{self.pet}/stills/sleep.webp')
-                    late_futs = [ex.submit(self.action, a) for a in later]
-            for f in late_futs:      # (submitted after the loop above started, so wait here)
-                f.result()
+            running = {ex.submit(self.head_tracking): 'head tracking'}
+
+            def launch():
+                for a in list(waiting):
+                    dep = plan.DEPENDS.get(a)
+                    if dep is None or dep in done or dep not in acts:
+                        waiting.remove(a)
+                        running[ex.submit(self.action, a)] = a
+            launch()
+            while running:
+                fin, _ = wait(list(running), return_when=FIRST_COMPLETED)
+                for f in fin:
+                    name = running.pop(f)
+                    f.result()            # raise errors
+                    done.add(name)
+                launch()                  # clips that were waiting for this one can start now
         self.log('all clips done')
 
     def _latest(self, key, ext):
@@ -303,12 +399,22 @@ class Job:
             'earTop': round(ear, 3), 'head': {'x': 0.5, 'y': round(ear + 0.14, 3)}, 'mouth': {'x': 0.5, 'y': round(ear + 0.24, 3)},
             'clips': sorted(os.path.splitext(f)[0] for f in os.listdir(f'{self.pet}/clips')),
         }
+        manifest['features'] = plan.FEATURES
+        # completeness: every pet ships with everything Chunky has
+        missing = [f'clip: {c}' for c in plan.REQUIRED_CLIPS if c not in manifest['clips']]
+        missing += [f'still: {n}' for n in plan.REQUIRED_STILLS if not os.path.exists(f'{self.pet}/stills/{n}.webp')]
+        if self.look.get('rows', 0) < plan.REQUIRED_ROWS:
+            missing.append(f'head tracking: {self.look.get("rows")} heights (need {plan.REQUIRED_ROWS})')
+        if not os.path.exists(f'{HERE}/engine/app.js') or 'eat:' not in open(f'{HERE}/engine/app.js').read():
+            missing.append('feed mode missing from the player')
+        self.missing = missing
+        self.record('complete set (Chunky parity)', 1, missing, {'clips': len(manifest['clips']), 'look rows': self.look.get('rows')})
         json.dump(manifest, open(f'{self.pet}/manifest.json', 'w'), indent=1)
-        # playable preview: the real engine (src/app.js) + this pet's assets
+        # playable preview: the product's player (petgen/engine) + this pet's assets
         pv = f'{self.out}/preview'
         os.makedirs(pv, exist_ok=True)
-        for f in ('app.js', 'style.css'):
-            shutil.copy(f'{ROOT}/src/{f}', f'{pv}/{f}')
+        for f in ('app.js', 'style.css'):          # the product's own copy of the player (never Chunky's src/)
+            shutil.copy(f'{HERE}/engine/{f}', f'{pv}/{f}')
         if os.path.exists(f'{pv}/pet'):
             shutil.rmtree(f'{pv}/pet')
         shutil.copytree(self.pet, f'{pv}/pet')

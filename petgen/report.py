@@ -36,6 +36,14 @@ def write_report(job):
             sheets += f'<figure><figcaption>{html.escape(os.path.splitext(f)[0].replace("_", " "))}</figcaption>{_img(os.path.join(sd, f))}</figure>'
     kfs = ''.join(f'<figure><figcaption>{n}</figcaption>{_img(f"{job.pet}/stills/{n}.webp", 200)}</figure>' for n in ('sit', 'lie', 'sleep'))
     master = _img(job._gen_path('master', 1, 'png'), 240)
+    man = getattr(job, 'manifest', None) or {}
+    have = set(man.get('clips', []))
+    tick = lambda ok: '<b class="yes">✓</b>' if ok else '<b class="no">✗ missing</b>'
+    items = ''.join(f'<li>{tick(c in have)} {html.escape(c.replace("_", " "))}</li>' for c in plan.REQUIRED_CLIPS)
+    rows_ok = (man.get('look') or {}).get('rows', 0) >= plan.REQUIRED_ROWS
+    feats = ''.join(f'<li>{tick(rows_ok if f.startswith("head") else ("eat" in have if f.startswith("feed") else bool(man)))} {html.escape(f)}</li>' for f in plan.FEATURES)
+    contents = (f'<h2>What\'s included (same as Chunky)</h2><div class="row"><ul class="chk">{feats}</ul>'
+                f'<ul class="chk">{items}</ul></div>')
     page = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(job.name)}: petgen report</title>
 <style>
@@ -48,7 +56,7 @@ h1{{margin:0 0 4px;font-size:28px}} h2{{margin:28px 0 10px;font-size:18px}}
 table{{border-collapse:collapse;width:100%;background:var(--card);border-radius:10px;overflow:hidden}} td{{padding:6px 10px;border-top:1px solid var(--line);vertical-align:top}}
 tr.bad td:nth-child(3){{color:var(--bad)}} tr.ok td:nth-child(3){{color:var(--ok)}} td.m{{color:var(--muted);font-size:12px}}
 figure{{margin:0 0 14px}} figcaption{{color:var(--muted);font-size:12px;margin-bottom:4px}} img{{max-width:100%;border-radius:8px;background:#e6e3ea}}
-.row{{display:flex;flex-wrap:wrap;gap:14px}} .missing{{color:var(--bad)}} .err{{background:#fbe3e1;color:var(--bad);padding:10px;border-radius:8px}}
+.row{{display:flex;flex-wrap:wrap;gap:14px}} ul.chk{{list-style:none;padding:0;margin:0 24px 0 0;line-height:1.9}} b.yes{{color:var(--ok)}} b.no{{color:var(--bad)}} .missing{{color:var(--bad)}} .err{{background:#fbe3e1;color:var(--bad);padding:10px;border-radius:8px}}
 </style></head><body>
 <h1>{html.escape(job.name)}</h1>
 <span class="verdict">{verdict}</span>
@@ -63,6 +71,7 @@ figure{{margin:0 0 14px}} figcaption{{color:var(--muted);font-size:12px;margin-b
 </div>
 {f'<p>Needs a look: {html.escape(", ".join(failed))}</p>' if failed else ''}
 {f'<p>Photo warnings: {html.escape(", ".join(warnings))}</p>' if warnings else ''}
+{contents}
 <h2>Portrait and poses</h2><div class="row"><figure><figcaption>portrait</figcaption>{master}</figure>{kfs}</div>
 <h2>Clips and head tracking</h2>{sheets}
 <h2>Quality checks</h2><table>{''.join(rows)}</table>

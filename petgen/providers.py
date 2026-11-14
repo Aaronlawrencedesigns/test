@@ -65,9 +65,7 @@ class GPTProtoProvider:
         body = {'prompt': prompt, 'image': first_url, 'aspect_ratio': '1:1', 'duration': int(seconds),
                 'resolution': '720p', 'generate_audio': False, 'is_upload_media': False, 'seed': -1}
         if last_url:
-            body['last_image'] = last_url          # (camera_fixed is not allowed together with last_image)
-        else:
-            body['camera_fixed'] = True
+            body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
         r = self.s.post(f'{API}/api/v3/{self.video_path}', json=body, timeout=120)
         j = r.json()
         d = j.get('data') or {}
@@ -107,6 +105,8 @@ class ReplayProvider:
 
     def _get(self, key, out_path):
         src = self.map.get(key)
+        if src is None and '@' in key and '__' not in key:   # clips from derived poses: match by name
+            src = self.map.get(key.split('@')[0])
         if not src or not os.path.exists(src):
             self.misses.append(key)
             raise FileNotFoundError(f'replay: nothing recorded for {key}')
@@ -131,6 +131,8 @@ class GitRawUploader:
     """DEV ONLY. Pushes files to a branch of a PUBLIC GitHub repo and returns raw URLs."""
 
     def __init__(self, repo_dir, owner_repo, branch='petgen-uploads'):
+        import threading
+        self.lock = threading.Lock()      # git can't run concurrently in one worktree
         self.repo_dir, self.owner_repo, self.branch = repo_dir, owner_repo, branch
         self.wt = os.path.join(repo_dir, '.petgen-uploads')
         if not os.path.exists(self.wt):
@@ -144,6 +146,14 @@ class GitRawUploader:
                 subprocess.run(['git', '-C', self.wt, 'rm', '-rqf', '.'], check=True)
 
     def upload(self, path, key):
+        with self.lock:
+            return self._upload(path, key)
+
+    def _upload(self, path, key):
+        gitdir = subprocess.run(['git', '-C', self.wt, 'rev-parse', '--absolute-git-dir'], capture_output=True, text=True).stdout.strip()
+        lock = os.path.join(gitdir, 'index.lock')
+        if os.path.exists(lock) and time.time() - os.path.getmtime(lock) > 60:
+            os.remove(lock)               # stale lock from a crashed run
         dest = os.path.join(self.wt, key)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.copy(path, dest)

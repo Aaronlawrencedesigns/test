@@ -9,7 +9,8 @@ python3 -m petgen make --name Rex --photos front.jpg side.jpg back.jpg sitting.j
 
 Output in `out/rex/`:
 - `pet/`: the pet pack (`manifest.json`, `look/` head-tracking frames, `stills/`, `clips/`), about 9 MB.
-- `preview/`: a playable page using the real engine (`src/app.js`); serve it with `python3 -m http.server`.
+- `preview/`: a playable page using the product's player (`petgen/engine/`, its own copy, separate
+  from Chunky's `src/`); serve it with `python3 -m http.server`.
 - `report.html`: verdict, estimated AI cost, every quality check, contact sheets of every clip.
 - `work/`: raw generations (cache), keyframes, sheets.
 

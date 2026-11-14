@@ -101,9 +101,12 @@ Signing can only run on the owner's Mac (not in the cloud container).
 The owner is turning this into a product: customers upload 4 pet photos, pay, and
 get their own desk pet. Milestone 1 is `petgen/` (see petgen/README.md): photos →
 pet pack + preview + QA report, automated with quality gates and retries, cached.
-The engine reads per-pet measurements from `window.PET` (manifest: look, head,
-mouth, earTop); Chunky's values are the defaults. Test for free with `--replay`.
-Never use `--host git` for real customers (public repo).
+**Keep Chunky separate:** the owner wants Chunky's app kept as-is for himself.
+Product work lives in `petgen/` and must NOT change Chunky's `src/`, `web/`,
+`assets/` or `tools/`. The product has its own copy of the player in
+`petgen/engine/` (reads per-pet measurements from `window.PET`: look, head,
+mouth, earTop). Test for free with `--replay`. Never use `--host git` for real
+customers (public repo).
 
 ## Owner's Mac setup quirks (already solved)
 - `~/.npm` had root-owned files → fixed with `sudo chown -R $(id -u):$(id -g) ~/.npm`.

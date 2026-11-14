@@ -1,0 +1,115 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Chunky's square sits at the bottom of the window (the window grows upward
+   while the food tray is open) */
+#dog {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vw;
+  display: block;
+}
+
+#bubble {
+  position: absolute;
+  border-radius: 14px;
+  background: #fff;
+  color: #3a2617;
+  font: 700 clamp(9px, 5vh, 17px)/1.1 ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+  padding: 0.4em 0.8em;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  transform: translate(-50%, -100%) scale(0.4);
+  transform-origin: bottom center;
+  transition: opacity 0.15s, transform 0.22s cubic-bezier(0.3, 1.6, 0.5, 1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+#bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  margin-left: -8px;
+  border: 8px solid transparent;
+  border-top-color: #fff;
+  border-bottom: 0;
+}
+#bubble.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+
+#zzz {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.6s;
+  pointer-events: none;
+  font: 700 clamp(10px, 6vh, 20px) ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+  color: #7084ad;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+#zzz.show { opacity: 1; }
+#zzz span { position: absolute; opacity: 0; animation: float 3s linear infinite; }
+#zzz span:nth-child(2) { animation-delay: 1s; font-size: 1.2em; }
+#zzz span:nth-child(3) { animation-delay: 2s; font-size: 1.45em; }
+@keyframes float {
+  0% { transform: translate(0, 0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(26px, -44px); opacity: 0; }
+}
+
+/* food tray (Feed Chunky) */
+/* a vertical column standing on top of his head */
+#tray {
+  position: absolute;
+  left: 50%;
+  /* 70vw = window bottom to the top of his ears; + a lift of a quarter of his
+     width (100px at Normal size). Keep in sync with TRAY_LIFT in app.js. */
+  bottom: calc(70vw + 6px + 25vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.5em 0.3em;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  font-size: clamp(14px, 7vw, 32px);
+  line-height: 1;
+  opacity: 0;
+  transform: translate(-50%, 8px) scale(0.92);
+  transform-origin: bottom center;
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
+  pointer-events: none;
+  z-index: 4;
+}
+#tray.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.food { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform 0.15s, opacity 0.15s; }
+.food:hover { transform: scale(1.18) rotate(-6deg); }
+.food.taken { opacity: 0.25; }
+#held {
+  position: absolute;
+  font-size: clamp(16px, 8.5vw, 40px);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+#held.show { opacity: 1; }
+.crumb {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  animation: crumb 0.7s ease-in forwards;
+}
+@keyframes crumb { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
