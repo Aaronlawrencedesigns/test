@@ -103,6 +103,9 @@ class Job:
             except FileNotFoundError as e:       # replay has no recording for a retry
                 self.log(f'       {item}: {e}')
                 break
+            except Exception as e:  # noqa: BLE001 - provider rejected / failed: count it as a failed try
+                self.record(item, attempt, [f'generation failed: {str(e)[:160]}'])
+                continue
             self.record(item, attempt, problems, metrics)
             if best is None or len(problems) < len(best[1]):
                 best = (res, problems)

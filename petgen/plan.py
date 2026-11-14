@@ -97,8 +97,8 @@ ACTIONS = {
     # exactly (an image-generated pose never quite matches where a video ends).
     'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
     'fall_asleep': ('kf_lie_end', 'kf_sleep', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep.", {'spread': True, 'derive': 'sleep'}),
-    # no end image -> the camera can be locked (stops the model zooming in on a sleeping pet)
-    'sleep_loop': ('kf_sleep_end', None, 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
+    # starts and ends on the (resized) sleeping pose so it loops seamlessly
+    'sleep_loop': ('kf_sleep_end', 'kf_sleep_end', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
     'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
 }
 # still each clip should end on (for the end-pose check); derived clips define their own

@@ -65,9 +65,7 @@ class GPTProtoProvider:
         body = {'prompt': prompt, 'image': first_url, 'aspect_ratio': '1:1', 'duration': int(seconds),
                 'resolution': '720p', 'generate_audio': False, 'is_upload_media': False, 'seed': -1}
         if last_url:
-            body['last_image'] = last_url          # (camera_fixed is not allowed together with last_image)
-        else:
-            body['camera_fixed'] = True
+            body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
         r = self.s.post(f'{API}/api/v3/{self.video_path}', json=body, timeout=120)
         j = r.json()
         d = j.get('data') or {}
