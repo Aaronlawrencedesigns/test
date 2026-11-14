@@ -231,12 +231,13 @@
   .trick.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .trick svg { width: 14px; height: 14px; }
   /* arranged in an arc around his head, left side (he lives in the corner) */
-  .trick[data-act="stand"] { left: 50%; top: 9%; }
-  .trick[data-act="sit"]   { left: 15%; top: 24%; }
-  .trick[data-act="sleep"] { left: 5%;  top: 48%; }
-  .trick[data-act="poop"]  { left: 9%;  top: 72%; }
+  .trick[data-act="stand"] { left: 50%; top: 8%; }
+  .trick[data-act="sit"]   { left: 17%; top: 21%; }
+  .trick[data-act="feed"]  { left: 5%;  top: 38%; }
+  .trick[data-act="sleep"] { left: 3%;  top: 56%; }
+  .trick[data-act="poop"]  { left: 11%; top: 74%; }
   .hello {
-    position: absolute; right: 100%; bottom: 46%; margin-right: 18px; width: 170px; pointer-events: none;
+    position: absolute; right: 100%; bottom: 44%; margin-right: 44px; width: 180px; pointer-events: none;
     font: 500 12.5px/1.35 var(--body); color: var(--muted); text-align: right;
   }
   .hello b { display: block; font: 800 15px/1.2 var(--display); color: var(--ink); }
@@ -338,11 +339,12 @@
   <!-- The demo pet: the same player customers get, playing Chunky's footage -->
   <div id="pet">
     <iframe id="pet-frame" src="pet.html" title="Chunky, a demo Desktop Sidekick" tabindex="-1"></iframe>
-    <div class="hello"><b>Hi, I'm Chunky.</b>Try a trick, or let your mouse rest for 30 seconds.<svg viewBox="0 0 60 24" aria-hidden="true"><path d="M2 4c18 0 34 4 50 15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M45 20l8 0-3-7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="hello"><b>Hi, I'm Chunky.</b>I'll follow your mouse. Try a trick or feed me a treat.<svg viewBox="0 0 60 24" aria-hidden="true"><path d="M2 4c18 0 34 4 50 15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M45 20l8 0-3-7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="tricks" role="group" aria-label="Tricks for Chunky">
       <button type="button" class="trick" data-act="stand">Stand</button>
       <button type="button" class="trick" data-act="sit">Sit</button>
-      <button type="button" class="trick" data-act="sleep">Sleep</button>
+      <button type="button" class="trick" data-act="feed">Feed</button>
+    <button type="button" class="trick" data-act="sleep">Sleep</button>
       <button type="button" class="trick" data-act="poop">Poop</button>
     </div>
   </div>
@@ -540,7 +542,7 @@
     if (m.type === 'extend') { extra = Math.max(0, Math.min(800, +m.px || 0)); frame.style.height = `calc(100% + ${extra}px)`; send({ type: 'bounds' }); }
     if (m.type === 'menu') document.querySelector('.trick').focus();
   });
-  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing' };
+  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing', feed: 'hungry' };
   let statusTimer;
   document.querySelectorAll('.trick').forEach((b) => b.addEventListener('click', () => {
     send({ type: 'action', name: b.dataset.act });
@@ -548,7 +550,7 @@
     if (b.dataset.act === 'sleep') b.classList.add('on');
     status.textContent = LABEL[b.dataset.act];
     clearTimeout(statusTimer);
-    if (b.dataset.act === 'poop' || b.dataset.act === 'stand') statusTimer = setTimeout(() => (status.textContent = 'sitting'), 8000);
+    if (b.dataset.act !== 'sit' && b.dataset.act !== 'sleep') statusTimer = setTimeout(() => (status.textContent = 'sitting'), 8000);
   }));
   frame.addEventListener('load', () => send({ type: 'cursor', cursor: last }));
   addEventListener('resize', () => send({ type: 'bounds' }));
