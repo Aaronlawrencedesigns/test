@@ -67,6 +67,9 @@ class Job:
         return p
 
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
+        # clips that start from a pose derived from another clip get their own cache entry
+        if first.endswith('_end'):
+            key = f'{key}@{first[3:]}'
         p = self._gen_path(key, attempt, 'mp4')
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
@@ -187,25 +190,63 @@ class Job:
 
     def still_for(self, kfname):
         n = kfname.replace('kf_', '')
+        if n.endswith('_end'):
+            n = n[:-4]                     # kf_lie_end -> still 'lie' (derived from a clip)
         return self.still.get(n)
+
+    def derive_pose(self, frames, start_still):
+        """The resting pose a clip ends in, at the clip's own scale (fitted at its start),
+        with camera zoom during the clip undone using head size (ear span), within limits.
+        Returns the pose on the 1024 canvas (for the next clip's start image)."""
+        s0, _ = media.fit(frames[0], start_still)
+        try:
+            r = media.ear_span(frames[0]) / max(1, media.ear_span(frames[-1]))
+        except ValueError:
+            r = 1.0
+        sc = s0 * min(1.33, max(0.75, r))
+        last = frames[-1]
+        x0, y0, x1, y1 = media.bbox(last)
+        crop = Image.fromarray(last).crop((x0, y0, x1 + 1, y1 + 1))
+        crop = crop.resize((max(1, round(crop.width * sc)), max(1, round(crop.height * sc))), Image.LANCZOS)
+        _, _, _, gy = media.bbox(start_still)                       # same ground line as the start pose
+        still = Image.new('RGBA', media.OUT_SIZE, (0, 0, 0, 0))
+        still.alpha_composite(crop, (media.OW // 2 - crop.width // 2, max(0, gy - crop.height)))
+        k = np.zeros((media.S, media.S, 4), np.uint8)
+        cx0, cy0, cx1, cy1 = media.CROP_1024
+        k[cy0:cy1, cx0:cx1] = np.asarray(still.resize((cx1 - cx0, cy1 - cy0), Image.LANCZOS))
+        return k
 
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
+        derive = opts.get('derive')
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
             frames, stats = media.decode_keyed(src)
             start_still = self.still_for(first)
-            end_still = self.still.get(end_name) if end_name else None
+            problems_extra, pose_k = [], None
+            if derive:
+                pose_k = self.derive_pose(frames, start_still)
+                end_still = self.to_still(pose_k)
+                x0, y0, x1, y1 = media.bbox(end_still)
+                if (x1 - x0) < 1.05 * (y1 - y0):
+                    problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
+            else:
+                end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
-            raw_end_iou = None
-            if end_still is not None:
+            fitted_end = None
+            if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
-                raw_end_iou = media.affine(frames[-1], sc, o)
-            problems = media.clip_qa(frames, stats, metrics, end_still, [raw_end_iou] if raw_end_iou is not None else None)
-            return (src, fixed), problems, metrics
-        src, fixed = self.with_retries(key, attempt_fn)
+                fitted_end = [media.affine(frames[-1], sc, o)]
+            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end) + problems_extra
+            return (src, fixed, pose_k), problems, metrics
+        src, fixed, pose_k = self.with_retries(key, attempt_fn)
+        if derive:     # the chosen clip defines the resting pose the next clips start from
+            self.kf[f'{derive}_end'] = pose_k
+            media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
+            self.still[derive] = self.to_still(pose_k)
+            media.save_still(pose_k, f'{self.pet}/stills/{derive}.webp')
         media.encode_webm(fixed, f'{self.pet}/clips/{key}.webm')
         media.sheet(fixed, f'{self.work}/sheets/{key}.jpg')
         return src
@@ -257,32 +298,29 @@ class Job:
 
     def clips(self):
         acts = [a for a in self.actions if a in plan.ACTIONS]
-        later = [a for a in acts if plan.ACTIONS[a][0] == 'kf_sleep_side']
-        first_wave = [a for a in acts if a not in later]
         # gaze keyframes for the sweeps first (cheap), so the video queue starts full
         for row in self.rows:
             for col in (0, 4):
                 self.gaze_kf(col, row)
+        from concurrent.futures import wait, FIRST_COMPLETED
+        done, waiting = set(), list(acts)
         with ThreadPoolExecutor(self.workers) as ex:
-            futs = {ex.submit(self.action, a): a for a in first_wave}
-            futs[ex.submit(self.head_tracking)] = 'head tracking'
-            late_futs = []
-            for f in as_completed(list(futs)):
-                name = futs[f]
-                f.result()
-                if name == 'fall_asleep' and later:
-                    # sleeping pose = the last frame of falling asleep, so the clips connect exactly
-                    src = self._latest('fall_asleep', 'mp4')
-                    media.last_frame_1024(src, f'{self.work}/fall_asleep_last.png')
-                    k, _ = media.key_file(f'{self.work}/fall_asleep_last.png')
-                    self.kf['sleep_side'] = k
-                    media.save_green(k, f'{self.kfdir}/kf_sleep_side.png')
-                    self.still['sleep_side'] = self.to_still(k)
-                    self.still['sleep'] = self.still['sleep_side']
-                    media.save_still(k, f'{self.pet}/stills/sleep.webp')
-                    late_futs = [ex.submit(self.action, a) for a in later]
-            for f in late_futs:      # (submitted after the loop above started, so wait here)
-                f.result()
+            running = {ex.submit(self.head_tracking): 'head tracking'}
+
+            def launch():
+                for a in list(waiting):
+                    dep = plan.DEPENDS.get(a)
+                    if dep is None or dep in done or dep not in acts:
+                        waiting.remove(a)
+                        running[ex.submit(self.action, a)] = a
+            launch()
+            while running:
+                fin, _ = wait(list(running), return_when=FIRST_COMPLETED)
+                for f in fin:
+                    name = running.pop(f)
+                    f.result()            # raise errors
+                    done.add(name)
+                launch()                  # clips that were waiting for this one can start now
         self.log('all clips done')
 
     def _latest(self, key, ext):

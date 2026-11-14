@@ -91,16 +91,20 @@ ACTIONS = {
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat with its tail raised as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
-    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it walks its front paws forward and lowers itself onto its belly, ending lying in a relaxed sphinx pose, front legs stretched forward, head up looking at the camera, exactly matching the final frame.", {'spread': True}),
-    'get_up': ('kf_lie', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
-    'fall_asleep': ('kf_lie', 'kf_sleep', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep.", {}),
-    # sleep_loop / wake_up start from the LAST FRAME of fall_asleep ('kf_sleep_side'), so they connect exactly
-    'sleep_loop': ('kf_sleep_side', 'kf_sleep_side', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still.", {'ramp': 0.5}),
-    'wake_up': ('kf_sleep_side', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
+    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it walks its front paws forward and lowers itself onto its belly, ending lying in a relaxed sphinx pose, front legs stretched forward, head up looking at the camera, exactly matching the final frame.", {'spread': True, 'derive': 'lie'}),
+    # The resting poses 'lie' and 'sleep' are taken from the LAST FRAME of the clip that
+    # leads into them ('derive'), resized to the standard scale, so clips always connect
+    # exactly (an image-generated pose never quite matches where a video ends).
+    'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
+    'fall_asleep': ('kf_lie_end', 'kf_sleep', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep.", {'spread': True, 'derive': 'sleep'}),
+    # no end image -> the camera can be locked (stops the model zooming in on a sleeping pet)
+    'sleep_loop': ('kf_sleep_end', None, 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
+    'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
 }
-# still each clip should end on (for the end-pose quality check)
-ACTION_END_STILL = {'lie_down': 'lie', 'get_up': 'sit', 'fall_asleep': None, 'sleep_loop': 'sleep',
-                    'wake_up': 'sit'}
+# still each clip should end on (for the end-pose check); derived clips define their own
+ACTION_END_STILL = {'lie_down': None, 'get_up': 'sit', 'fall_asleep': None, 'sleep_loop': 'sleep', 'wake_up': 'sit'}
+# clips that need another clip to finish first (they start from its last frame)
+DEPENDS = {'get_up': 'lie_down', 'fall_asleep': 'lie_down', 'sleep_loop': 'fall_asleep', 'wake_up': 'fall_asleep'}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)
