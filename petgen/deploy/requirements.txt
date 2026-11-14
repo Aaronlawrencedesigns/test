@@ -1,0 +1,7 @@
+numpy
+scipy
+pillow
+pillow-heif
+opencv-python-headless
+requests
+boto3
