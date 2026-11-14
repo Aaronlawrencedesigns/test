@@ -6,7 +6,8 @@
   "scripts": {
     "postinstall": "node scripts/install-electron.js",
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:signed": "APPLE_KEYCHAIN_PROFILE=chunky-notary electron-builder --mac"
   },
   "license": "MIT",
   "devDependencies": {
@@ -18,7 +19,12 @@
     "productName": "Chunky",
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.entertainment"
+      "category": "public.app-category.entertainment",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true
     }
   }
 }

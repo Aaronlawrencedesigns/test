@@ -39,6 +39,24 @@ npm run dist
 The app appears in `dist/`. It isn't code-signed, so the first time you open it,
 right-click the app → **Open**.
 
+## Signed & notarized build (no "unidentified developer" warning)
+
+Needs an Apple Developer account. One-time setup on your Mac:
+
+1. **Developer ID certificate.** Xcode → Settings → Accounts → your team →
+   Manage Certificates → **+** → *Developer ID Application*. Check it's there:
+   `security find-identity -v -p codesigning` (look for "Developer ID Application").
+2. **App-specific password.** appleid.apple.com → Sign-In and Security →
+   App-Specific Passwords → generate one (name it "Chunky notarize").
+3. **Team ID.** developer.apple.com → Account → Membership details.
+4. **Save notarization credentials in your Keychain** (prompts for the
+   app-specific password; nothing is stored in the project):
+   `xcrun notarytool store-credentials chunky-notary --apple-id YOUR_APPLE_ID --team-id YOUR_TEAM_ID`
+
+Then build with `npm run dist:signed`. It signs with your Developer ID and
+sends the app to Apple for notarization (a few minutes). Plain `npm run dist`
+still works and simply skips notarization.
+
 ## How it's made
 
 1. **Keyframes:** Google's *Nano Banana Pro* image model (via

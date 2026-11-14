@@ -89,6 +89,14 @@ the bottom-right corner and turns his head to follow the mouse.
   `tools/build_stills.py`. Shared crop/size: `CROP_1024`, `OUT_SIZE` in `tools/key.py`.
 - Green-screen keyframes: `assets/keyframes/` (sit, lie, sleep, sleep_side, master_studio).
 
+## Signing / notarization
+Owner has an Apple Developer account. `npm run dist:signed` = electron-builder with
+hardened runtime + `build/entitlements.mac.plist`, signed by the Developer ID cert in
+the owner's Keychain, notarized via the Keychain profile `chunky-notary`
+(`APPLE_KEYCHAIN_PROFILE`; created with `xcrun notarytool store-credentials`).
+Without credentials, notarization is skipped silently. Steps are in README.md.
+Signing can only run on the owner's Mac (not in the cloud container).
+
 ## Owner's Mac setup quirks (already solved)
 - `~/.npm` had root-owned files → fixed with `sudo chown -R $(id -u):$(id -g) ~/.npm`.
 - Newer npm skips dependency install scripts and Electron's downloader is silent
@@ -96,5 +104,5 @@ the bottom-right corner and turns his head to follow the mouse.
   downloading the official Electron zip and unpacking with `ditto`.
 
 ## Ideas not done yet
-More tricks (stretch, roll over, head tilt), sound, a signed/notarised .dmg.
+More tricks (stretch, roll over, head tilt), sound.
 The `stand` clip is him standing on his hind legs (the model's reading of "stand up").
