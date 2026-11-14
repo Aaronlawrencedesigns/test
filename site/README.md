@@ -15,4 +15,4 @@ python3 site/build.py && python3 -m http.server -d site/dist 8000
 ```
 
 Not wired yet: checkout (Stripe), uploads (R2) and email (Postmark). The Create form validates
-in the browser and says checkout isn't connected. The $49 price is a placeholder.
+in the browser and says checkout isn't connected. Launch price: $20.
