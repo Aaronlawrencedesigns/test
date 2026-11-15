@@ -56,41 +56,56 @@ class GPTProtoProvider:
             found = [f for f in found if f]
             if not found:
                 raise RuntimeError(f'{key}: no image in response: {(text or "")[:200]}')
-            open(out_path, 'wb').write(base64.b64decode(found[0].split(',', 1)[1]))
+            open(out_path + '.part', 'wb').write(base64.b64decode(found[0].split(',', 1)[1]))
+            os.replace(out_path + '.part', out_path)
             return out_path
         raise RuntimeError(f'{key}: image request kept failing')
 
     def video(self, key, prompt, first_url, last_url, seconds, out_path):
-        """Seedance 2.0 Mini first/last-frame image-to-video, 720p square, no audio."""
-        body = {'prompt': prompt, 'image': first_url, 'aspect_ratio': '1:1', 'duration': int(seconds),
-                'resolution': '720p', 'generate_audio': False, 'is_upload_media': False, 'seed': -1}
-        if last_url:
-            body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
-        r = self.s.post(f'{API}/api/v3/{self.video_path}', json=body, timeout=120)
-        j = r.json()
-        d = j.get('data') or {}
-        if not d.get('id'):
-            raise RuntimeError(f'{key}: submit failed: {str(j)[:300]}')
+        """Seedance 2.0 Mini first/last-frame image-to-video, 720p square, no audio.
+        The job id is saved next to out_path (.pending) as soon as it is submitted, so a restart
+        resumes waiting for the same (already paid) job instead of ordering a new one."""
+        pending = out_path + '.pending'
+        d = {}
+        if os.path.exists(pending):
+            d = {'id': open(pending).read().strip()}
+            self.log(f'  {key}: resuming {d["id"]}')
+        else:
+            body = {'prompt': prompt, 'image': first_url, 'aspect_ratio': '1:1', 'duration': int(seconds),
+                    'resolution': '720p', 'generate_audio': False, 'is_upload_media': False, 'seed': -1}
+            if last_url:
+                body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
+            r = self.s.post(f'{API}/api/v3/{self.video_path}', json=body, timeout=120)
+            j = r.json()
+            d = j.get('data') or {}
+            if not d.get('id'):
+                raise RuntimeError(f'{key}: submit failed: {str(j)[:300]}')
+            open(pending, 'w').write(d['id'])
+            self.log(f'  {key}: submitted {d["id"]}')
         url = (d.get('urls') or {}).get('get') or f"{API}/api/v3/predictions/{d['id']}/result"
-        self.log(f'  {key}: submitted {d["id"]}')
         t0 = time.time()
         while True:
             if d.get('status') in ('completed', 'succeeded') and d.get('outputs'):
                 break
             if d.get('status') == 'failed':
+                os.remove(pending)
                 raise RuntimeError(f'{key}: failed: {d.get("error")}')
             if time.time() - t0 > 50 * 60:
+                os.remove(pending)
                 raise RuntimeError(f'{key}: timed out ({d["id"]})')
             time.sleep(8)
             try:
                 d = self.s.get(url, timeout=60).json().get('data') or d
-            except requests.RequestException:
+            except (requests.RequestException, ValueError):
                 pass
         out = d['outputs'][0]
+        tmp = out_path + '.part'
         with requests.get(out, stream=True, timeout=300, verify=self.s.verify) as dl:
             dl.raise_for_status()
-            with open(out_path, 'wb') as f:
+            with open(tmp, 'wb') as f:
                 shutil.copyfileobj(dl.raw, f)
+        os.replace(tmp, out_path)                       # never leave a half-written clip in the cache
+        os.remove(pending)
         self.log(f'  {key}: done in {int(time.time() - t0)} s')
         return out_path
 
