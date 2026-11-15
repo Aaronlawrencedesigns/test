@@ -27,6 +27,7 @@
   // Where his head and the ground are inside the 640x640 asset frame (0..1)
   // A generated pet (petgen) ships its own measurements in window.PET; Chunky's are the defaults.
   const PET = window.PET || {};
+  const NAME = PET.name || 'Chunky';
   const HEAD = PET.head || { x: 0.5, y: 0.44 };
   const GROUND_Y = 0.96;
   // Chunky lives in the square at the BOTTOM of the window. The window can be
@@ -322,7 +323,7 @@
     '🍔': ['#c58b52', '#5c3a21', '#7cb342'],
   };
   const MOUTH = PET.mouth || { x: 0.5, y: 0.54 };   // in the 640x640 frame, sitting
-  tray.innerHTML = FOODS.map((f) => `<span class="food" data-food="${f}" role="button" aria-label="Drag to feed Chunky">${f}</span>`).join('');
+  tray.innerHTML = FOODS.map((f) => `<span class="food" data-food="${f}" role="button" aria-label="Drag to feed ${NAME}">${f}</span>`).join('');
   const inRect = (r, x, y, pad = 0) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
   const trayOpen = () => tray.classList.contains('show');
   let trayTimer;

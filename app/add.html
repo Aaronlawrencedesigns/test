@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+  <title>Add your pet</title>
+  <style>
+    :root { --bg: #fcfbfa; --ink: #221d27; --muted: #6a6170; --line: #d3cad9; --accent: #2f45c4; --accent-ink: #fff; --bad: #b3261e; color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #24202a; --ink: #efeaf3; --muted: #a79daf; --line: #3b3443; --accent: #8a9bff; --accent-ink: #12142a; --bad: #ff8a80; color-scheme: dark; }
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, system-ui, sans-serif; -webkit-user-select: none; }
+    .drag { position: fixed; inset: 0 0 auto; height: 34px; -webkit-app-region: drag; }
+    main { padding: 44px 28px 24px; display: grid; gap: 14px; }
+    svg { width: 44px; height: 44px; }
+    h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+    p { margin: 0; color: var(--muted); }
+    input {
+      font: 600 20px/1 ui-monospace, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; text-align: center;
+      width: 100%; box-sizing: border-box; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: transparent; color: var(--ink); -webkit-user-select: text;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    button { font: 600 14px/1 inherit; border: 0; border-radius: 8px; padding: 11px 16px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+    button:disabled { opacity: .6; cursor: default; }
+    button.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+    #msg { min-height: 21px; }
+    #msg.bad { color: var(--bad); }
+    .spacer { flex: 1; }
+    a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="drag"></div>
+  <main>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="8" width="56" height="40" rx="9" fill="#2f45c4"/><rect x="21" y="52" width="22" height="5" rx="2.5" fill="#6a6170"/><path d="M21.5 37.5c0-5.6 4.8-9.2 10.5-9.2s10.5 3.6 10.5 9.2c0 2.4-2 3.6-4.4 2.8H25.9c-2.4.8-4.4-.4-4.4-2.8z" fill="#ffd25e"/><circle cx="20.6" cy="25.6" r="3.4" fill="#ffd25e"/><circle cx="27.4" cy="20.4" r="3.4" fill="#ffd25e"/><circle cx="36.6" cy="20.4" r="3.4" fill="#ffd25e"/><circle cx="43.4" cy="25.6" r="3.4" fill="#ffd25e"/></svg>
+    <h1>Add your pet</h1>
+    <p>Paste the pet code from your "is ready" email. It looks like K7QM-4XTP-9HRC.</p>
+    <form id="f" class="row" style="display:grid;gap:12px">
+      <input id="code" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="16" autofocus />
+      <div class="row">
+        <span id="msg"></span>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" id="cancel">Close</button>
+        <button type="submit" id="go">Add pet</button>
+      </div>
+    </form>
+    <p>No code yet? <a id="site">Create your pet at desktopsidekicks.com</a></p>
+  </main>
+  <script>
+    const f = document.getElementById('f'), code = document.getElementById('code'), go = document.getElementById('go'), msg = document.getElementById('msg');
+    const fmt = (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12).replace(/(.{4})(?=.)/g, '$1-');
+    const say = (t, bad) => { msg.textContent = t; msg.className = bad ? 'bad' : ''; };
+    code.addEventListener('input', () => { code.value = fmt(code.value); });
+    window.sidekicks.onProgress((t) => say(t));
+    window.sidekicks.onPrefill((c) => { code.value = fmt(c); submit(); });
+    document.getElementById('cancel').onclick = () => window.sidekicks.close();
+    document.getElementById('site').onclick = () => window.sidekicks.openSite();
+    let busy = false;
+    async function submit() {
+      if (busy) return;
+      if (code.value.replace(/-/g, '').length !== 12) return say('Enter all 12 characters of your code.', true);
+      busy = true; go.disabled = true; code.disabled = true;
+      say('Checking your code…');
+      const r = await window.sidekicks.addPet(code.value);
+      busy = false; go.disabled = false; code.disabled = false;
+      if (r.error) return say(r.error, true);
+      say(`${r.name} is on your desktop!`);
+    }
+    f.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "desktop-sidekicks",
+  "version": "1.0.0",
+  "description": "Your pet, living on your desktop. Desktop Sidekicks app for Mac.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/install-electron.js",
+    "sync": "node scripts/sync-engine.js",
+    "start": "npm run sync && electron .",
+    "dist": "npm run sync && electron-builder --mac",
+    "dist:signed": "npm run sync && APPLE_KEYCHAIN_PROFILE=chunky-notary electron-builder --mac"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.desktopsidekicks.app",
+    "productName": "Desktop Sidekicks",
+    "files": ["main.js", "preload.js", "add-preload.js", "add.html", "renderer/**"],
+    "protocols": [{ "name": "Desktop Sidekicks", "schemes": ["desktopsidekicks"] }],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "category": "public.app-category.entertainment",
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
+      "extendInfo": { "LSUIElement": true }
+    },
+    "dmg": { "artifactName": "Desktop-Sidekicks.${ext}", "title": "Desktop Sidekicks" }
+  }
+}

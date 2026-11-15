@@ -1,0 +1,15 @@
+// Bridge for the pet window: the same dogApi the player uses in Chunky's app, plus the
+// pet's own measurements (window.PET) and where its footage lives (window.CHUNKY_ASSETS).
+const { contextBridge, ipcRenderer } = require('electron');
+
+const pet = ipcRenderer.sendSync('pet-info');
+contextBridge.exposeInMainWorld('PET', pet.manifest);
+contextBridge.exposeInMainWorld('CHUNKY_ASSETS', pet.assets);
+contextBridge.exposeInMainWorld('dogApi', {
+  onCursor: (fn) => ipcRenderer.on('cursor', (_e, data) => fn(data)),
+  onAction: (fn) => ipcRenderer.on('action', (_e, name) => fn(name)),
+  setHover: (over) => ipcRenderer.send('hover', over),
+  drag: (dx, dy) => ipcRenderer.send('drag', { dx, dy }),
+  contextMenu: () => ipcRenderer.send('context-menu'),
+  setExtraTop: (px) => ipcRenderer.send('extend', px),
+});

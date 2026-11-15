@@ -102,7 +102,7 @@ The owner is turning this into a product: customers upload 4 pet photos, pay, an
 get their own desk pet. Milestone 1 is `petgen/` (see petgen/README.md): photos →
 pet pack + preview + QA report, automated with quality gates and retries, cached.
 **Keep Chunky separate:** the owner wants Chunky's app kept as-is for himself.
-Product work lives in `petgen/` and must NOT change Chunky's `src/`, `web/`,
+Product work lives in `petgen/`, `site/` and `app/` and must NOT change Chunky's `src/`, `web/`,
 `assets/` or `tools/`. The product has its own copy of the player in
 `petgen/engine/` (reads per-pet measurements from `window.PET`: look, head,
 mouth, earTop). Test for free with `--replay`. Never use `--host git` for real
@@ -117,3 +117,20 @@ customers (public repo).
 ## Ideas not done yet
 More tricks (stretch, roll over, head tilt), sound.
 The `stand` clip is him standing on his hind legs (the model's reading of "stand up").
+
+## Desktop Sidekicks: how an order flows (all live)
+1. **Site** (`site/`, Cloudflare Pages project `desktopsidekicks`, root `site`, builds on every push to
+   main; desktopsidekicks.com). Create-your-pet form → `functions/api/order.js` saves photos to the
+   private R2 bucket `desktopsidekicks-orders` and opens Stripe Checkout ($20) → Stripe webhook
+   (`functions/api/stripe-webhook.js`) marks it paid, writes `queue/paid/<id>`, emails a confirmation
+   (Postmark, from hello@desktopsidekicks.com). Stripe is still in TEST mode (sandbox key).
+2. **Worker** (`petgen/worker.py`, DigitalOcean droplet `sidekicks-worker` 64.225.116.98, systemd
+   `sidekicks-worker`, settings `/etc/sidekicks.env`, setup `petgen/deploy/setup.sh`, pulls main on
+   restart) makes the pet, uploads `pet.zip` + report, gives it a pet code (`codes/<CODE>`), emails
+   the owner an "Approve and send" link. Test-mode orders only if `ALLOW_TEST_ORDERS=1`.
+3. **Approve** (`/api/admin/approve?id&t`) → customer gets the "is ready" email with the code.
+4. **App** (`app/`, Electron, "Desktop Sidekicks"): adds the pet by code / `desktopsidekicks://add/<CODE>`.
+   Owner builds the signed DMG on their Mac and uploads it to R2 as `Desktop-Sidekicks.dmg`
+   (served at /download). See app/README.md.
+Keys live in: Cloudflare Pages secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, POSTMARK_TOKEN),
+the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. Never in git or chat.

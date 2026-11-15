@@ -70,14 +70,14 @@ export async function sendEmail(env, { to, subject, text, html, tag }) {
   const r = await fetch('https://api.postmarkapp.com/email', {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Postmark-Server-Token': env.POSTMARK_TOKEN },
-    body: JSON.stringify({ From: FROM, To: to, Subject: subject, TextBody: text, HtmlBody: html, Tag: tag, MessageStream: 'outbound' }),
+    body: JSON.stringify({ From: FROM, ReplyTo: env.REPLY_TO || undefined, To: to, Subject: subject, TextBody: text, HtmlBody: html, Tag: tag, MessageStream: 'outbound' }),
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok || data.ErrorCode) throw new Error(`postmark: ${data.Message || r.status}`);
   return data;
 }
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function confirmationEmail(order) {
   const pet = order.pet_name || 'your pet';
   const text = `Thanks for your order!
@@ -97,4 +97,68 @@ https://desktopsidekicks.com`;
 <p style="color:#6a6170;font-size:13px">Order ${esc(order.id)}<br>Desktop Sidekicks &middot; <a href="https://desktopsidekicks.com" style="color:#2f45c4">desktopsidekicks.com</a></p>
 </div>`;
   return { subject: `We're making ${pet}`, text, html, tag: 'order-confirmation' };
+}
+
+// ---------------------------------------------------------------- delivery
+// Each made pet gets a short code (e.g. K7QM-4XTP-9HRC) the Desktop Sidekicks app uses to
+// download it: codes/<CODE> -> order id. Codes only work once the owner has approved the pet.
+export const SITE = 'https://desktopsidekicks.com';
+export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/(.{4})(?=.)/g, '$1-');
+export const validCode = (c) => /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/.test(c);
+
+export async function orderForCode(env, code) {
+  const c = normCode(code);
+  if (!validCode(c)) return null;
+  const obj = await env.ORDERS.get(`codes/${c}`);
+  if (!obj) return null;
+  return getOrder(env, (await obj.text()).trim());
+}
+
+export function page(title, body, status = 200) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)} · Desktop Sidekicks</title><link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#e6e1ea;--win:#fcfbfa;--ink:#221d27;--muted:#6a6170;--line:#d3cad9;--accent:#2f45c4;--accent-ink:#fff;--tag:#ffd25e}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1820;--win:#24202a;--ink:#efeaf3;--muted:#a79daf;--line:#3b3443;--accent:#8a9bff;--accent-ink:#12142a}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,sans-serif;padding:24px max(16px,env(safe-area-inset-left))}
+.win{width:min(520px,100%);background:var(--win);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px -12px rgba(0,0,0,.3);overflow:hidden}
+.bar{padding:10px 14px;border-bottom:1px solid var(--line);font:500 12.5px/1 ui-monospace,Menlo,monospace;color:var(--muted)}
+.body{padding:22px 24px 24px;display:grid;gap:14px}
+h1{margin:0;font-size:28px;line-height:1.1;letter-spacing:-.02em}
+p{margin:0}.muted{color:var(--muted)}
+.btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:8px;padding:12px 18px;font:600 15px/1 inherit;background:var(--accent);color:var(--accent-ink);text-decoration:none;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.code{font:600 24px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;padding:14px 16px;border:1px dashed var(--line);border-radius:10px;text-align:center;user-select:all}
+ol{margin:0;padding-left:20px;display:grid;gap:6px}
+</style></head><body><main class="win"><div class="bar">${esc(title)}</div><div class="body">${body}</div></main></body></html>`,
+    { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+}
+
+export function deliveryEmail(order, code) {
+  const pet = order.pet_name || 'Your pet';
+  const add = `${SITE}/add/${code}`;
+  const text = `${pet} is ready!
+
+1. Download Desktop Sidekicks for Mac: ${SITE}/download
+2. Open it, then click this link to add ${pet}: ${add}
+   (or paste this code into the app: ${code})
+
+${pet} will appear in the bottom-right corner of your screen, follow your mouse, nap when you step away and eat the treats you drag over. Right-click ${pet} for tricks, sizes and more.
+
+Keep this email: the code works on any of your Macs.
+
+Questions? Just reply to this email.
+Desktop Sidekicks · ${SITE}`;
+  const html = `<div style="font:16px/1.55 -apple-system,system-ui,sans-serif;color:#221d27;max-width:520px">
+<h1 style="font-size:26px;margin:0 0 12px">${esc(pet)} is ready!</h1>
+<p>Two steps and ${esc(pet)} moves onto your desktop:</p>
+<p><b>1.</b> <a href="${SITE}/download" style="color:#2f45c4">Download Desktop Sidekicks for Mac</a> and open it.</p>
+<p><b>2.</b> Add ${esc(pet)}:</p>
+<p><a href="${add}" style="display:inline-block;background:#2f45c4;color:#fff;text-decoration:none;font-weight:600;padding:12px 18px;border-radius:8px">Add ${esc(pet)} to Desktop Sidekicks</a></p>
+<p style="color:#6a6170">Or paste this code into the app: <b style="font-family:ui-monospace,Menlo,monospace;color:#221d27;letter-spacing:.05em">${esc(code)}</b></p>
+<p>${esc(pet)} will sit in the bottom-right corner, follow your mouse, nap when you step away and eat the treats you drag over. Right-click for tricks, sizes and more.</p>
+<p style="color:#6a6170;font-size:13px">Keep this email: the code works on any of your Macs. Questions? Just reply.<br>Desktop Sidekicks &middot; <a href="${SITE}" style="color:#2f45c4">desktopsidekicks.com</a></p>
+</div>`;
+  return { subject: `${pet} is ready for your desktop`, text, html, tag: 'pet-delivery' };
 }
