@@ -4,7 +4,8 @@ DigitalOcean server (see deploy/setup.sh).
 Order flow in the R2 bucket (written by the website's Stripe webhook, site/functions/):
   queue/paid/<id>      paid, waiting          -> this worker claims it
   queue/working/<id>   being made
-  queue/review/<id>    made; the owner reviews the report before it goes to the customer
+  queue/review/<id>    made; the owner reviews it and clicks "Approve and send" (site: /api/admin/approve)
+  queue/delivered/<id> approved; the customer was emailed their pet code (codes/<CODE> -> id)
   queue/failed/<id>    making failed (see order.json "error")
   queue/test/<id>      Stripe test-mode order, skipped unless ALLOW_TEST_ORDERS=1
 Results: orders/<id>/pet.zip, orders/<id>/report.html. Generation keyframes: orders/<id>/kf/*.
@@ -13,7 +14,7 @@ Env (/etc/sidekicks.env): GPTPROTO_API_KEY, S3_ENDPOINT, S3_BUCKET, AWS_ACCESS_K
 AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK,
 PETGEN_WORKERS (clips made at once; default 3, each needs ~0.5-1 GB of memory).
 """
-import datetime, json, os, shutil, sys, time, traceback
+import datetime, json, os, secrets, shutil, sys, time, traceback
 
 import boto3
 import requests
@@ -34,6 +35,19 @@ POLL = int(os.environ.get('POLL_SECONDS', '60'))
 ALLOW_TEST = os.environ.get('ALLOW_TEST_ORDERS', '0') == '1'
 OWNER = os.environ.get('OWNER_EMAIL', '').strip()
 VIEWS = ['front', 'side', 'back', 'sit']
+SITE = os.environ.get('SITE_URL', 'https://desktopsidekicks.com').rstrip('/')
+CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'   # no 0/O, 1/I
+
+
+def new_code():
+    """A pet code like K7QM-4XTP-9HRC (60 bits), unique in the bucket."""
+    while True:
+        raw = ''.join(secrets.choice(CODE_ALPHABET) for _ in range(12))
+        code = f'{raw[:4]}-{raw[4:8]}-{raw[8:]}'
+        try:
+            s3.head_object(Bucket=BUCKET, Key=f'codes/{code}')
+        except Exception:  # noqa: BLE001 - not found: free to use
+            return code
 
 s3 = boto3.client('s3', endpoint_url=os.environ.get('S3_ENDPOINT'), region_name=os.environ.get('AWS_DEFAULT_REGION', 'auto'))
 
@@ -127,19 +141,26 @@ def make(oid):
     s3.upload_file(f'{job.out}/report.html', BUCKET, f'orders/{oid}/report.html', ExtraArgs={'ContentType': 'text/html'})
 
     o = get_order(oid)
+    if not o.get('code'):                          # the customer's pet code (works once approved)
+        o['code'] = new_code()
+        s3.put_object(Bucket=BUCKET, Key=f'codes/{o["code"]}', Body=oid.encode())
+    o.setdefault('approve_token', secrets.token_urlsafe(24))
     o.update(status='review', made_at=now(), ready=ok, needs_look=failed, photo_warnings=warn, ai_cost_usd=cost,
              error=job.error, pet_zip=f'orders/{oid}/pet.zip', report=f'orders/{oid}/report.html')
     put_order(o)
     move(oid, 'working', 'review')
     head = 'Ready to ship' if ok and not warn else ('Ready, with photo warnings' if ok else 'Needs a look')
-    log(f'{oid}: {head} (est. ${cost})')
+    log(f'{oid}: {head} (est. ${cost}), code {o["code"]}')
+    approve = f'{SITE}/api/admin/approve?id={oid}&t={o["approve_token"]}'
     email_owner(f'{head}: {name} (order {oid[:8]})',
                 f'{name} for {o.get("email")} is made.\n\nVerdict: {head}\nEstimated AI cost: ${cost}\n'
                 + (f'Needs a look: {", ".join(failed)}\n' if failed else '')
                 + (f'Photo warnings: {", ".join(warn)}\n' if warn else '')
                 + (f'Error: {job.error}\n' if job.error else '')
-                + f'\nQA report (link valid 7 days):\n{link(f"orders/{oid}/report.html")}\n'
-                + f'\nPet pack:\n{link(f"orders/{oid}/pet.zip")}\n')
+                + f'\nReview it, then approve and send it to the customer:\n{approve}\n'
+                + f'\nQA report:\n{SITE}/api/admin/report?id={oid}&t={o["approve_token"]}\n'
+                + f'\nPet pack (link valid 7 days):\n{link(f"orders/{oid}/pet.zip")}\n'
+                + f'\nTo remake it instead: sidekicks-requeue {oid}\n')
 
 
 def tick():
