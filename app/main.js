@@ -204,6 +204,8 @@ function menu() {
   const pets = listPets();
   const name = petName();
   return [
+    { label: '✕  Close menu', click: () => {} },   // clicking any item closes the menu
+    { type: 'separator' },
     { label: `Feed ${name}`, click: send('feed') },
     { type: 'separator' },
     ...ACTIONS.map(([label, a]) => ({ label, click: send(a) })),

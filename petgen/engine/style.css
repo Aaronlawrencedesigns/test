@@ -117,7 +117,7 @@ html, body {
 /* "Menu" pill shown above the pet while the pointer is on it (desktop app only) */
 #menu-btn {
   position: absolute;
-  transform: translate(-50%, 6px);
+  transform: translate(-50%, -4px);
   z-index: 5;
   padding: 5px 12px;
   border: 0;
@@ -129,7 +129,7 @@ html, body {
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.1s, transform 0.1s;
 }
 #menu-btn.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 #menu-btn:hover { background: #fff; }
