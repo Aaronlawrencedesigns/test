@@ -164,7 +164,20 @@ ipcMain.on('extend', (_e, px) => {
   extraTop = Math.max(0, Math.min(800, Math.round(Number(px) || 0)));
   applySize();
 });
-ipcMain.on('context-menu', () => win && Menu.buildFromTemplate(menu()).popup({ window: win }));
+// The pet's menu opens just above its head (macOS draws a popup downward from its top-left
+// corner, so place it a menu-height above; macOS keeps it on screen near the top edge).
+const MENU_W = 230, ITEM_H = 22, SEP_H = 11;
+ipcMain.on('context-menu', (_e, at) => {
+  if (!win) return;
+  const tpl = menu();
+  const opts = { window: win };
+  if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
+    const h = tpl.reduce((n, it) => n + (it.type === 'separator' ? SEP_H : ITEM_H), 10);
+    opts.x = Math.round(at.x - MENU_W / 2);
+    opts.y = Math.round(at.y - h - 8);
+  }
+  Menu.buildFromTemplate(tpl).popup(opts);
+});
 ipcMain.on('drag', (_e, { dx, dy }) => {
   const [x, y] = win.getPosition();
   win.setPosition(Math.round(x + dx), Math.round(y + dy));
