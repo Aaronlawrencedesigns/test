@@ -31,6 +31,9 @@ class Job:
         self.actions = actions or plan.DEFAULT_ACTIONS
         self.rows = rows or plan.ROWS
         self.max_retries, self.workers = max_retries, workers
+        # videos cost ~5x an image: fewer retries, and a spending cap per pet (USD, estimated)
+        self.video_retries = int(os.environ.get('PETGEN_VIDEO_RETRIES', '1'))
+        self.budget = float(os.environ.get('PETGEN_BUDGET', '12'))
         self._log = log
         self.lock = threading.Lock()
         self.upload_lock = threading.Lock()
@@ -118,14 +121,21 @@ class Job:
             self.qa.append({'item': item, 'attempt': attempt, 'problems': problems, 'metrics': metrics or {}})
         self.log(f'QA     {item} try {attempt}: ' + ('pass' if not problems else '; '.join(problems)))
 
-    def with_retries(self, item, fn):
+    def spent(self):
+        return self.cost['images'] * plan.PRICE_IMAGE + self.cost['video_seconds'] * plan.PRICE_VIDEO_PER_SECOND
+
+    def with_retries(self, item, fn, video=False):
         """fn(attempt) -> (result, problems). Retries while problems, up to max_retries extra tries
         (plus plan.SEX_EXTRA_TRIES when the only problem left is female anatomy).
         If every try fails, keeps the try with the fewest problems."""
         best = None
-        attempt, last = 0, self.max_retries + 1
+        tries = (min(self.max_retries, self.video_retries) if video else self.max_retries) + 1
+        attempt, last = 0, tries
         while attempt < last:
             attempt += 1
+            if attempt > 1 and self.spent() > self.budget:   # over budget: keep the best try, owner decides
+                self.record(item, attempt, [f'not retried: pet budget ${self.budget:.0f} reached (est. ${self.spent():.2f})'])
+                break
             try:
                 res, problems, metrics = fn(attempt)
             except FileNotFoundError as e:       # replay has no recording for a retry
@@ -139,7 +149,7 @@ class Job:
                 best = (res, problems)
             if not problems:
                 break
-            if (attempt == last and last == self.max_retries + 1 and plan.SEX_EXTRA_TRIES
+            if (attempt == last and last == tries and plan.SEX_EXTRA_TRIES
                     and all('male anatomy' in p for p in problems)):
                 last += plan.SEX_EXTRA_TRIES
         if best is None:
@@ -382,7 +392,7 @@ class Job:
                                      max_growth=plan.MAX_GROWTH.get(key),
                                      max_edge=plan.MAX_EDGE.get(key, 0.02)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
-        src, fixed, pose_k = self.with_retries(key, attempt_fn)
+        src, fixed, pose_k = self.with_retries(key, attempt_fn, video=True)
         if derive:     # the chosen clip defines the resting pose the next clips start from
             self.kf[f'{derive}_end'] = pose_k
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
@@ -419,7 +429,7 @@ class Job:
             left, right = media.half_coverage(prog)
             metrics = {'turn': round(info['turn'], 3), 'left_share': round(left, 2), 'right_share': round(right, 2)}
             return (frames, prog, left, right), problems, metrics
-        return self.with_retries(it['key'], attempt_fn)
+        return self.with_retries(it['key'], attempt_fn, video=True)
 
     def head_tracking(self):
         """One row of real frames per head height. Level: a full left->right sweep (plus a half

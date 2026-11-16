@@ -163,5 +163,9 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   video (`decode_keyed(low=True)`): the normal crop cut off paws stretched toward the camera.
 - Site: `site/legal.html` (Terms, Refund Policy, Privacy Policy), linked from a small footer on the
   desktop ("Contact: hello@desktopsidekicks.com · Privacy Policy & Terms") and under checkout.
+- Retry cost: videos get 2 tries (`PETGEN_VIDEO_RETRIES`=1), images 3; a clip failing only the
+  female-anatomy check gets one extra try with positive wording (`SEX_NOTE_STRONG`, attempt >= 3).
+  Spending cap per pet run `PETGEN_BUDGET` (default $12, est.): over it, no more retries; best try kept
+  and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
