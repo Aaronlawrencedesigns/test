@@ -9,7 +9,7 @@ GitRawUploader    - DEV ONLY: pushes to a branch of a PUBLIC GitHub repo (what w
                     Chunky). Never use with customers' pets.
 S3Uploader        - production: S3 / Cloudflare R2 bucket, private, short-lived signed URLs.
 """
-import base64, os, re, shutil, subprocess, time
+import base64, json, os, re, shutil, subprocess, time
 import requests
 
 API = 'https://gptproto.com'
@@ -25,8 +25,16 @@ def _session():
     return s
 
 
+GAZE_CHECK = ("Look at this photo of a pet. Answer ONLY with JSON: "
+              '{"vertical": "up"|"slightly up"|"level"|"slightly down"|"down", '
+              '"horizontal": "left"|"slightly left"|"center"|"slightly right"|"right", "eyes_follow": true|false}. '
+              '"vertical" = where its head and eyes point (chin raised = up). "horizontal" = toward which side OF THE '
+              'IMAGE its face points. "eyes_follow" = its eyes look the same way its head points (not at the camera).')
+
+
 class GPTProtoProvider:
     image_model = 'gemini-3-pro-image-preview'
+    vision_model = 'gemini-3-flash-preview'   # cheap checks (well under a cent per image)
     video_path = 'doubao/dreamina-seedance-2-0-mini-260615/image-to-video'
 
     def __init__(self, log=print):
@@ -60,6 +68,20 @@ class GPTProtoProvider:
             os.replace(out_path + '.part', out_path)
             return out_path
         raise RuntimeError(f'{key}: image request kept failing')
+
+    def look_check(self, path):
+        """Where does the pet in this image look? -> dict (vertical, horizontal, eyes_follow) or None."""
+        content = [{'type': 'text', 'text': GAZE_CHECK}, {'type': 'image_url', 'image_url': {'url': self._data_uri(path)}}]
+        for attempt in range(3):
+            try:
+                r = self.s.post(f'{API}/v1/chat/completions', timeout=120,
+                                json={'model': self.vision_model, 'messages': [{'role': 'user', 'content': content}]})
+                text = r.json()['choices'][0]['message']['content']
+                m = re.search(r'\{.*\}', text if isinstance(text, str) else str(text), re.S)
+                return json.loads(m.group(0)) if m else None
+            except Exception:  # noqa: BLE001 - a missing check never blocks a pet
+                time.sleep(4 * (attempt + 1))
+        return None
 
     def video(self, key, prompt, first_url, last_url, seconds, out_path):
         """Seedance 2.0 Mini first/last-frame image-to-video, 720p square, no audio.
@@ -130,6 +152,9 @@ class ReplayProvider:
 
     def image(self, key, prompt, ref_paths, out_path):
         return self._get(key, out_path)
+
+    def look_check(self, path):
+        return None   # replay runs are free: no vision checks
 
     def video(self, key, prompt, first_url, last_url, seconds, out_path):
         return self._get(key, out_path)

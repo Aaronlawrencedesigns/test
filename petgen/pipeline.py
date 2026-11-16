@@ -41,6 +41,7 @@ class Job:
             os.makedirs(d, exist_ok=True)
         self.cost = {'images': 0, 'video_seconds': 0, 'cached': 0}
         self.image_path = {}  # (item, attempt) -> generated file (names carry a content tag)
+        self._gaze_events, self._gaze_started = {}, set()
         self.qa = []          # {item, attempt, problems, metrics}
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
@@ -196,19 +197,53 @@ class Job:
         return np.asarray(Image.fromarray(k1024).crop(media.CROP_1024).resize(media.OUT_SIZE, Image.LANCZOS))
 
     def gaze_kf(self, col, row):
-        """Head-direction pose (turned head on the shared sitting body) -> kf_gaze_{col}_{row}.png"""
+        """Head-direction pose (turned head on the shared sitting body) -> kf_gaze_{col}_{row}.png.
+        Tilted poses get a vision check (does it really look up / down?) and are remade if not."""
         name = f'kf_gaze_{col}_{row}'
-        if os.path.exists(f'{self.kfdir}/{name}.png'):
+        with self.lock:
+            ev = self._gaze_events.setdefault(name, threading.Event())
+            mine = name not in self._gaze_started
+            self._gaze_started.add(name)
+        if not mine:
+            ev.wait()
             return name
-        key, _, prompt = plan.gaze_item(col, row)
+        try:
+            key, _, prompt = plan.gaze_item(col, row)
 
-        def attempt_fn(attempt):
-            p = self.gen_image(key, prompt, [f'{self.kfdir}/kf_sit.png'], attempt)
-            k, st = media.key_file(p)
-            return k, media.keyframe_ok(st), st
-        k = self.with_retries(key, attempt_fn)
-        media.save_green(media.composite_head(k, self.kf['sit']), f'{self.kfdir}/{name}.png')
+            def attempt_fn(attempt):
+                p = self.gen_image(key, prompt, [f'{self.kfdir}/kf_sit.png'], attempt)
+                k, st = media.key_file(p)
+                problems, metrics = media.keyframe_ok(st), dict(st)
+                if row in plan.V_OK and not problems:
+                    seen = self.look_check(p)
+                    if seen:
+                        metrics['looks'] = f"{seen.get('vertical')} / {seen.get('horizontal')}"
+                        if seen.get('vertical') not in plan.V_OK[row]:
+                            problems.append(f"head should look {row.replace('hu', 'slightly up').replace('hd', 'slightly down')}"
+                                            f" but looks {seen.get('vertical')}")
+                return k, problems, metrics
+            k = self.with_retries(key, attempt_fn)
+            media.save_green(media.composite_head(k, self.kf['sit']), f'{self.kfdir}/{name}.png')
+        finally:
+            ev.set()
         return name
+
+    def is_lying(self, img):
+        """Lying down = clearly lower than sitting (front-on sphinx pose) or wider than tall (side-on)."""
+        x0, y0, x1, y1 = media.bbox(img)
+        sx0, sy0, sx1, sy1 = media.bbox(self.kf['sit'] if img.shape[0] == media.S else self.still['sit'])
+        return (x1 - x0) >= 1.05 * (y1 - y0) or (y1 - y0) <= 0.88 * (sy1 - sy0)
+
+    def look_check(self, path):
+        """Vision check of where the pet looks, cached per image (None if unavailable)."""
+        cache = f'{path}.look.json'
+        if os.path.exists(cache):
+            return json.load(open(cache))
+        fn = getattr(self.provider, 'look_check', None)
+        seen = fn(path) if fn else None
+        if seen:
+            json.dump(seen, open(cache, 'w'))
+        return seen
 
     def still_for(self, kfname):
         n = kfname.replace('kf_', '')
@@ -244,9 +279,9 @@ class Job:
             p = self.gen_image('sleep_edit', plan.SLEEP_EDIT, [f'{self.kfdir}/kf_lie_end.png'], attempt)
             k, st = media.key_file(p)
             problems = media.keyframe_ok(st)
-            x0, y0, x1, y1 = media.bbox(k)
-            if (x1 - x0) < 1.05 * (y1 - y0):
+            if not self.is_lying(k):
                 problems.append('not lying down')
+            x0, y0, x1, y1 = media.bbox(k)
             lx0, ly0, lx1, ly1 = media.bbox(self.kf['lie_end'])
             if (y1 - y0) > 1.15 * (ly1 - ly0):     # asleep (head down) is never taller than lying
                 problems.append('bigger than the lying pose (scale changed)')
@@ -275,8 +310,7 @@ class Job:
             if derive:
                 pose_k = self.derive_pose(frames, start_still)
                 end_still = self.to_still(pose_k)
-                x0, y0, x1, y1 = media.bbox(end_still)
-                if (x1 - x0) < 1.05 * (y1 - y0):
+                if not self.is_lying(end_still):
                     problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
             else:
                 end_still = self.still.get(end_name) if end_name else None
@@ -323,20 +357,34 @@ class Job:
         return self.with_retries(it['key'], attempt_fn)
 
     def head_tracking(self):
-        """Full sweep per head height; add a half sweep where the full one turned too fast."""
+        """One row of real frames per head height. Level: a full left->right sweep (plus a half
+        sweep where it turned too fast). Tilted rows: two half sweeps through a real tilted centre
+        pose (a single full sweep drops the head back to level as it passes the middle, so the
+        pet wouldn't look up when the cursor is straight above it). Falls back to the full sweep."""
         def one_row(row):
-            frames, prog, left, right = self.sweep(row, 0, 4)
-            pieces = [(0, 4, frames, prog)]
-            for (c0, c1, share) in ((0, 2, left), (2, 4, right)):
-                if share < 0.3:
-                    self.log(f'       {row}: {"left" if c0 == 0 else "right"} half only got {share:.0%} of frames -> half sweep')
-                    try:   # optional improvement: if it fails, the full sweep alone still works
-                        if row != 'level':
-                            self.gaze_kf(2, row)
-                        f2, p2, _, _ = self.sweep(row, c0, c1)
-                        pieces.append((c0, c1, f2, p2))
-                    except Exception as e:  # noqa: BLE001
-                        self.log(f'       {row}: half sweep skipped ({e})')
+            if row == 'level':
+                frames, prog, left, right = self.sweep(row, 0, 4)
+                pieces = [(0, 4, frames, prog)]
+                for (c0, c1, share) in ((0, 2, left), (2, 4, right)):
+                    if share < 0.3:
+                        self.log(f'       {row}: {"left" if c0 == 0 else "right"} half only got {share:.0%} of frames -> half sweep')
+                        try:
+                            f2, p2, _, _ = self.sweep(row, c0, c1)
+                            pieces.append((c0, c1, f2, p2))
+                        except Exception as e:  # noqa: BLE001
+                            self.log(f'       {row}: half sweep skipped ({e})')
+                return media.pick_row(pieces)
+            pieces = []
+            try:
+                self.gaze_kf(2, row)
+                for c0, c1 in ((0, 2), (2, 4)):
+                    f2, p2, _, _ = self.sweep(row, c0, c1)
+                    pieces.append((c0, c1, f2, p2))
+            except Exception as e:  # noqa: BLE001
+                self.log(f'       {row}: half sweeps failed ({e}) -> full sweep')
+            if len(pieces) < 2:
+                frames, prog, _, _ = self.sweep(row, 0, 4)
+                pieces.append((0, 4, frames, prog))
             return media.pick_row(pieces)
         with ThreadPoolExecutor(min(self.workers, len(self.rows))) as ex:
             futs = {row: ex.submit(one_row, row) for row in self.rows}
@@ -344,6 +392,28 @@ class Job:
         self.look = media.save_look(rows, f'{self.pet}/look')
         for r, row in zip(self.rows, rows):
             media.sheet(row, f'{self.work}/sheets/look_{r}.jpg', n=11)
+        self.check_look_heights()
+
+    def check_look_heights(self):
+        """Final check on what customers see most: the centre frame of each head height must
+        really look up / down (vision check). A miss marks the pet for review."""
+        problems, metrics = [], {}
+        mid = self.look['cols'] // 2
+        for r, row in enumerate(self.rows):
+            if row not in plan.V_OK:
+                continue
+            p = f'{self.pet}/look/{r}_{mid}.webp'
+            png = f'{self.work}/look_{row}_centre.png'
+            Image.open(p).convert('RGBA').save(png)
+            seen = self.look_check(png)
+            if not seen:
+                continue
+            metrics[row] = seen.get('vertical')
+            wrong = {'up': {'level', 'slightly down', 'down'}, 'hu': {'slightly down', 'down'},
+                     'hd': {'slightly up', 'up'}, 'down': {'level', 'slightly up', 'up'}}[row]
+            if seen.get('vertical') in wrong:   # the vision check is noisy: only flag clear misses
+                problems.append(f'{row} row: centre frame looks {seen.get("vertical")}')
+        self.record('head looks up and down', 1, problems, metrics)
 
     def reference_colours(self):
         """The pet's true colours = the video look of the level head sweep (same sitting pose).
