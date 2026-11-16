@@ -378,6 +378,9 @@ class Job:
             else:
                 end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
+            if self.sex == 'female' and key in plan.SEATED_TRICKS and 'sit' in self.still:
+                fixed, n = media.patch_groin(fixed, self.still['sit'])
+                metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
             if derive and paws_low:   # the paws really leave the video (the low crop reaches its bottom)
                 problems_extra.append('paws cut off at the bottom of the frame in the resting pose')
             fitted_end = None

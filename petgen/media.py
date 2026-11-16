@@ -297,6 +297,43 @@ def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=No
     return problems
 
 
+# ------------------------------------------------------------ female anatomy fix
+def groin_mask(still):
+    """Soft mask of the area between a sitting pet's hind legs (where video models draw male parts)."""
+    from scipy import ndimage
+    a = still[..., 3] > 128
+    x0, y0, x1, y1 = bbox(still)
+    w, h = x1 - x0, y1 - y0
+    yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
+    m = ((((xx - (x0 + x1) / 2) / (0.16 * w)) ** 2 + ((yy - (y0 + 0.86 * h)) / (0.10 * h)) ** 2) <= 1) & a
+    return np.clip(ndimage.gaussian_filter(m.astype(np.float32), 4) * 1.4, 0, 1)
+
+
+def patch_groin(frames, still, min_iou=0.85):
+    """Seated tricks of female pets: copy the clean belly area of the sitting pose into every frame
+    whose lower body lines up with it (video models keep adding male anatomy mid-clip). Frames where
+    the pet has moved (IoU of the area around the patch < min_iou) are left alone."""
+    M = groin_mask(still)
+    if M.max() <= 0:
+        return frames, 0
+    ys, xs = np.nonzero(M > 0.01)
+    pad = 24
+    y0, y1 = max(0, ys.min() - pad), min(M.shape[0], ys.max() + pad)
+    x0, x1 = max(0, xs.min() - pad), min(M.shape[1], xs.max() + pad)
+    sa = still[y0:y1, x0:x1, 3] > 128
+    st = still.astype(np.float32)
+    m = M[..., None]
+    out, n = [], 0
+    for f in frames:
+        fa = f[y0:y1, x0:x1, 3] > 128
+        iou = (sa & fa).sum() / max(1, (sa | fa).sum())
+        if iou >= min_iou:
+            f = np.clip(f.astype(np.float32) * (1 - m) + st * m, 0, 255).astype(np.uint8)
+            n += 1
+        out.append(f)
+    return out, n
+
+
 # ------------------------------------------------------------ head sweeps
 def dog_stats(rgba):
     """Per-channel mean / std of the pet's pixels (alpha > 200)."""
