@@ -134,3 +134,12 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
    (served at /download). See app/README.md.
 Keys live in: Cloudflare Pages secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, POSTMARK_TOKEN),
 the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. Never in git or chat.
+- Pet sizing: sit = 60% of the canvas height unless the lying pose would be wider than
+  `LIE_MAX_W` (74%) of the frame; then the whole pet is smaller (long pets like Chewie).
+  Clip QA rejects clips where the pet touches the frame edge in >2% of frames.
+- Green-floor shadows key as dark teal "mats": `soften_shadow()` in petgen/media.py turns them
+  into a soft neutral shadow (lower 40% of the pet only).
+- Tail: the order form asks (yes / stub / none); `plan.TAILS` adds a note to every prompt.
+  Re-make a pet: `sudo sidekicks-requeue <order id> tail=none` (generation cache is keyed by
+  prompt + input-file content, so changed settings really regenerate).
+- App: hovering the pet shows a "Menu" pill (engine option `dogApi.menuButton`).

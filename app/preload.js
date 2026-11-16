@@ -6,6 +6,7 @@ const pet = ipcRenderer.sendSync('pet-info');
 contextBridge.exposeInMainWorld('PET', pet.manifest);
 contextBridge.exposeInMainWorld('CHUNKY_ASSETS', pet.assets);
 contextBridge.exposeInMainWorld('dogApi', {
+  menuButton: true,   // show the "Menu" pill when the pointer is on the pet
   onCursor: (fn) => ipcRenderer.on('cursor', (_e, data) => fn(data)),
   onAction: (fn) => ipcRenderer.on('action', (_e, name) => fn(name)),
   setHover: (over) => ipcRenderer.send('hover', over),

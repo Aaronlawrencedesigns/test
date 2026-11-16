@@ -22,8 +22,9 @@ ROOT = os.path.dirname(HERE)
 
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
-                 max_retries=2, workers=6, log=print):
+                 max_retries=2, workers=6, log=print, tail='yes'):
         self.name, self.species, self.photos_in = name, species, photos
+        self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
         self.out = os.path.abspath(out)
         self.provider, self.uploader = provider, uploader
         self.actions = actions or plan.DEFAULT_ACTIONS
@@ -39,6 +40,7 @@ class Job:
         for d in (self.gen, self.kfdir, f'{self.work}/photos', f'{self.work}/sheets', f'{self.pet}/clips', f'{self.pet}/stills'):
             os.makedirs(d, exist_ok=True)
         self.cost = {'images': 0, 'video_seconds': 0, 'cached': 0}
+        self.image_path = {}  # (item, attempt) -> generated file (names carry a content tag)
         self.qa = []          # {item, attempt, problems, metrics}
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
@@ -49,15 +51,32 @@ class Job:
         with self.lock:
             self._log(f'[{time.time() - self.t0:6.0f}s] {msg}')
 
-    def fill(self, text):
+    def fill(self, text, video=False):
+        t = self.tail
+        text = (text.replace('{tail_and}', t['and']).replace('{tail_raised}', t['raised'])
+                + t['note'] + (plan.IN_FRAME if video else ''))
         return text.replace('{species}', self.species).replace('{pet}', self.name)
+
+    @staticmethod
+    def _content_tag(text, files):
+        """Short hash of a prompt and the files it uses: the cache key changes whenever
+        either changes (e.g. a pet re-made at a new size, or with its tail setting fixed)."""
+        import hashlib
+        h = hashlib.md5(text.encode())
+        for f in files:
+            with open(f, 'rb') as fh:
+                h.update(fh.read())
+        return h.hexdigest()[:8]
 
     # ------------------------------------------------------------ generation (cached)
     def _gen_path(self, key, attempt, ext):
         return f'{self.gen}/{key}{"" if attempt == 1 else f"__{attempt}"}.{ext}'
 
     def gen_image(self, key, prompt, refs, attempt=1):
+        base = key
+        key = f'{key}@{self._content_tag(self.fill(prompt), refs)}'
         p = self._gen_path(key, attempt, 'png')
+        self.image_path[(base, attempt)] = p
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
             return p
@@ -67,20 +86,15 @@ class Job:
         return p
 
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
-        # clips that start from a pose derived from another clip get their own cache entry
-        def tag(kf):    # derived poses change per run/attempt: tag them by content
-            import hashlib
-            return f'{kf[3:]}.' + hashlib.md5(open(f'{self.kfdir}/{kf}.png', 'rb').read()).hexdigest()[:6]
-        if first.endswith('_end'):
-            key = f'{key}@{tag(first)}'
-            if last and last.endswith('_end') and last != first:
-                key += f'-{tag(last)}'
+        # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
+        kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
+        key = f'{key}@{self._content_tag(self.fill(prompt, video=True), kfs)}'
         p = self._gen_path(key, attempt, 'mp4')
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
             return p
         self.log(f'clip   {key} (try {attempt})')
-        self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt), self.url(first),
+        self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt, video=True), self.url(first),
                             self.url(last) if last else None, seconds, p)
         with self.lock: self.cost['video_seconds'] += seconds
         return p
@@ -155,7 +169,7 @@ class Job:
             def ref_paths():
                 ps = []
                 for r in ref_names:
-                    ps += self.photos if r == 'photos' else [self._gen_path(r, self.best_attempt.get(r, 1), 'png')]
+                    ps += self.photos if r == 'photos' else [self.image_path[(r, self.best_attempt.get(r, 1))]]
                 return ps
             if key == 'master':
                 p = self.gen_image(key, prompt, ref_paths())
@@ -271,7 +285,7 @@ class Job:
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
                 fitted_end = [media.affine(frames[-1], sc, o)]
-            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end) + problems_extra
+            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed) + problems_extra
             return (src, fixed, pose_k), problems, metrics
         src, fixed, pose_k = self.with_retries(key, attempt_fn)
         if derive:     # the chosen clip defines the resting pose the next clips start from

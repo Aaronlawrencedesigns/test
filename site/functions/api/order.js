@@ -10,6 +10,7 @@ export async function onRequestPost({ request, env }) {
   const email = String(form.get('email') || '').trim();
   const name = String(form.get('name') || '').trim().slice(0, 40) || 'your pet';
   const species = ['Dog', 'Cat', 'Other'].includes(form.get('species')) ? form.get('species') : 'Dog';
+  const tail = ['yes', 'stub', 'none'].includes(form.get('tail')) ? form.get('tail') : 'yes';
   if (!validEmail(email)) return json({ error: 'Add a valid email so we can send your pet when it\'s ready.' }, 400);
 
   const photos = [];
@@ -29,7 +30,7 @@ export async function onRequestPost({ request, env }) {
   const origin = new URL(request.url).origin;
   const order = {
     id, status: 'awaiting_payment', created_at: new Date().toISOString(),
-    email, pet_name: name === 'your pet' ? '' : name, species: species.toLowerCase(),
+    email, pet_name: name === 'your pet' ? '' : name, species: species.toLowerCase(), tail,
     photos: Object.fromEntries(photos.map((p) => [p.view, `orders/${id}/photos/${p.view}.${p.ext}`])),
     price_cents: PRICE_CENTS,
   };
