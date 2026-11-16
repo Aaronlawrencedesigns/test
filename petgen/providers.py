@@ -69,6 +69,20 @@ class GPTProtoProvider:
             return out_path
         raise RuntimeError(f'{key}: image request kept failing')
 
+    def ask_image(self, path, question):
+        """Short JSON answer about an image from the vision model (None if unavailable)."""
+        content = [{'type': 'text', 'text': question}, {'type': 'image_url', 'image_url': {'url': self._data_uri(path)}}]
+        for attempt in range(3):
+            try:
+                r = self.s.post(f'{API}/v1/chat/completions', timeout=120,
+                                json={'model': self.vision_model, 'messages': [{'role': 'user', 'content': content}]})
+                text = r.json()['choices'][0]['message']['content']
+                m = re.search(r'\{.*\}', text if isinstance(text, str) else str(text), re.S)
+                return json.loads(m.group(0)) if m else None
+            except Exception:  # noqa: BLE001
+                time.sleep(4 * (attempt + 1))
+        return None
+
     def look_check(self, path):
         """Where does the pet in this image look? -> dict (vertical, horizontal, eyes_follow) or None."""
         content = [{'type': 'text', 'text': GAZE_CHECK}, {'type': 'image_url', 'image_url': {'url': self._data_uri(path)}}]
@@ -155,6 +169,9 @@ class ReplayProvider:
 
     def look_check(self, path):
         return None   # replay runs are free: no vision checks
+
+    def ask_image(self, path, question):
+        return None
 
     def video(self, key, prompt, first_url, last_url, seconds, out_path):
         return self._get(key, out_path)

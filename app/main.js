@@ -22,7 +22,7 @@ const SIZES = [
   { label: 'Large', scale: 1.3 },
 ];
 const ACTIONS = [
-  ['Sit', 'sit'], ['Lie down', 'lie'], ['Sleep', 'sleep'], ['Stand up', 'stand'],
+  ['Sit (Default - Mouse Tracking)', 'sit'], ['Lie down', 'lie'], ['Sleep', 'sleep'], ['Stand up', 'stand'],
   ['Happy wiggle', 'wag'], ['Puppy eyes', 'puppy'], ['Bark', 'bark'], ['Poop', 'poop'],
 ];
 

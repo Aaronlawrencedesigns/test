@@ -150,6 +150,11 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   (`look_check`, gemini-3-flash-preview via GPTProto, <1c) and are remade if they don't tilt;
   `check_look_heights` flags rows whose centre frame clearly faces the wrong way.
 - No zoom: clip QA rejects clips where the pet grows mid-clip beyond `plan.MAX_ZOOM` (1.08-1.15x for
-  seated tricks, 1.35x otherwise). Chewie's first puppy clip zoomed 1.66x.
+  seated tricks, 1.35x otherwise; Chewie's first puppy clip zoomed 1.66x) and, for tricks that keep
+  the pet's shape, a slow push-in beyond `plan.MAX_GROWTH` (start->max; Chewie's yawn grew 1.18x).
+- Sleep pose = last frame of fall_asleep (derived, like lie), so sleeping continues exactly where
+  falling asleep ended (the SLEEP_EDIT image is only the clip's target). Resting poses whose paws
+  run off the bottom of the frame are rejected.
+- No-tail / stub pets: a vision check on 3 frames of every trick rejects clips that show a tail.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
