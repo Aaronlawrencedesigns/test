@@ -206,6 +206,13 @@
     font: 400 14px/1.2 var(--body); color: var(--ink); background: var(--win);
     border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px; min-width: 0;
   }
+  /* own chevron with room on the right (the native arrow sat on the edge) */
+  .fields select {
+    -webkit-appearance: none; appearance: none; padding-right: 40px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 52%, calc(100% - 15px) 52%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  }
   .fields .wide { grid-column: 1 / -1; }
   .platform { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; min-width: 0; }
   .platform legend { font-size: 13px; font-weight: 500; padding: 0; margin-bottom: 6px; width: 100%; }
