@@ -53,10 +53,11 @@ class Job:
         with self.lock:
             self._log(f'[{time.time() - self.t0:6.0f}s] {msg}')
 
-    def fill(self, text, video=False):
+    def fill(self, text, video=False, attempt=1):
         t = self.tail
+        sex = plan.SEX_NOTE_STRONG[self.sex] if (video and attempt >= 3 and self.sex == 'female') else plan.SEX_NOTE[self.sex]
         text = (text.replace('{tail_and}', t['and']).replace('{tail_raised}', t['raised'])
-                + t['note'] + plan.SEX_NOTE[self.sex] + (plan.IN_FRAME if video else ''))
+                + t['note'] + sex + (plan.IN_FRAME if video else ''))
         return text.replace('{species}', self.species).replace('{pet}', self.name)
 
     @staticmethod
@@ -90,7 +91,7 @@ class Job:
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
         # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
         kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
-        key = f'{key}@{self._content_tag(self.fill(prompt, video=True), kfs)}'
+        key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}'
         if first == 'kf_sleep_end':
             key += 'u2'   # (made before the stale-upload fix: those clips started from the wrong image)
         p = self._gen_path(key, attempt, 'mp4')
@@ -98,7 +99,7 @@ class Job:
             with self.lock: self.cost['cached'] += 1
             return p
         self.log(f'clip   {key} (try {attempt})')
-        self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt, video=True), self.url(first),
+        self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt, video=True, attempt=attempt), self.url(first),
                             self.url(last) if last else None, seconds, p)
         with self.lock: self.cost['video_seconds'] += seconds
         return p
@@ -118,10 +119,13 @@ class Job:
         self.log(f'QA     {item} try {attempt}: ' + ('pass' if not problems else '; '.join(problems)))
 
     def with_retries(self, item, fn):
-        """fn(attempt) -> (result, problems). Retries while problems, up to max_retries extra tries.
+        """fn(attempt) -> (result, problems). Retries while problems, up to max_retries extra tries
+        (plus plan.SEX_EXTRA_TRIES when the only problem left is female anatomy).
         If every try fails, keeps the try with the fewest problems."""
         best = None
-        for attempt in range(1, self.max_retries + 2):
+        attempt, last = 0, self.max_retries + 1
+        while attempt < last:
+            attempt += 1
             try:
                 res, problems, metrics = fn(attempt)
             except FileNotFoundError as e:       # replay has no recording for a retry
@@ -135,6 +139,9 @@ class Job:
                 best = (res, problems)
             if not problems:
                 break
+            if (attempt == last and last == self.max_retries + 1 and plan.SEX_EXTRA_TRIES
+                    and all('male anatomy' in p for p in problems)):
+                last += plan.SEX_EXTRA_TRIES
         if best is None:
             raise RuntimeError(f'{item}: nothing generated')
         return best[0]
@@ -529,7 +536,7 @@ class Job:
 
     def _latest(self, key, ext):
         best = None
-        for a in range(1, self.max_retries + 2):
+        for a in range(1, self.max_retries + 2 + plan.SEX_EXTRA_TRIES):
             p = self._gen_path(key, a, ext)
             if os.path.exists(p):
                 best = p
