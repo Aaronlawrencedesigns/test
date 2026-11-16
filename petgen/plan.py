@@ -111,11 +111,11 @@ ACTIONS = {
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
     'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it walks its front paws forward and lowers itself onto its belly, ending lying in a relaxed sphinx pose, front legs stretched forward, head up looking at the camera, exactly matching the final frame.", {'spread': True, 'derive': 'lie'}),
-    # 'lie' is taken from the LAST FRAME of lie_down ('derive'), so clips connect exactly
+    # 'lie' / 'sleep' are taken from the LAST FRAME of lie_down / fall_asleep ('derive'), so clips connect exactly
     # (an image-generated pose never quite matches where a video ends). 'sleep' is an
     # image edit of that lying frame (SLEEP_EDIT), made before fall_asleep runs.
     'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
-    'fall_asleep': ('kf_lie_end', 'kf_sleep_end', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep, ending exactly like the final frame.", {'spread': True, 'sleep_edit': True}),
+    'fall_asleep': ('kf_lie_end', 'kf_sleep_end', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep, ending exactly like the final frame.", {'spread': True, 'sleep_edit': True, 'derive': 'sleep'}),
     # starts and ends on the (resized) sleeping pose so it loops seamlessly
     'sleep_loop': ('kf_sleep_end', 'kf_sleep_end', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
     'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
@@ -128,6 +128,9 @@ DEPENDS = {'get_up': 'lie_down', 'fall_asleep': 'lie_down', 'sleep_loop': 'fall_
 # standing up / lying down / getting up legitimately change it a little (Chunky's poop: 1.26x).
 MAX_ZOOM = {'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.15, 'sleep_loop': 1.08, 'fall_asleep': 1.15}
 MAX_ZOOM_DEFAULT = 1.35
+# ...and for tricks where the pet keeps its shape, how much bigger than at the start it may get
+# (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
+MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.08, 'bark': 1.08, 'eat': 1.08, 'wag': 1.12}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)

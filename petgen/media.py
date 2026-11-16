@@ -68,8 +68,9 @@ def key_rgb(rgb):
     if a.any():
         x0, y0, x1, y1 = bbox(rgba)
         st['touches_edge'] = bool(x0 <= 2 or y0 <= 2 or x1 >= W - 3)
+        st['touches_bottom'] = bool(y1 >= H - 3)     # paws run off the bottom of the frame
     else:
-        st['touches_edge'] = True
+        st['touches_edge'] = st['touches_bottom'] = True
     return rgba, st
 
 
@@ -248,7 +249,7 @@ def zoom_peak(frames):
     return max(sz) / ref
 
 
-def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None, max_zoom=1.4):
+def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None, max_zoom=1.4, max_growth=None):
     """Return a list of problems (empty = pass)."""
     problems = []
     raw_edge = sum(1 for s in stats if s.get('touches_edge')) / max(1, len(stats))
@@ -259,6 +260,12 @@ def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=No
     if final is not None and len(final) > 2:
         z = zoom_peak(final)
         metrics['zoom'] = round(z, 2)
+        if max_growth:     # a slow camera push-in: the pet ends up bigger than it started
+            sz = [float(np.sqrt((f[..., 3] > 128).sum())) for f in final[::2]]
+            g = max(sz) / max(1.0, sz[0])
+            metrics['growth'] = round(g, 2)
+            if g > max_growth:
+                problems.append(f'the camera pushes in (the pet grows {g:.2f}x)')
         if z > max_zoom:   # the camera zoomed in mid-clip
             problems.append(f'the camera zooms in mid-clip ({z:.2f}x)')
     areas = np.array([s['area'] for s in stats])

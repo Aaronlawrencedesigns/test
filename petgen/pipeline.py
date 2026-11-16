@@ -234,6 +234,30 @@ class Job:
         sx0, sy0, sx1, sy1 = media.bbox(self.kf['sit'] if img.shape[0] == media.S else self.still['sit'])
         return (x1 - x0) >= 1.05 * (y1 - y0) or (y1 - y0) <= 0.88 * (sy1 - sy0)
 
+    TAIL_Q = ('Look at this photo of a pet. Answer ONLY with JSON {"tail_visible": true|false}: is a tail '
+              '(longer than a tiny stub) visible on the animal?')
+
+    def tail_seen(self, frames, key):
+        """Pets marked 'no tail' / 'stub': does a long tail show up in this clip? (vision check
+        on a few frames; the video model sometimes invents one). Returns a problem or None."""
+        if self.tail is plan.TAILS['yes'] or not getattr(self.provider, 'ask_image', None):
+            return None
+        hits = 0
+        for i in (len(frames) // 3, len(frames) // 2, 2 * len(frames) // 3):
+            png = f'{self.work}/tailcheck_{key}_{i}.png'
+            bg = Image.new('RGBA', media.OUT_SIZE, (255, 255, 255, 255))
+            bg.alpha_composite(Image.fromarray(frames[i]))
+            bg.convert('RGB').save(png)
+            cache = png + '.tail.json'
+            if os.path.exists(cache):
+                ans = json.load(open(cache))
+            else:
+                ans = self.provider.ask_image(png, self.TAIL_Q)
+                if ans:
+                    json.dump(ans, open(cache, 'w'))
+            hits += bool(ans and ans.get('tail_visible'))
+        return 'shows a tail (this pet has none)' if hits >= 2 else None
+
     def look_check(self, path):
         """Vision check of where the pet looks, cached per image (None if unavailable)."""
         cache = f'{path}.look.json'
@@ -251,13 +275,13 @@ class Job:
             n = n[:-4]                     # kf_lie_end -> still 'lie' (derived from a clip)
         return self.still.get(n)
 
-    def derive_pose(self, frames, start_still):
+    def derive_pose(self, frames, start_still, undo_zoom=True):
         """The resting pose a clip ends in, at the clip's own scale (fitted at its start),
         with camera zoom during the clip undone using head size (ear span), within limits.
         Returns the pose on the 1024 canvas (for the next clip's start image)."""
         s0, _ = media.fit(frames[0], start_still)
-        try:
-            r = media.ear_span(frames[0]) / max(1, media.ear_span(frames[-1]))
+        try:   # (ears fold when a pet falls asleep, so ear span can't measure zoom there)
+            r = media.ear_span(frames[0]) / max(1, media.ear_span(frames[-1])) if undo_zoom else 1.0
         except ValueError:
             r = 1.0
         sc = s0 * min(1.33, max(0.75, r))
@@ -308,8 +332,10 @@ class Job:
             start_still = self.still_for(first)
             problems_extra, pose_k = [], None
             if derive:
-                pose_k = self.derive_pose(frames, start_still)
+                pose_k = self.derive_pose(frames, start_still, undo_zoom=(derive != 'sleep'))
                 end_still = self.to_still(pose_k)
+                if stats[-1].get('touches_bottom'):
+                    problems_extra.append('paws cut off at the bottom of the frame in the resting pose')
                 if not self.is_lying(end_still):
                     problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
             else:
@@ -319,14 +345,22 @@ class Job:
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
                 fitted_end = [media.affine(frames[-1], sc, o)]
+            tail_problem = self.tail_seen(fixed, f'{key}_{attempt}')
+            if tail_problem:
+                problems_extra.append(tail_problem)
+            if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:
+                problems_extra.append('paws cut off at the bottom of the frame while asleep')
             problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed,
-                                     max_zoom=plan.MAX_ZOOM.get(key, plan.MAX_ZOOM_DEFAULT)) + problems_extra
+                                     max_zoom=plan.MAX_ZOOM.get(key, plan.MAX_ZOOM_DEFAULT),
+                                     max_growth=plan.MAX_GROWTH.get(key)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
         src, fixed, pose_k = self.with_retries(key, attempt_fn)
         if derive:     # the chosen clip defines the resting pose the next clips start from
             self.kf[f'{derive}_end'] = pose_k
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
             self.still[derive] = self.to_still(pose_k)
+            if derive == 'sleep' and 'lie' in self.still:     # one colour look across lying / sleeping
+                self.still['sleep'] = media.apply_tf(self.still['sleep'], media.tf_to(media.dog_stats(self.still['sleep']), media.dog_stats(self.still['lie'])), 0.5)
             media.save_still(pose_k, f'{self.pet}/stills/{derive}.webp')
         start_ref = self.still_for(first)
         end_ref = self.still.get(derive) if derive else (self.still.get(end_name) if end_name else None)
