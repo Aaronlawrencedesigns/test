@@ -149,5 +149,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   `pick_row_from_starts` takes each column from the first half of the clip starting nearest it. Tilted gaze images get a vision check
   (`look_check`, gemini-3-flash-preview via GPTProto, <1c) and are remade if they don't tilt;
   `check_look_heights` flags rows whose centre frame clearly faces the wrong way.
+- No zoom: clip QA rejects clips where the pet grows mid-clip beyond `plan.MAX_ZOOM` (1.08-1.15x for
+  seated tricks, 1.35x otherwise). Chewie's first puppy clip zoomed 1.66x.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".

@@ -124,6 +124,10 @@ ACTIONS = {
 ACTION_END_STILL = {'lie_down': None, 'get_up': 'sit', 'fall_asleep': 'sleep', 'sleep_loop': 'sleep', 'wake_up': 'sit'}
 # clips that need another clip to finish first (they start from its last frame)
 DEPENDS = {'get_up': 'lie_down', 'fall_asleep': 'lie_down', 'sleep_loop': 'fall_asleep', 'wake_up': 'fall_asleep'}
+# No camera zoom: the pet keeps its size. Tricks where it stays seated may barely change size;
+# standing up / lying down / getting up legitimately change it a little (Chunky's poop: 1.26x).
+MAX_ZOOM = {'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.15, 'sleep_loop': 1.08, 'fall_asleep': 1.15}
+MAX_ZOOM_DEFAULT = 1.35
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)
