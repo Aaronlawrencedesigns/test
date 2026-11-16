@@ -356,7 +356,8 @@ class Job:
                 problems_extra.append('paws cut off at the bottom of the frame while asleep')
             problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed,
                                      max_zoom=plan.MAX_ZOOM.get(key, plan.MAX_ZOOM_DEFAULT),
-                                     max_growth=plan.MAX_GROWTH.get(key)) + problems_extra
+                                     max_growth=plan.MAX_GROWTH.get(key),
+                                     max_edge=plan.MAX_EDGE.get(key, 0.02)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
         src, fixed, pose_k = self.with_retries(key, attempt_fn)
         if derive:     # the chosen clip defines the resting pose the next clips start from

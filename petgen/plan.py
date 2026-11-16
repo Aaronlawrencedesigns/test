@@ -128,6 +128,8 @@ DEPENDS = {'get_up': 'lie_down', 'fall_asleep': 'lie_down', 'sleep_loop': 'fall_
 # standing up / lying down / getting up legitimately change it a little (Chunky's poop: 1.26x).
 MAX_ZOOM = {'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.15, 'sleep_loop': 1.08, 'fall_asleep': 1.15}
 MAX_ZOOM_DEFAULT = 1.35
+# share of frames the pet may touch a side/top edge (a big wake-up stretch brushes it for a moment)
+MAX_EDGE = {'wake_up': 0.06}
 # ...and for tricks where the pet keeps its shape, how much bigger than at the start it may get
 # (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
 MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.08, 'bark': 1.08, 'eat': 1.08, 'wag': 1.12}
