@@ -279,7 +279,7 @@
     const overTray = trayOpen() && inRect(tray.getBoundingClientRect(), x, y, 6);
     const overMenu = menuBtn && menuBtn.classList.contains('show') && inRect(menuBtn.getBoundingClientRect(), x, y, 6);
     S.overDog = over;
-    if (menuBtn) showMenuBtn(over || overMenu);
+    if (menuBtn) showMenuBtn((over || overMenu) && !S.food && !S.dragging);
     if (overTray || overMenu || S.food) over = true;   // the tray, the menu button and a held food stay clickable
     if (over !== S.over) {
       S.over = over;
@@ -290,17 +290,15 @@
   // "Menu" pill above the pet while the pointer is on it (the desktop app turns it on with
   // dogApi.menuButton): one click opens the same menu as the menu-bar icon / right-click.
   const menuBtn = api.menuButton ? document.createElement('button') : null;
-  let menuHideTimer = null;
   function placeMenuBtn() {
     if (!menuBtn) return;
     const W = SZ();
     menuBtn.style.left = `${W / 2}px`;
-    menuBtn.style.top = `${Math.max(4, stageTop() + EAR_TOP * W - 34)}px`;
+    menuBtn.style.top = `${stageTop() + W - 30}px`;   // at the pet's feet
   }
   function showMenuBtn(on) {
-    clearTimeout(menuHideTimer);
     if (on) { placeMenuBtn(); menuBtn.classList.add('show'); }
-    else menuHideTimer = setTimeout(() => menuBtn.classList.remove('show'), 900);
+    else menuBtn.classList.remove('show');            // gone as soon as the pointer leaves
   }
   if (menuBtn) {
     menuBtn.id = 'menu-btn';

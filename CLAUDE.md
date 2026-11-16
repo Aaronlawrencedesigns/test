@@ -142,4 +142,4 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Tail: the order form asks (yes / stub / none); `plan.TAILS` adds a note to every prompt.
   Re-make a pet: `sudo sidekicks-requeue <order id> tail=none` (generation cache is keyed by
   prompt + input-file content, so changed settings really regenerate).
-- App: hovering the pet shows a "Menu" pill (engine option `dogApi.menuButton`).
+- App: hovering the pet shows a "Menu" pill at its feet, only while hovered (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
