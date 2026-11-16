@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Desktop Sidekicks</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -214,6 +215,15 @@
     background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
   }
   .fields .wide { grid-column: 1 / -1; }
+  .fine { font-size: 12px; color: var(--muted); margin: 0; }
+  .fine a { color: inherit; }
+  .site-foot {
+    position: fixed; z-index: 40; left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 11.5px/1.4 var(--mono); color: var(--muted);
+  }
+  .site-foot a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .site-foot a:hover { color: var(--ink); }
+
   .platform { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; min-width: 0; }
   .platform legend { font-size: 13px; font-weight: 500; padding: 0; margin-bottom: 6px; width: 100%; }
   .fields .platform label.radio { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--line);
@@ -280,6 +290,7 @@
     .facts { grid-template-columns: 1fr; }
     .slots { grid-template-columns: repeat(2, 1fr); }
     .fields { grid-template-columns: 1fr; }
+    .site-foot { position: static; padding: 0 max(16px, env(safe-area-inset-left, 0px)) 24px; }
     #pet { position: relative; right: auto; bottom: auto; --pet: min(300px, 80vw); margin: -8px 0 0 auto; }
     .hello { display: none; }
     .trick { padding: 7px 11px; font-size: 12px; }
@@ -427,7 +438,7 @@
       <details><summary>What photos work best?</summary><p>Four clear, well-lit photos of the same pet: from the front, from the side, from behind and sitting. The whole pet in frame, no other animals or people.</p></details>
       <details><summary>Will it slow down my Mac?</summary><p>No. Your pet is a small app that plays short clips and shows one still frame at a time while it follows the mouse.</p></details>
       <details><summary>Does it get in the way?</summary><p>Clicks pass straight through everywhere except your pet itself. You can resize it, move it, or put it to sleep from the menu.</p></details>
-      <details><summary>What happens to my photos?</summary><p>We use them only to make your pet. They're never shared or shown publicly.</p></details>
+      <details><summary>What happens to my photos?</summary><p>We use them only to make your pet. They're never sold, shared for marketing or shown publicly. See our <a href="legal.html#privacy">Privacy Policy</a>.</p></details>
       <details><summary>How long does it take?</summary><p>Usually within a day. We email you as soon as your pet passes its checks.</p></details>
     </div>
   </section>
@@ -459,7 +470,8 @@
         <label>Pet's name<input type="text" id="pet-name" name="name" placeholder="Chunky" autocomplete="off"></label>
         <label>Species<select id="pet-species" name="species"><option>Dog</option><option>Cat</option><option>Other</option></select></label>
         <label>Tail<select id="pet-tail" name="tail"><option value="yes">Has a tail</option><option value="stub">Short stub</option><option value="none">No tail</option></select></label>
-        <label>Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
+        <label>Male or female<select id="pet-sex" name="sex"><option value="" selected disabled>Choose…</option><option value="male">Male</option><option value="female">Female</option></select></label>
+        <label class="wide">Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
         <fieldset class="wide platform">
           <legend>Your computer</legend>
           <label class="radio"><input type="radio" name="platform" id="platform-mac" value="mac" checked> Mac</label>
@@ -472,9 +484,15 @@
         <span class="total">$20 <small>one time, Mac app</small></span>
         <button type="submit" class="btn">Continue to checkout</button>
       </div>
+      <p class="fine">By continuing you agree to our <a href="legal.html#terms">Terms</a>, <a href="legal.html#refunds">Refund Policy</a> and <a href="legal.html#privacy">Privacy Policy</a>.</p>
     </form>
   </section>
 </main>
+
+<footer class="site-foot">
+  <span>Contact: <a href="mailto:hello@desktopsidekicks.com">hello@desktopsidekicks.com</a></span>
+  <a href="legal.html">Privacy Policy &amp; Terms</a>
+</footer>
 
 
 <script>
@@ -636,6 +654,7 @@
     if (document.getElementById('platform-pc').checked) return;
     const missing = [...form.querySelectorAll('.slot')].filter((s) => !s.classList.contains('has')).map((s) => s.querySelector('.l').firstChild.textContent.trim().toLowerCase());
     const email = document.getElementById('owner-email').value.trim();
+    if (!document.getElementById('pet-sex').value) return say('warn', 'Choose male or female, so your pet looks right.');
     if (missing.length) return say('warn', `Add a photo for: ${missing.join(', ')}.`);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return say('warn', 'Add your email so we can send your pet when it\'s ready.');
     const data = new FormData();
@@ -643,6 +662,7 @@
     data.append('name', document.getElementById('pet-name').value.trim());
     data.append('species', document.getElementById('pet-species').value);
     data.append('tail', document.getElementById('pet-tail').value);
+    data.append('sex', document.getElementById('pet-sex').value);
     data.append('email', email);
     submit.disabled = true;
     const label = submit.textContent;

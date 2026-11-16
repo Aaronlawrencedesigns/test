@@ -132,7 +132,8 @@ def make(oid):
 
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
-              workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes')
+              workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
+              sex=o.get('sex') or 'male')
     job.run()
     ok, failed, warn, cost = verdict(job)
 
@@ -189,12 +190,15 @@ def tick():
             email_owner(f'Failed: order {oid[:8]}', f'Making order {oid} failed:\n{e}\n\nCheck the server log: journalctl -u sidekicks-worker')
 
 
-def requeue(oid, tail=None):
-    if tail:
+def requeue(oid, tail=None, sex=None):
+    if tail or sex:
         o = get_order(oid)
-        o['tail'] = tail
+        if tail:
+            o['tail'] = tail
+        if sex:
+            o['sex'] = sex
         put_order(o)
-    """python -m petgen.worker requeue <order id> [tail=yes|stub|none]: retry a failed order, make a skipped
+    """python -m petgen.worker requeue <order id> [tail=yes|stub|none] [sex=male|female]: retry a failed order, make a skipped
     test order, or re-make a pet (a re-made pet waits for approval again; its code stays the same)."""
     for state in ('test', 'failed', 'review', 'delivered'):
         if oid in queued(state):
@@ -205,8 +209,8 @@ def requeue(oid, tail=None):
 
 def main():
     if len(sys.argv) > 2 and sys.argv[1] == 'requeue':
-        tail = next((a.split('=', 1)[1] for a in sys.argv[3:] if a.startswith('tail=')), None)
-        return requeue(sys.argv[2], tail)
+        opt = lambda k: next((a.split('=', 1)[1] for a in sys.argv[3:] if a.startswith(k + '=')), None)
+        return requeue(sys.argv[2], opt('tail'), opt('sex'))
     os.makedirs(WORK, exist_ok=True)
     log(f'worker up: bucket {BUCKET}, test orders {"ON" if ALLOW_TEST else "off"}, owner email {"set" if OWNER else "NOT set"}')
     for oid in queued('working'):           # interrupted by a restart: resume (finished steps are cached)
