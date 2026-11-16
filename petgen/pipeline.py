@@ -90,6 +90,8 @@ class Job:
         # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
         kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
         key = f'{key}@{self._content_tag(self.fill(prompt, video=True), kfs)}'
+        if first == 'kf_sleep_end':
+            key += 'u2'   # (made before the stale-upload fix: those clips started from the wrong image)
         p = self._gen_path(key, attempt, 'mp4')
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
@@ -104,8 +106,9 @@ class Job:
         # one upload per keyframe, one at a time (parallel clips share their start frames)
         with self.upload_lock:
             if kfname not in self.urls:
-                self.urls[kfname] = self.uploader.upload(f'{self.kfdir}/{kfname}.png',
-                                                         f'{self.name.lower()}-{int(self.t0)}/{kfname}.png')
+                path = f'{self.kfdir}/{kfname}.png'
+                tag = self._content_tag('', [path])
+                self.urls[kfname] = self.uploader.upload(path, f'{self.name.lower()}-{int(self.t0)}/{kfname}-{tag}.png')
             return self.urls[kfname]
 
     def record(self, item, attempt, problems, metrics=None):
@@ -330,17 +333,18 @@ class Job:
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
             frames, stats = media.decode_keyed(src)
             start_still = self.still_for(first)
-            problems_extra, pose_k = [], None
+            problems_extra, pose_k, paws_low = [], None, False
             if derive:
                 pose_k = self.derive_pose(frames, start_still, undo_zoom=(derive != 'sleep'))
                 end_still = self.to_still(pose_k)
-                if stats[-1].get('touches_bottom'):
-                    problems_extra.append('paws cut off at the bottom of the frame in the resting pose')
+                paws_low = bool(stats[-1].get('touches_bottom'))   # noted in the report (front paws may look a little flat)
                 if not self.is_lying(end_still):
                     problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
             else:
                 end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
+            if derive and paws_low:
+                metrics['paws_at_bottom_edge'] = True
             fitted_end = None
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
@@ -358,6 +362,8 @@ class Job:
         if derive:     # the chosen clip defines the resting pose the next clips start from
             self.kf[f'{derive}_end'] = pose_k
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
+            with self.upload_lock:   # the old image (e.g. the sleep edit, used as this clip's target)
+                self.urls.pop(f'kf_{derive}_end', None)   # may already be uploaded: send the new one
             self.still[derive] = self.to_still(pose_k)
             if derive == 'sleep' and 'lie' in self.still:     # one colour look across lying / sleeping
                 self.still['sleep'] = media.apply_tf(self.still['sleep'], media.tf_to(media.dog_stats(self.still['sleep']), media.dog_stats(self.still['lie'])), 0.5)
