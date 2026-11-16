@@ -290,6 +290,8 @@
   // "Menu" pill above the pet while the pointer is on it (the desktop app turns it on with
   // dogApi.menuButton): one click opens the same menu as the menu-bar icon / right-click.
   const menuBtn = api.menuButton ? document.createElement('button') : null;
+  // top-centre of the pet (window coordinates): the desktop app opens its menu just above it
+  const petTop = () => ({ x: Math.round(SZ() / 2), y: Math.round(stageTop() + EAR_TOP * SZ()) });
   function placeMenuBtn() {
     if (!menuBtn) return;
     const W = SZ();
@@ -307,7 +309,7 @@
     menuBtn.textContent = 'Menu';
     menuBtn.setAttribute('aria-label', `Menu for ${NAME}`);
     document.body.appendChild(menuBtn);
-    menuBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); api.contextMenu(); });
+    menuBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); api.contextMenu(petTop()); });
     addEventListener('resize', placeMenuBtn);
   }
 
@@ -327,7 +329,7 @@
     if (S.rest === 'sleep' || S.rest === 'lie') act('sit');
     else act(pick(['wag', 'puppy', 'stand']));
   });
-  window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(); });
+  window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(petTop()); });
   api.onAction((name) => {
     S.napping = false;
     if (name === 'feed') return showTray();

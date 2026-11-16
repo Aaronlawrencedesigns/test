@@ -11,6 +11,6 @@ contextBridge.exposeInMainWorld('dogApi', {
   onAction: (fn) => ipcRenderer.on('action', (_e, name) => fn(name)),
   setHover: (over) => ipcRenderer.send('hover', over),
   drag: (dx, dy) => ipcRenderer.send('drag', { dx, dy }),
-  contextMenu: () => ipcRenderer.send('context-menu'),
+  contextMenu: (at) => ipcRenderer.send('context-menu', at),
   setExtraTop: (px) => ipcRenderer.send('extend', px),
 });
