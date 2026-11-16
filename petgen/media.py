@@ -26,11 +26,41 @@ def load_rgba(p):
 
 
 # ------------------------------------------------------------ keying + QA
+def soften_shadow(rgba):
+    """The pet's shadow on the green floor comes out dark teal (green only just above blue),
+    which the key keeps as solid, hard-edged 'mat' under the pet. Turn those pixels, in the
+    lower part of the pet only (so dark fur and eyes are safe), into a soft neutral shadow."""
+    a = rgba[..., 3]
+    if not (a > 128).any():
+        return rgba
+    f = rgba.astype(np.float32)
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    x0, y0, x1, y1 = bbox(rgba)
+    low = np.zeros(a.shape, bool)
+    low[y0 + int(0.6 * (y1 - y0)):, :] = True
+    lum = 0.3 * r + 0.59 * g + 0.11 * b
+    teal = low & (a > 0) & (np.maximum(np.maximum(r, g), b) < 125) & (g > r + 10) & (b > r + 4)
+    if not teal.any():
+        return rgba
+    try:
+        from scipy import ndimage
+        w = ndimage.gaussian_filter(teal.astype(np.float32), 2.0)   # soft edge around the patch
+    except ImportError:
+        w = teal.astype(np.float32)
+    w = np.clip(w * 1.6, 0, 1)
+    grey = np.clip(lum * 0.55, 0, 255)                                 # neutral, a bit darker
+    out = f.copy()
+    for c in range(3):
+        out[..., c] = f[..., c] * (1 - w) + grey * w
+    out[..., 3] = f[..., 3] * (1 - 0.55 * w)                           # half-transparent
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def key_rgb(rgb):
     """rgb uint8 HxWx3 -> (rgba, stats). stats: area fraction, share of keyed area
     thrown away as specks/extra blobs, and whether the subject touches the frame edge."""
     raw = alpha_and_despill(rgb)
-    rgba = clean_alpha(raw)
+    rgba = soften_shadow(clean_alpha(raw))
     a_raw = (raw[..., 3] > 128).sum()
     a = (rgba[..., 3] > 128)
     H, W = a.shape
@@ -79,12 +109,22 @@ def place(k, scale, ground=GROUND):
     return np.asarray(canvas)
 
 
+# widest the lying pose may be, as a share of the app frame's width (room for long pets,
+# side-on poses like poop, and the framing drift the video model adds)
+LIE_MAX_W = 0.74
+
+
 def normalise_keyframes(k_sit, k_lie):
-    """Same scale + ground line for sit and lie (sit = 60% of the canvas height)."""
+    """Same scale + ground line for sit and lie. Sit is 60% of the canvas height, unless the
+    pet is long: then everything is smaller, so the lying pose still fits across the frame."""
     x0, y0, x1, y1 = bbox(k_sit)
     base = (0.6 * S) / (y1 - y0)
+    lie_rel = ear_span(k_sit) / max(1, ear_span(k_lie))
+    lx0, _, lx1, _ = bbox(k_lie)
+    lie_w = (lx1 - lx0) * lie_rel                        # lying width at scale 1
+    base = min(base, LIE_MAX_W * (CROP_1024[2] - CROP_1024[0]) / max(1, lie_w))
     sit = place(k_sit, base)
-    lie = place(k_lie, base * ear_span(k_sit) / max(1, ear_span(k_lie)))
+    lie = place(k_lie, base * lie_rel)
     return sit, lie
 
 
@@ -191,9 +231,24 @@ def encode_webm(frames, dst, fps=24):
     enc.wait()
 
 
-def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None):
+def edge_share(frames, margin=2):
+    """Share of frames where the pet touches the left, right or top edge (= it is cut off)."""
+    hit = 0
+    for f in frames:
+        a = f[..., 3] > 100
+        if a[:, :margin].any() or a[:, -margin:].any() or a[:margin, :].any():
+            hit += 1
+    return hit / max(1, len(frames))
+
+
+def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None):
     """Return a list of problems (empty = pass)."""
     problems = []
+    raw_edge = sum(1 for s in stats if s.get('touches_edge')) / max(1, len(stats))
+    fin_edge = edge_share(final) if final is not None else 0.0
+    metrics['cut_off'] = round(max(raw_edge, fin_edge), 3)
+    if max(raw_edge, fin_edge) > 0.02:
+        problems.append(f'the pet is cut off at the frame edge in {max(raw_edge, fin_edge):.0%} of frames')
     areas = np.array([s['area'] for s in stats])
     med = float(np.median(areas))
     if med < 0.02:

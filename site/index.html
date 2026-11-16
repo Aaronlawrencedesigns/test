@@ -444,7 +444,8 @@
       <div class="fields">
         <label>Pet's name<input type="text" id="pet-name" name="name" placeholder="Chunky" autocomplete="off"></label>
         <label>Species<select id="pet-species" name="species"><option>Dog</option><option>Cat</option><option>Other</option></select></label>
-        <label class="wide">Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
+        <label>Tail<select id="pet-tail" name="tail"><option value="yes">Has a tail</option><option value="stub">Short stub</option><option value="none">No tail</option></select></label>
+        <label>Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
       </div>
       <p class="note" id="create-note" hidden></p>
       <div class="summary">
@@ -611,6 +612,7 @@
     for (const [view, file] of Object.entries(picked)) data.append(view, file, file.name || view);
     data.append('name', document.getElementById('pet-name').value.trim());
     data.append('species', document.getElementById('pet-species').value);
+    data.append('tail', document.getElementById('pet-tail').value);
     data.append('email', email);
     submit.disabled = true;
     const label = submit.textContent;

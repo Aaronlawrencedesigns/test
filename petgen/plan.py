@@ -49,6 +49,16 @@ GAZE = ("Edit this photo. Keep EVERYTHING identical: the same {species} with the
         "Only change where it is looking: turn its head and eyes so it looks {h} {v}. Its eyes and nose point in that "
         "direction, like a pet following something with its gaze. Mouth closed. Photorealistic. Square image, same size.")
 
+# Tail: customers say whether their pet has one (many French Bulldogs, Corgis, Aussies... don't).
+# Every prompt gets the matching note so the models never invent a tail.
+TAILS = {
+    'yes': {'note': '', 'and': ' and tail', 'raised': ' with its tail raised'},
+    'stub': {'note': ' This {species} has only a very short stubby tail: never show a long tail.', 'and': '', 'raised': ''},
+    'none': {'note': ' This {species} has no tail at all (bobtail / docked): never draw or show a tail.', 'and': '', 'raised': ''},
+}
+# Video model: keep the whole pet in shot (a cut-off pet can't be fixed afterwards)
+IN_FRAME = ' The whole {species} stays fully inside the frame at all times, with space around it; the camera does not zoom or move.'
+
 ROWS = ['up', 'hu', 'level', 'hd', 'down']   # head heights for head tracking, top to bottom
 ROWS_LITE = ['up', 'level', 'down']
 
@@ -88,12 +98,12 @@ def sweep_item(row, c0=0, c1=4):
 
 # Actions: key -> (first keyframe, last keyframe, seconds, prompt, convert options)
 ACTIONS = {
-    'wag': ('kf_sit', 'kf_sit', 5, "The {species} gets excited and happy: it wiggles its whole rear end and tail side to side while staying seated, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.", {}),
+    'wag': ('kf_sit', 'kf_sit', 5, "The {species} gets excited and happy: it wiggles its whole rear end{tail_and} side to side while staying seated, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'puppy': ('kf_sit', 'kf_sit', 5, "The {species} gives sweet puppy-dog eyes: it slowly lowers and tilts its head to one side, looks up at the camera with big soulful pleading eyes, ears slightly back, then slowly straightens its head and returns to exactly the same sitting pose as the start.", {}),
     'stand': ('kf_sit', 'kf_sit', 7, "The {species} stands up from sitting onto all four legs facing the camera, stands for a moment looking around curiously, shifts its weight and gives a small wiggle of its rear end, then sits back down in exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
-    'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat with its tail raised as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
+    'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
     'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it walks its front paws forward and lowers itself onto its belly, ending lying in a relaxed sphinx pose, front legs stretched forward, head up looking at the camera, exactly matching the final frame.", {'spread': True, 'derive': 'lie'}),
     # 'lie' is taken from the LAST FRAME of lie_down ('derive'), so clips connect exactly
     # (an image-generated pose never quite matches where a video ends). 'sleep' is an

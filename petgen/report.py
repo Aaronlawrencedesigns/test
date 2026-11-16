@@ -35,7 +35,7 @@ def write_report(job):
         for f in sorted(os.listdir(sd)):
             sheets += f'<figure><figcaption>{html.escape(os.path.splitext(f)[0].replace("_", " "))}</figcaption>{_img(os.path.join(sd, f))}</figure>'
     kfs = ''.join(f'<figure><figcaption>{n}</figcaption>{_img(f"{job.pet}/stills/{n}.webp", 200)}</figure>' for n in ('sit', 'lie', 'sleep'))
-    master = _img(job._gen_path('master', 1, 'png'), 240)
+    master = _img(job.image_path.get(('master', 1)), 240)
     man = getattr(job, 'manifest', None) or {}
     have = set(man.get('clips', []))
     tick = lambda ok: '<b class="yes">✓</b>' if ok else '<b class="no">✗ missing</b>'

@@ -277,16 +277,43 @@
       over = ctx.getImageData(Math.floor(x * d), Math.floor(yc * d), 1, 1).data[3] > 40;
     }
     const overTray = trayOpen() && inRect(tray.getBoundingClientRect(), x, y, 6);
+    const overMenu = menuBtn && menuBtn.classList.contains('show') && inRect(menuBtn.getBoundingClientRect(), x, y, 6);
     S.overDog = over;
-    if (overTray || S.food) over = true;   // the tray and a food you're holding stay clickable
+    if (menuBtn) showMenuBtn(over || overMenu);
+    if (overTray || overMenu || S.food) over = true;   // the tray, the menu button and a held food stay clickable
     if (over !== S.over) {
       S.over = over;
       api.setHover(over || S.dragging);
     }
   });
 
+  // "Menu" pill above the pet while the pointer is on it (the desktop app turns it on with
+  // dogApi.menuButton): one click opens the same menu as the menu-bar icon / right-click.
+  const menuBtn = api.menuButton ? document.createElement('button') : null;
+  let menuHideTimer = null;
+  function placeMenuBtn() {
+    if (!menuBtn) return;
+    const W = SZ();
+    menuBtn.style.left = `${W / 2}px`;
+    menuBtn.style.top = `${Math.max(4, stageTop() + EAR_TOP * W - 34)}px`;
+  }
+  function showMenuBtn(on) {
+    clearTimeout(menuHideTimer);
+    if (on) { placeMenuBtn(); menuBtn.classList.add('show'); }
+    else menuHideTimer = setTimeout(() => menuBtn.classList.remove('show'), 900);
+  }
+  if (menuBtn) {
+    menuBtn.id = 'menu-btn';
+    menuBtn.type = 'button';
+    menuBtn.textContent = 'Menu';
+    menuBtn.setAttribute('aria-label', `Menu for ${NAME}`);
+    document.body.appendChild(menuBtn);
+    menuBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); api.contextMenu(); });
+    addEventListener('resize', placeMenuBtn);
+  }
+
   window.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || !S.over || S.food || (e.target.closest && e.target.closest('#tray'))) return;
+    if (e.button !== 0 || !S.over || S.food || (e.target.closest && e.target.closest('#tray, #menu-btn'))) return;
     S.dragging = true;
     S.dragMoved = 0;
     api.setHover(true);
