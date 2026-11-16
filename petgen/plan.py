@@ -39,15 +39,18 @@ SLEEP_EDIT = ("Edit this photo. Keep the same {species} with the same markings, 
 H_DIR = {0: "far toward the LEFT side of the image (head turned about 40 degrees to the image's left)",
          2: "straight ahead at the camera",
          4: "far toward the RIGHT side of the image (head turned about 40 degrees to the image's right)"}
-V_DIR = {'up': "and upward (chin raised about 20 degrees, eyes looking up)",
-         'hu': "and slightly upward (chin raised about 10 degrees, eyes looking a little up)",
+V_DIR = {'up': "and clearly upward (chin raised about 30 degrees, nose pointing up, eyes looking up toward the top of the image)",
+         'hu': "and upward (chin raised about 15 degrees, eyes looking up)",
          'level': "at eye level",
-         'hd': "and slightly downward (head lowered about 10 degrees, eyes looking a little down)",
-         'down': "and downward (head lowered about 20 degrees, eyes looking down)"}
+         'hd': "and slightly downward (head lowered about 12 degrees, eyes looking a little down)",
+         'down': "and downward (head lowered about 25 degrees, eyes looking down at the floor in front of it)"}
+# what a vision check must see in each head height (centre pose); used to retry weak poses
+V_OK = {'up': {'up'}, 'hu': {'up', 'slightly up'}, 'hd': {'slightly down', 'down'}, 'down': {'down', 'slightly down'}}
 GAZE = ("Edit this photo. Keep EVERYTHING identical: the same {species} with the same markings, the same body position, "
         "paws, framing, scale, lighting and the flat chroma-key green background. Do not move or change the body at all. "
-        "Only change where it is looking: turn its head and eyes so it looks {h} {v}. Its eyes and nose point in that "
-        "direction, like a pet following something with its gaze. Mouth closed. Photorealistic. Square image, same size.")
+        "Only change where it is looking: turn its head and eyes so it looks {h} {v}. Its eyes clearly look that way "
+        "too (pupils turned in that direction, not back at the camera), and its nose points there, like a pet following "
+        "something with its gaze. Mouth closed. Photorealistic. Square image, same size.")
 
 # Tail: customers say whether their pet has one (many French Bulldogs, Corgis, Aussies... don't).
 # Every prompt gets the matching note so the models never invent a tail.
@@ -80,10 +83,11 @@ def gaze_item(col, row):
 # ---------------------------------------------------------------- clips
 SWEEP = ("The {species} stays seated with its body, chest, legs and ear position completely still. It slowly and "
          "smoothly turns only its head {path}, at a perfectly steady, even speed across the whole clip, its eyes "
-         "following the same direction, mouth closed, no blinking, no other movement. Throughout, its head stays {tilt}.")
-TILT = {'up': "tilted upward, looking up", 'hu': "tilted slightly upward, looking a little above eye level",
-        'level': "level, looking at eye level", 'hd': "very slightly lowered, looking a little below eye level",
-        'down': "lowered, looking downward"}
+         "leading the turn in the same direction, mouth closed, no blinking, no other movement. Throughout, including "
+         "as it passes the middle, its head stays {tilt}; it never returns to a level head.")
+TILT = {'up': "clearly tilted upward, chin raised, eyes looking up", 'hu': "tilted upward, eyes looking above eye level",
+        'level': "level, looking at eye level", 'hd': "slightly lowered, eyes looking a little below eye level",
+        'down': "clearly lowered, eyes looking down at the floor"}
 PATH = {(0, 4): "from looking far toward the left side of the image to looking far toward the right side of the image",
         (0, 2): "from looking far toward the left side of the image to looking straight at the camera",
         (2, 4): "from looking straight at the camera to looking far toward the right side of the image"}

@@ -294,7 +294,8 @@
     if (!menuBtn) return;
     const W = SZ();
     menuBtn.style.left = `${W / 2}px`;
-    menuBtn.style.top = `${stageTop() + W - 30}px`;   // at the pet's feet
+    // centred on the pet, a little below the middle of its body (ears ~EAR_TOP, paws ~0.96)
+    menuBtn.style.top = `${stageTop() + (EAR_TOP + (0.96 - EAR_TOP) * 0.58) * W}px`;
   }
   function showMenuBtn(on) {
     if (on) { placeMenuBtn(); menuBtn.classList.add('show'); }
