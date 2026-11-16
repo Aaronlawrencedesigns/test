@@ -90,7 +90,9 @@ TILT = {'up': "clearly tilted upward, chin raised, eyes looking up", 'hu': "tilt
         'down': "clearly lowered, eyes looking down at the floor"}
 PATH = {(0, 4): "from looking far toward the left side of the image to looking far toward the right side of the image",
         (0, 2): "from looking far toward the left side of the image to looking straight at the camera",
-        (2, 4): "from looking straight at the camera to looking far toward the right side of the image"}
+        (2, 4): "from looking straight at the camera to looking far toward the right side of the image",
+        (2, 0): "from looking straight at the camera to looking far toward the left side of the image",
+        (4, 2): "from looking far toward the right side of the image to looking straight at the camera"}
 
 
 def sweep_item(row, c0=0, c1=4):

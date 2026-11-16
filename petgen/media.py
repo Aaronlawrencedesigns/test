@@ -373,6 +373,32 @@ def pick_row(pieces, cols=33):
     return out
 
 
+def pick_row_from_starts(pieces, cols=33):
+    """Tilted head rows. pieces: list of (u_start, u_end, frames, prog), clips that START at a
+    tilted pose (left edge, centre, right edge) and turn outward. The video model holds the pose
+    it starts from but drifts back to a level head later in a clip (it doesn't honour the pose
+    it's asked to end on), so each position uses the clip that starts nearest to it, and only
+    frames from the first half of that clip's turn."""
+    out = []
+    for j in range(cols):
+        u = j * 4 / (cols - 1)
+        best = None
+        for u0, u1, frames, prog in pieces:
+            if u1 == u0 or not (min(u0, u1) - 1e-6 <= u <= max(u0, u1) + 1e-6):
+                continue
+            d = abs(u - u0)
+            if d > abs(u1 - u0) / 2 + 1e-6:          # past the halfway point of this clip
+                continue
+            if best is None or d < best[0]:
+                best = (d, u0, u1, frames, prog)
+        if best is None:
+            return None
+        _, u0, u1, frames, prog = best
+        uu = u0 + prog * (u1 - u0)
+        out.append(frames[int(np.argmin(np.abs(uu - u)))])
+    return out
+
+
 def save_look(rows, out_dir):
     """rows: list (top->bottom) of lists of 640x640 RGBA frames. Crops all to their union box."""
     os.makedirs(out_dir, exist_ok=True)
