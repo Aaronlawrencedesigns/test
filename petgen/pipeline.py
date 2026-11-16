@@ -358,9 +358,9 @@ class Job:
 
     def head_tracking(self):
         """One row of real frames per head height. Level: a full left->right sweep (plus a half
-        sweep where it turned too fast). Tilted rows: two half sweeps through a real tilted centre
-        pose (a single full sweep drops the head back to level as it passes the middle, so the
-        pet wouldn't look up when the cursor is straight above it). Falls back to the full sweep."""
+        sweep where it turned too fast). Tilted rows: four clips that start on tilted poses (left
+        edge, centre, right edge) and turn outward; frames come from the first half of each, before
+        the video model drifts back to a level head. Falls back to full / half sweeps."""
         def one_row(row):
             if row == 'level':
                 frames, prog, left, right = self.sweep(row, 0, 4)
@@ -374,18 +374,22 @@ class Job:
                         except Exception as e:  # noqa: BLE001
                             self.log(f'       {row}: half sweep skipped ({e})')
                 return media.pick_row(pieces)
+            # tilted: four clips that start on a tilted pose and turn outward (see pick_row_from_starts)
             pieces = []
             try:
                 self.gaze_kf(2, row)
-                for c0, c1 in ((0, 2), (2, 4)):
+                for c0, c1 in ((0, 2), (2, 0), (2, 4), (4, 2)):
                     f2, p2, _, _ = self.sweep(row, c0, c1)
                     pieces.append((c0, c1, f2, p2))
             except Exception as e:  # noqa: BLE001
-                self.log(f'       {row}: half sweeps failed ({e}) -> full sweep')
-            if len(pieces) < 2:
-                frames, prog, _, _ = self.sweep(row, 0, 4)
-                pieces.append((0, 4, frames, prog))
-            return media.pick_row(pieces)
+                self.log(f'       {row}: tilted sweeps failed ({e}) -> fallback')
+            frames = media.pick_row_from_starts(pieces) if len(pieces) == 4 else None
+            if frames is not None:
+                return frames
+            if not any(p[:2] == (0, 4) for p in pieces):
+                f, pr, _, _ = self.sweep(row, 0, 4)
+                pieces.append((0, 4, f, pr))
+            return media.pick_row([p for p in pieces if p[0] < p[1]])
         with ThreadPoolExecutor(min(self.workers, len(self.rows))) as ex:
             futs = {row: ex.submit(one_row, row) for row in self.rows}
             rows = [futs[r].result() for r in self.rows]

@@ -142,9 +142,11 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Tail: the order form asks (yes / stub / none); `plan.TAILS` adds a note to every prompt.
   Re-make a pet: `sudo sidekicks-requeue <order id> tail=none` (generation cache is keyed by
   prompt + input-file content, so changed settings really regenerate).
-- Head tracking (all pets): tilted rows (up/hu/hd/down) are two half sweeps through a real tilted
-  centre pose (`gaze_2_<row>`); one full sweep drops the head to level mid-way, so the pet wouldn't
-  look up at a cursor straight above it (Chewie's first pack). Tilted gaze images get a vision check
+- Head tracking (all pets): Seedance holds the pose it STARTS from but drifts back to a level head
+  later in a clip and doesn't honour `last_image` for subtle head pitch (verified on Chewie: asked
+  to end head-down, it ended level). So each tilted row (up/hu/hd/down) = four clips that start on
+  tilted poses and turn outward (0->2, 2->0, 2->4, 4->2, centre pose `gaze_2_<row>`), and
+  `pick_row_from_starts` takes each column from the first half of the clip starting nearest it. Tilted gaze images get a vision check
   (`look_check`, gemini-3-flash-preview via GPTProto, <1c) and are remade if they don't tilt;
   `check_look_heights` flags rows whose centre frame clearly faces the wrong way.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
