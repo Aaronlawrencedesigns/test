@@ -207,6 +207,13 @@
     border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px; min-width: 0;
   }
   .fields .wide { grid-column: 1 / -1; }
+  .platform { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; min-width: 0; }
+  .platform legend { font-size: 13px; font-weight: 500; padding: 0; margin-bottom: 6px; width: 100%; }
+  .fields .platform label.radio { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--line);
+    border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; background: var(--win); }
+  .platform label.radio:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .platform input { accent-color: var(--accent); margin: 0; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; filter: none; transform: none; }
   .summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
   .summary .total { font: 800 22px/1 var(--display); }
   .summary .total small { font: 400 13px/1 var(--body); color: var(--muted); margin-left: 6px; }
@@ -446,7 +453,13 @@
         <label>Species<select id="pet-species" name="species"><option>Dog</option><option>Cat</option><option>Other</option></select></label>
         <label>Tail<select id="pet-tail" name="tail"><option value="yes">Has a tail</option><option value="stub">Short stub</option><option value="none">No tail</option></select></label>
         <label>Your email<input type="email" id="owner-email" name="email" placeholder="you@example.com" autocomplete="email"></label>
+        <fieldset class="wide platform">
+          <legend>Your computer</legend>
+          <label class="radio"><input type="radio" name="platform" id="platform-mac" value="mac" checked> Mac</label>
+          <label class="radio"><input type="radio" name="platform" id="platform-pc" value="pc"> PC (Windows)</label>
+        </fieldset>
       </div>
+      <p class="note" id="pc-note" data-kind="warn" hidden>Desktop Sidekicks for PC isn't available yet. It's coming soon.</p>
       <p class="note" id="create-note" hidden></p>
       <div class="summary">
         <span class="total">$20 <small>one time, Mac app</small></span>
@@ -602,8 +615,18 @@
   });
   const submit = form.querySelector('button[type=submit]');
   const say = (kind, text) => { note.hidden = false; note.dataset.kind = kind; note.textContent = text; };
+  // Mac only for now: choosing PC shows a "coming soon" note and turns checkout off
+  const pcNote = document.getElementById('pc-note');
+  const onPlatform = () => {
+    const pc = document.getElementById('platform-pc').checked;
+    pcNote.hidden = !pc;
+    submit.disabled = pc;
+  };
+  form.querySelectorAll('input[name=platform]').forEach((r) => r.addEventListener('change', onPlatform));
+  onPlatform();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (document.getElementById('platform-pc').checked) return;
     const missing = [...form.querySelectorAll('.slot')].filter((s) => !s.classList.contains('has')).map((s) => s.querySelector('.l').firstChild.textContent.trim().toLowerCase());
     const email = document.getElementById('owner-email').value.trim();
     if (missing.length) return say('warn', `Add a photo for: ${missing.join(', ')}.`);
