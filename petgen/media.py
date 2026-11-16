@@ -241,6 +241,13 @@ def edge_share(frames, margin=2):
     return hit / max(1, len(frames))
 
 
+def zoom_peak(frames):
+    """How much bigger the pet gets mid-clip than at its start/end (size = sqrt of its area)."""
+    sz = [float(np.sqrt((f[..., 3] > 128).sum())) for f in frames[::2]]
+    ref = max(1.0, (sz[0] + sz[-1]) / 2)
+    return max(sz) / ref
+
+
 def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None):
     """Return a list of problems (empty = pass)."""
     problems = []
@@ -249,6 +256,11 @@ def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=No
     metrics['cut_off'] = round(max(raw_edge, fin_edge), 3)
     if max(raw_edge, fin_edge) > 0.02:
         problems.append(f'the pet is cut off at the frame edge in {max(raw_edge, fin_edge):.0%} of frames')
+    if final is not None and len(final) > 2:
+        z = zoom_peak(final)
+        metrics['zoom'] = round(z, 2)
+        if z > 1.4:   # the camera zoomed in mid-clip (largest natural change, standing up: ~1.26x)
+            problems.append(f'the camera zooms in mid-clip ({z:.2f}x)')
     areas = np.array([s['area'] for s in stats])
     med = float(np.median(areas))
     if med < 0.02:
