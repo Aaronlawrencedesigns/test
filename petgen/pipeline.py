@@ -22,9 +22,10 @@ ROOT = os.path.dirname(HERE)
 
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
-                 max_retries=2, workers=6, log=print, tail='yes'):
+                 max_retries=2, workers=6, log=print, tail='yes', sex='male'):
         self.name, self.species, self.photos_in = name, species, photos
         self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
+        self.sex = sex if sex in plan.SEX_NOTE else 'male'
         self.out = os.path.abspath(out)
         self.provider, self.uploader = provider, uploader
         self.actions = actions or plan.DEFAULT_ACTIONS
@@ -55,7 +56,7 @@ class Job:
     def fill(self, text, video=False):
         t = self.tail
         text = (text.replace('{tail_and}', t['and']).replace('{tail_raised}', t['raised'])
-                + t['note'] + (plan.IN_FRAME if video else ''))
+                + t['note'] + plan.SEX_NOTE[self.sex] + (plan.IN_FRAME if video else ''))
         return text.replace('{species}', self.species).replace('{pet}', self.name)
 
     @staticmethod
@@ -183,7 +184,10 @@ class Job:
             def attempt_fn(attempt, key=key, prompt=prompt):
                 p = self.gen_image(key, prompt, ref_paths(), attempt)
                 k, st = media.key_file(p)
-                return (p, k, attempt), media.keyframe_ok(st), st
+                problems = media.keyframe_ok(st)
+                if not problems:   # sitting / lying poses: right anatomy (tail, sex)
+                    problems += self.anatomy_problems([k], f'{key}_{attempt}', picks=(0,))
+                return (p, k, attempt), problems, st
             p, k, att = self.with_retries(key, attempt_fn)
             self.best_attempt[key] = att
             self.kf['raw_' + key.split('_')[1]] = k
@@ -237,29 +241,43 @@ class Job:
         sx0, sy0, sx1, sy1 = media.bbox(self.kf['sit'] if img.shape[0] == media.S else self.still['sit'])
         return (x1 - x0) >= 1.05 * (y1 - y0) or (y1 - y0) <= 0.88 * (sy1 - sy0)
 
-    TAIL_Q = ('Look at this photo of a pet. Answer ONLY with JSON {"tail_visible": true|false}: is a tail '
-              '(longer than a tiny stub) visible on the animal?')
+    ANATOMY_Q = ('Look at this photo of a pet. Answer ONLY with JSON {"tail_visible": true|false, '
+                 '"male_genitals_visible": true|false}. tail_visible: is a tail (longer than a tiny stub) visible? '
+                 'male_genitals_visible: is a penis or penile sheath visible on its belly?')
 
-    def tail_seen(self, frames, key):
-        """Pets marked 'no tail' / 'stub': does a long tail show up in this clip? (vision check
-        on a few frames; the video model sometimes invents one). Returns a problem or None."""
-        if self.tail is plan.TAILS['yes'] or not getattr(self.provider, 'ask_image', None):
-            return None
-        hits = 0
-        for i in (len(frames) // 3, len(frames) // 2, 2 * len(frames) // 3):
-            png = f'{self.work}/tailcheck_{key}_{i}.png'
-            bg = Image.new('RGBA', media.OUT_SIZE, (255, 255, 255, 255))
+    def _anatomy(self, png):
+        cache = png + '.anatomy.json'
+        if os.path.exists(cache):
+            return json.load(open(cache))
+        ans = self.provider.ask_image(png, self.ANATOMY_Q)
+        if ans:
+            json.dump(ans, open(cache, 'w'))
+        return ans
+
+    def anatomy_problems(self, frames, key, picks=None):
+        """Vision check on a few frames: no tail on tail-less pets, no male anatomy on female pets
+        (the models invent both). Returns a list of problems."""
+        want_tail = self.tail is not plan.TAILS['yes']
+        want_sex = self.sex == 'female'
+        if not (want_tail or want_sex) or not getattr(self.provider, 'ask_image', None):
+            return []
+        picks = picks or (len(frames) // 3, len(frames) // 2, 2 * len(frames) // 3)
+        tails = males = 0
+        for i in picks:
+            png = f'{self.work}/anatomy_{key}_{i}.png'
+            bg = Image.new('RGBA', (frames[i].shape[1], frames[i].shape[0]), (255, 255, 255, 255))
             bg.alpha_composite(Image.fromarray(frames[i]))
             bg.convert('RGB').save(png)
-            cache = png + '.tail.json'
-            if os.path.exists(cache):
-                ans = json.load(open(cache))
-            else:
-                ans = self.provider.ask_image(png, self.TAIL_Q)
-                if ans:
-                    json.dump(ans, open(cache, 'w'))
-            hits += bool(ans and ans.get('tail_visible'))
-        return 'shows a tail (this pet has none)' if hits >= 2 else None
+            ans = self._anatomy(png) or {}
+            tails += bool(ans.get('tail_visible'))
+            males += bool(ans.get('male_genitals_visible'))
+        need = 2 if len(picks) > 1 else 1
+        out = []
+        if want_tail and tails >= need:
+            out.append('shows a tail (this pet has none)')
+        if want_sex and males >= need:
+            out.append('shows male anatomy (this pet is female)')
+        return out
 
     def look_check(self, path):
         """Vision check of where the pet looks, cached per image (None if unavailable)."""
@@ -331,7 +349,7 @@ class Job:
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
-            frames, stats = media.decode_keyed(src)
+            frames, stats = media.decode_keyed(src, low=opts.get('low', False))
             start_still = self.still_for(first)
             problems_extra, pose_k, paws_low = [], None, False
             if derive:
@@ -343,15 +361,13 @@ class Job:
             else:
                 end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
-            if derive and paws_low:
-                metrics['paws_at_bottom_edge'] = True
+            if derive and paws_low:   # the paws really leave the video (the low crop reaches its bottom)
+                problems_extra.append('paws cut off at the bottom of the frame in the resting pose')
             fitted_end = None
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
                 fitted_end = [media.affine(frames[-1], sc, o)]
-            tail_problem = self.tail_seen(fixed, f'{key}_{attempt}')
-            if tail_problem:
-                problems_extra.append(tail_problem)
+            problems_extra += self.anatomy_problems(fixed, f'{key}_{attempt}')
             if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:
                 problems_extra.append('paws cut off at the bottom of the frame while asleep')
             problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed,

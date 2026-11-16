@@ -155,6 +155,13 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Sleep pose = last frame of fall_asleep (derived, like lie), so sleeping continues exactly where
   falling asleep ended (the SLEEP_EDIT image is only the clip's target). Resting poses whose paws
   run off the bottom of the frame are rejected.
-- No-tail / stub pets: a vision check on 3 frames of every trick rejects clips that show a tail.
+- Sex: the order form asks male / female (Chewie is a girl; the models gave her male anatomy).
+  `plan.SEX_NOTE` adds a note to every prompt for female pets; `anatomy_problems` (vision check on the
+  sit/lie images and 3 frames of every trick) rejects a tail on tail-less pets and male anatomy on
+  female pets. Re-make: `sidekicks-requeue <id> sex=female`.
+- Lying / sleeping / getting-up / waking clips are decoded with a crop shifted to the very bottom of the
+  video (`decode_keyed(low=True)`): the normal crop cut off paws stretched toward the camera.
+- Site: `site/legal.html` (Terms, Refund Policy, Privacy Policy), linked from a small footer on the
+  desktop ("Contact: hello@desktopsidekicks.com · Privacy Policy & Terms") and under checkout.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".

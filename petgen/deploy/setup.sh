@@ -24,7 +24,7 @@ fi
 install -m 644 /opt/sidekicks/petgen/deploy/sidekicks-worker.service /etc/systemd/system/sidekicks-worker.service
 cat > /usr/local/bin/sidekicks-requeue <<'SH'
 #!/bin/sh
-# usage: sudo sidekicks-requeue <order id> [tail=yes|stub|none]   (retry, make a test order, or re-make a pet)
+# usage: sudo sidekicks-requeue <order id> [tail=yes|stub|none] [sex=male|female]   (retry, make a test order, or re-make a pet)
 set -a; . /etc/sidekicks.env; set +a
 cd /opt/sidekicks && exec runuser -u sidekicks -- /opt/sidekicks-venv/bin/python -m petgen.worker requeue "$@"
 SH

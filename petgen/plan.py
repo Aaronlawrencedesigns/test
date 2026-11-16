@@ -59,6 +59,10 @@ TAILS = {
     'stub': {'note': ' This {species} has only a very short stubby tail: never show a long tail.', 'and': '', 'raised': ''},
     'none': {'note': ' This {species} has no tail at all (bobtail / docked): never draw or show a tail.', 'and': '', 'raised': ''},
 }
+# Sex: customers say male / female. Unprompted, the models give every pet male anatomy, so female
+# pets get a note in every prompt (and a vision check on images and clips).
+SEX_NOTE = {'female': ' This {species} is female: anatomically a female, with no male genitals (no penis or sheath on the belly).',
+            'male': ''}
 # Video model: keep the whole pet in shot (a cut-off pet can't be fixed afterwards)
 IN_FRAME = ' The whole {species} stays fully inside the frame at all times, with space around it; the camera does not zoom or move.'
 
@@ -110,15 +114,15 @@ ACTIONS = {
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
-    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it lowers itself onto its belly, turning its body to the side as it goes down, ending lying at an angle to the camera with its back legs tucked to one side, front legs resting on the floor in front of its chest, head up looking at the camera, exactly matching the final frame. Its paws never reach toward the camera; all four paws stay fully inside the frame.", {'spread': True, 'derive': 'lie'}),
+    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it lowers itself onto its belly, turning its body to the side as it goes down, ending lying at an angle to the camera with its back legs tucked to one side, front legs resting on the floor in front of its chest, head up looking at the camera, exactly matching the final frame. Its paws never reach toward the camera; all four paws stay fully inside the frame.", {'spread': True, 'derive': 'lie', 'low': True}),
     # 'lie' / 'sleep' are taken from the LAST FRAME of lie_down / fall_asleep ('derive'), so clips connect exactly
     # (an image-generated pose never quite matches where a video ends). 'sleep' is an
     # image edit of that lying frame (SLEEP_EDIT), made before fall_asleep runs.
-    'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True}),
-    'fall_asleep': ('kf_lie_end', 'kf_sleep_end', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep in the same spot and at the same angle to the camera, ending exactly like the final frame. Its paws stay fully inside the frame.", {'spread': True, 'sleep_edit': True, 'derive': 'sleep'}),
+    'get_up': ('kf_lie_end', 'kf_sit', 4, "The {species} gets up from lying down and sits upright, ending sitting and looking straight at the camera.", {'spread': True, 'low': True}),
+    'fall_asleep': ('kf_lie_end', 'kf_sleep_end', 6, "The {species} gets sleepy: it yawns, its eyelids get heavy, it lowers its head and rests its chin on its front paws, and closes its eyes, falling asleep in the same spot and at the same angle to the camera, ending exactly like the final frame. Its paws stay fully inside the frame.", {'spread': True, 'sleep_edit': True, 'derive': 'sleep', 'low': True}),
     # starts and ends on the (resized) sleeping pose so it loops seamlessly
-    'sleep_loop': ('kf_sleep_end', 'kf_sleep_end', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6}),
-    'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True}),
+    'sleep_loop': ('kf_sleep_end', 'kf_sleep_end', 6, "The {species} is fast asleep lying down with its head resting on its paws and eyes closed: its body rises and falls slowly as it breathes deeply, one ear twitches gently once, otherwise completely still. Static camera.", {'ramp': 0.6, 'low': True}),
+    'wake_up': ('kf_sleep_end', 'kf_sit', 5, "The sleeping {species} wakes up: it opens its eyes, lifts its head, stretches its front legs, then gets up and sits upright, turning to face the camera, ending sitting and looking straight at the camera.", {'spread': True, 'low': True}),
 }
 # still each clip should end on (for the end-pose check); derived clips define their own
 ACTION_END_STILL = {'lie_down': None, 'get_up': 'sit', 'fall_asleep': 'sleep', 'sleep_loop': 'sleep', 'wake_up': 'sit'}

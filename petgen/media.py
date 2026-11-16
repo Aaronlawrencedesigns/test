@@ -153,12 +153,21 @@ def last_frame_1024(video, out_png):
 
 
 # ------------------------------------------------------------ clips
-def decode_keyed(src, fps=24):
-    """Decode a green-screen clip into keyed RGBA frames in the shared 640x640 frame."""
+LOW_SHIFT = S - CROP_1024[3]   # 64 px (1024 canvas): the strip below the usual crop
+
+
+def decode_keyed(src, fps=24, low=False):
+    """Decode a green-screen clip into keyed RGBA frames in the shared 640x640 frame.
+    low=True (lying / sleeping clips): crop the same size but LOW_SHIFT lower, so it reaches the
+    very bottom of the video (paws stretched toward the camera sit there; the usual crop cut them
+    off). The clip is re-aligned to the pet's poses afterwards, so the shift doesn't move it."""
     info = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
                                                'stream=width', '-of', 'json', src]))
     sc = info['streams'][0]['width'] / S
-    x0, y0, x1, y1 = (round(c * sc) for c in CROP_1024)
+    cx0, cy0, cx1, cy1 = CROP_1024
+    if low:
+        cy0, cy1 = cy0 + LOW_SHIFT, cy1 + LOW_SHIFT
+    x0, y0, x1, y1 = (round(c * sc) for c in (cx0, cy0, cx1, cy1))
     raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', src, '-vf',
                           f'fps={fps},crop={x1 - x0}:{y1 - y0}:{x0}:{y0},scale={OW}:{OH}:flags=lanczos',
                           '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE, check=True).stdout
