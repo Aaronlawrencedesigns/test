@@ -249,13 +249,13 @@ def zoom_peak(frames):
     return max(sz) / ref
 
 
-def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None, max_zoom=1.4, max_growth=None):
+def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None, max_zoom=1.4, max_growth=None, max_edge=0.02):
     """Return a list of problems (empty = pass)."""
     problems = []
     raw_edge = sum(1 for s in stats if s.get('touches_edge')) / max(1, len(stats))
     fin_edge = edge_share(final) if final is not None else 0.0
     metrics['cut_off'] = round(max(raw_edge, fin_edge), 3)
-    if max(raw_edge, fin_edge) > 0.02:
+    if max(raw_edge, fin_edge) > max_edge:
         problems.append(f'the pet is cut off at the frame edge in {max(raw_edge, fin_edge):.0%} of frames')
     if final is not None and len(final) > 2:
         z = zoom_peak(final)
