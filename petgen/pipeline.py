@@ -319,7 +319,8 @@ class Job:
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
                 fitted_end = [media.affine(frames[-1], sc, o)]
-            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed) + problems_extra
+            problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed,
+                                     max_zoom=plan.MAX_ZOOM.get(key, plan.MAX_ZOOM_DEFAULT)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
         src, fixed, pose_k = self.with_retries(key, attempt_fn)
         if derive:     # the chosen clip defines the resting pose the next clips start from

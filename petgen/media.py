@@ -248,7 +248,7 @@ def zoom_peak(frames):
     return max(sz) / ref
 
 
-def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None):
+def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=None, max_zoom=1.4):
     """Return a list of problems (empty = pass)."""
     problems = []
     raw_edge = sum(1 for s in stats if s.get('touches_edge')) / max(1, len(stats))
@@ -259,7 +259,7 @@ def clip_qa(frames, stats, metrics, end_still_img=None, corrected=None, final=No
     if final is not None and len(final) > 2:
         z = zoom_peak(final)
         metrics['zoom'] = round(z, 2)
-        if z > 1.4:   # the camera zoomed in mid-clip (largest natural change, standing up: ~1.26x)
+        if z > max_zoom:   # the camera zoomed in mid-clip
             problems.append(f'the camera zooms in mid-clip ({z:.2f}x)')
     areas = np.array([s['area'] for s in stats])
     med = float(np.median(areas))
