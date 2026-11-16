@@ -14,7 +14,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const s = event.data.object;
   const id = s.metadata?.order_id || s.client_reference_id;
   if (!validId(id)) return json({ error: 'no order id' }, 400);
-  if (s.payment_status !== 'paid') return json({ waiting: s.payment_status });
+  // 'no_payment_required' = a 100%-off promo code (team testing): treat it like a paid order
+  if (s.payment_status !== 'paid' && s.payment_status !== 'no_payment_required') return json({ waiting: s.payment_status });
 
   const order = await getOrder(env, id);
   if (!order) return json({ error: 'unknown order' }, 404);

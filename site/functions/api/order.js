@@ -44,6 +44,7 @@ export async function onRequestPost({ request, env }) {
     'line_items[0][price_data][product_data][name]': order.pet_name ? `Desktop Sidekick: ${order.pet_name}` : 'Desktop Sidekick',
     'line_items[0][price_data][product_data][description]': 'Your pet as a desk pet for your Mac: head tracking, 11 tricks and feed mode.',
     customer_email: email,
+    allow_promotion_codes: 'true',   // e.g. a 100%-off team code for testing the live flow
     client_reference_id: id,
     'metadata[order_id]': id,
     'payment_intent_data[metadata][order_id]': id,
