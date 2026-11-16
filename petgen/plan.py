@@ -67,7 +67,10 @@ SEX_NOTE = {'female': ' This {species} is female: anatomically a female, with no
 # of a clip whose earlier tries still showed male anatomy (Chewie's eat / bark, 3 tries each).
 SEX_NOTE_STRONG = {'female': ' She is a female {species}: between her hind legs her belly is smooth, plain and soft, '
                              'exactly like in the first frame, all the way through the clip.', 'male': ''}
-SEX_EXTRA_TRIES = 1   # one more try for clips that fail only the female-anatomy check
+SEX_EXTRA_TRIES = 1
+# tricks where the pet stays seated: female pets get the clean belly of the sitting pose patched in
+# (media.patch_groin); the video model adds male anatomy mid-clip whatever the prompt says
+SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}   # one more try for clips that fail only the female-anatomy check
 # Video model: keep the whole pet in shot (a cut-off pet can't be fixed afterwards)
 IN_FRAME = ' The whole {species} stays fully inside the frame at all times, with space around it; the camera does not zoom or move.'
 

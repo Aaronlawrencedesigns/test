@@ -158,7 +158,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Sex: the order form asks male / female (Chewie is a girl; the models gave her male anatomy).
   `plan.SEX_NOTE` adds a note to every prompt for female pets; `anatomy_problems` (vision check on the
   sit/lie images and 3 frames of every trick) rejects a tail on tail-less pets and male anatomy on
-  female pets. Re-make: `sidekicks-requeue <id> sex=female`.
+  female pets. Re-make: `sidekicks-requeue <id> sex=female`. Prompts alone don't stop the video model
+  adding male anatomy mid-clip in seated tricks, so for female pets `media.patch_groin` copies the clean
+  belly area of the sit still into frames of `plan.SEATED_TRICKS` (eat, bark, puppy, wag) whose lower
+  body lines up with it (IoU >= 0.85), before the anatomy check. Free; no retries needed.
 - Lying / sleeping / getting-up / waking clips are decoded with a crop shifted to the very bottom of the
   video (`decode_keyed(low=True)`): the normal crop cut off paws stretched toward the camera.
 - Site: `site/legal.html` (Terms, Refund Policy, Privacy Policy), linked from a small footer on the
