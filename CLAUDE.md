@@ -161,7 +161,13 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   female pets. Re-make: `sidekicks-requeue <id> sex=female`. Prompts alone don't stop the video model
   adding male anatomy mid-clip in seated tricks, so for female pets `media.patch_groin` copies the clean
   belly area of the sit still into frames of `plan.SEATED_TRICKS` (eat, bark, puppy, wag) whose lower
-  body lines up with it (IoU >= 0.85), before the anatomy check. Free; no retries needed.
+  body lines up with it (IoU >= 0.85; the patch follows small shifts only on a near-exact fit), before the
+  anatomy check. Free; no retries needed. Lying / sleeping: `female_rest_fix` makes a clean image edit of
+  each derived resting pose (`plan.FEMALE_EDIT`, ~$0.08), `media.edit_mask` takes the small changed
+  area, and `patch_from` puts it into the stills and the frames of `plan.REST_CLIPS` that match the pose.
+  Not covered yet: frames where a female pet stands or moves (stand, poop, mid-wag).
+- sleep_loop is NOT decoded with the low crop (its ends-only correction left it hovering 40 px).
+- `stand` = standing up on the hind legs (begging), like Chunky's; on all fours looked like sitting.
 - Lying / sleeping / getting-up / waking clips are decoded with a crop shifted to the very bottom of the
   video (`decode_keyed(low=True)`): the normal crop cut off paws stretched toward the camera.
 - Site: `site/legal.html` (Terms, Refund Policy, Privacy Policy), linked from a small footer on the

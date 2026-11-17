@@ -46,6 +46,7 @@ class Job:
         self.cost = {'images': 0, 'video_seconds': 0, 'cached': 0}
         self.image_path = {}  # (item, attempt) -> generated file (names carry a content tag)
         self._gaze_events, self._gaze_started = {}, set()
+        self.rest_fix = {}    # female pets: rest pose -> (clean 640 still, mask) for belly patching
         self.qa = []          # {item, attempt, problems, metrics}
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
@@ -296,6 +297,40 @@ class Job:
             out.append('shows male anatomy (this pet is female)')
         return out
 
+    def female_rest_fix(self, name):
+        """Female pets: an image edit of the resting pose with a female belly; the changed area becomes
+        a patch for this pose's still and for the frames of lying / sleeping clips."""
+        if self.sex != 'female' or name not in self.still:
+            return
+        orig_k = self.kf[f'{name}_end']
+        src = f'{self.kfdir}/kf_{name}_end.png'
+
+        def attempt_fn(attempt):
+            p = self.gen_image(f'female_{name}', plan.FEMALE_EDIT, [src], attempt)
+            k, st = media.key_file(p)
+            clean = self.to_still(k)
+            orig = self.to_still(orig_k)
+            mask = media.edit_mask(orig, clean)
+            problems = [] if mask is not None else ['the edit moved or changed the pet']
+            return (clean, mask), problems, {'changed_px': int((mask > 0.5).sum()) if mask is not None else -1}
+        try:
+            clean, mask = self.with_retries(f'female {name} pose', attempt_fn)
+        except RuntimeError:
+            return
+        if mask is None or mask.max() <= 0:
+            return
+        clean = media.apply_tf(clean, media.tf_to(media.dog_stats(clean), media.dog_stats(self.still[name])))
+        self.rest_fix[name] = (clean, mask)
+        (self.still[name],), _ = media.patch_from([self.still[name]], clean, mask, min_iou=0)
+        Image.fromarray(self.still[name]).save(f'{self.pet}/stills/{name}.webp', quality=90, method=6)
+
+    def patch_rest(self, frames):
+        n = 0
+        for clean, mask in self.rest_fix.values():
+            frames, k = media.patch_from(frames, clean, mask)
+            n += k
+        return frames, n
+
     def look_check(self, path):
         """Vision check of where the pet looks, cached per image (None if unavailable)."""
         cache = f'{path}.look.json'
@@ -378,6 +413,9 @@ class Job:
             else:
                 end_still = self.still.get(end_name) if end_name else None
             fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
+            if self.sex == 'female' and key in plan.REST_CLIPS and self.rest_fix:
+                fixed, n = self.patch_rest(fixed)
+                metrics['belly_patched'] = f'{n} frames'
             if self.sex == 'female' and key in plan.SEATED_TRICKS and 'sit' in self.still:
                 fixed, n = media.patch_groin(fixed, self.still['sit'])
                 metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
@@ -409,6 +447,9 @@ class Job:
             if derive == 'sleep' and 'lie' in self.still:     # one colour look across lying / sleeping
                 self.still['sleep'] = media.apply_tf(self.still['sleep'], media.tf_to(media.dog_stats(self.still['sleep']), media.dog_stats(self.still['lie'])), 0.5)
             media.save_still(pose_k, f'{self.pet}/stills/{derive}.webp')
+            self.female_rest_fix(derive)
+            if derive in self.rest_fix:
+                fixed, _ = self.patch_rest(fixed)
         start_ref = self.still_for(first)
         end_ref = self.still.get(derive) if derive else (self.still.get(end_name) if end_name else None)
         fixed = media.blend_clip_colours(fixed, start_ref, end_ref)
