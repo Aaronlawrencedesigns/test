@@ -1,6 +1,6 @@
 // POST /api/stripe-webhook  (Stripe sends checkout.session.completed here)
 // Marks the order paid, queues it for the pet-making worker and emails a confirmation.
-import { json, validId, getOrder, putOrder, verifyStripeSignature, sendEmail, confirmationEmail } from '../../lib/orders.js';
+import { json, validId, getOrder, putOrder, verifyStripeSignature, sendEmail, confirmationEmail, stripeFee } from '../../lib/orders.js';
 
 export async function onRequestPost({ request, env, waitUntil }) {
   const raw = await request.text();
@@ -32,6 +32,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const send = sendEmail(env, { to: order.email, ...confirmationEmail(order) })
     .then(async (r) => { if (r?.MessageID) { order.confirmation_email = r.MessageID; await putOrder(env, order); } })
     .catch((e) => console.error('confirmation email failed', id, e.message));
-  waitUntil ? waitUntil(send) : await send;
+  // Stripe's exact fee, for the owner's orders page (best effort: $0 promo orders have no payment)
+  // (after the email step, which also saves the order, so the two writes never overwrite each other)
+  const fee = send.then(() => (order.payment_intent ? stripeFee(env, order.payment_intent) : (order.amount_total === 0 ? 0 : null)))
+    .then(async (f) => { if (f !== null) { const o = (await getOrder(env, id)) || order; o.stripe_fee_cents = f; await putOrder(env, o); } })
+    .catch(() => {});
+  waitUntil ? waitUntil(fee) : await fee;
   return json({ ok: true });
 }
