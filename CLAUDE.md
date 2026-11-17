@@ -198,4 +198,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   everyone until they're set. The webhook saves Stripe's exact fee (`stripe_fee_cents`, needs PaymentIntents +
   Charges read on the key; otherwise the page estimates 2.9% + 30c). The worker keeps `ai_cost_total_usd`
   (all runs of a pet). The QA report and Try-it page also show the customer's uploaded photos (`photos/<view>`).
+- Worker emails the owner "New order: <pet>" when a paid order is picked up (`notify_new_order`, once per order,
+  `owner_notified_at`). GPTProto outages (out of credit, key cap, model overloaded: `providers.ProviderUnavailable`)
+  don't fail the pet: the order goes back to queue/paid with status `waiting`, the worker retries every
+  `PROVIDER_WAIT_SECONDS` (900) and emails the owner once per outage; after `PROVIDER_MAX_WAITS` (48, ~12 h) it fails.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".

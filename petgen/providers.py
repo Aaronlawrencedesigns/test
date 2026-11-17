@@ -32,6 +32,21 @@ GAZE_CHECK = ("Look at this photo of a pet. Answer ONLY with JSON: "
               'IMAGE its face points. "eyes_follow" = its eyes look the same way its head points (not at the camera).')
 
 
+class ProviderUnavailable(Exception):
+    """GPTProto can't serve requests right now (out of credit, key cap reached, model overloaded).
+    Not the pet's fault: the worker puts the order back in the queue and tries again later."""
+
+
+# words GPTProto / upstream models use when the account or key can't spend, or the model is down
+_UNAVAILABLE = ('overloaded', 'insufficient', 'quota', 'balance', 'credit', 'limit exceeded', 'quota exceeded', 'rate limit',
+                'no model channel', 'billing', 'payment required', 'try again later')
+
+
+def _unavailable(status, text):
+    t = (text or '').lower()
+    return status in (401, 402, 403) or any(w in t for w in _UNAVAILABLE)
+
+
 class GPTProtoProvider:
     image_model = 'gemini-3-pro-image-preview'
     vision_model = 'gemini-3-flash-preview'   # cheap checks (well under a cent per image)
@@ -50,6 +65,7 @@ class GPTProtoProvider:
     def image(self, key, prompt, ref_paths, out_path):
         """Nano Banana Pro via the OpenAI-style chat endpoint (accepts base64 images)."""
         content = [{'type': 'text', 'text': prompt}] + [{'type': 'image_url', 'image_url': {'url': self._data_uri(p)}} for p in ref_paths]
+        last = ''
         for attempt in range(5):
             try:
                 r = self.s.post(f'{API}/v1/chat/completions', json={'model': self.image_model, 'messages': [{'role': 'user', 'content': content}],
@@ -60,8 +76,11 @@ class GPTProtoProvider:
                 continue
             if r.status_code >= 500 or r.status_code == 429:   # busy / rate-limited: wait and try again
                 self.log(f'  {key}: server busy ({r.status_code}), retrying')
+                last = r.text[:300]
                 time.sleep(20 * (attempt + 1))
                 continue
+            if r.status_code >= 400 and _unavailable(r.status_code, r.text):
+                raise ProviderUnavailable(f'{key}: GPTProto {r.status_code}: {r.text[:200]}')
             r.raise_for_status()
             msg = r.json()['choices'][0]['message']
             found = [im.get('image_url', {}).get('url') for im in (msg.get('images') or [])]
@@ -73,6 +92,8 @@ class GPTProtoProvider:
             open(out_path + '.part', 'wb').write(base64.b64decode(found[0].split(',', 1)[1]))
             os.replace(out_path + '.part', out_path)
             return out_path
+        if _unavailable(0, last) or last:      # busy for ~5 minutes straight: the model is down, not this pet
+            raise ProviderUnavailable(f'{key}: image model unavailable: {last[:200]}')
         raise RuntimeError(f'{key}: image request kept failing')
 
     def ask_image(self, path, question):
@@ -124,6 +145,8 @@ class GPTProtoProvider:
             j = r.json()
             d = j.get('data') or {}
             if not d.get('id'):
+                if _unavailable(r.status_code, str(j)) or r.status_code >= 500 or r.status_code == 429:
+                    raise ProviderUnavailable(f'{key}: video submit refused ({r.status_code}): {str(j)[:200]}')
                 raise RuntimeError(f'{key}: submit failed: {str(j)[:300]}')
             open(pending, 'w').write(d['id'])
             self.log(f'  {key}: submitted {d["id"]}')
