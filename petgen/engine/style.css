@@ -89,6 +89,8 @@ html, body {
   z-index: 4;
 }
 #tray.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+#tray.align-right { left: auto; right: 2%; transform: translate(0, 8px) scale(0.92); transform-origin: bottom right; }
+#tray.align-right.show { transform: translate(0, 0) scale(1); }
 .food { cursor: grab; user-select: none; -webkit-user-select: none; transition: transform 0.15s, opacity 0.15s; }
 .food:hover { transform: scale(1.18) rotate(-6deg); }
 .food.taken { opacity: 0.25; }
