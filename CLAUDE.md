@@ -184,7 +184,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - Female pets: `plan.SHADE_TRICKS` (poop, stand = play bow) get `media.shade_belly`: a soft dark shadow where
   the belly meets the gap between the legs (only while the legs are apart, faded in/out), hiding male anatomy.
-  Female poop = Chunky-style squat at a 3/4 angle (side-on showed anatomy); unlike the bow it keeps the vision
+  Female poop = up onto all fours (never the hind legs), squat at a 3/4 angle, back onto all fours, sit (side-on showed anatomy); unlike the bow it keeps the vision
   sex check, so if anatomy still shows it's retried once then flagged (owner may drop poop for that pet).
   Female pets' `stand` is labelled "Bow" (`plan.FEMALE_LABELS` -> manifest `labels`, read by the app menu and preview).
 - Lying / sleeping are a 3/4 view like Chunky's (lie_down prompt), not side-on.
