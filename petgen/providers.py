@@ -49,12 +49,17 @@ class GPTProtoProvider:
     def image(self, key, prompt, ref_paths, out_path):
         """Nano Banana Pro via the OpenAI-style chat endpoint (accepts base64 images)."""
         content = [{'type': 'text', 'text': prompt}] + [{'type': 'image_url', 'image_url': {'url': self._data_uri(p)}} for p in ref_paths]
-        for attempt in range(3):
-            r = self.s.post(f'{API}/v1/chat/completions', json={'model': self.image_model, 'messages': [{'role': 'user', 'content': content}],
-                                                               'modalities': ['image', 'text']}, timeout=300)
-            if r.status_code >= 500:
-                self.log(f'  {key}: server error {r.status_code}, retrying')
-                time.sleep(5 * (attempt + 1))
+        for attempt in range(5):
+            try:
+                r = self.s.post(f'{API}/v1/chat/completions', json={'model': self.image_model, 'messages': [{'role': 'user', 'content': content}],
+                                                                   'modalities': ['image', 'text']}, timeout=300)
+            except requests.RequestException as e:   # timeout / dropped connection: wait and try again
+                self.log(f'  {key}: {e.__class__.__name__}, retrying')
+                time.sleep(20 * (attempt + 1))
+                continue
+            if r.status_code >= 500 or r.status_code == 429:   # busy / rate-limited: wait and try again
+                self.log(f'  {key}: server busy ({r.status_code}), retrying')
+                time.sleep(20 * (attempt + 1))
                 continue
             r.raise_for_status()
             msg = r.json()['choices'][0]['message']
