@@ -41,7 +41,7 @@
   // Clip graph: every clip goes from one resting state to another.
   const CLIPS = {
     wag:         { from: 'sit', to: 'sit', say: '♥' },
-    bark:        { from: 'sit', to: 'sit', say: () => pick(['Woof!', 'Arf!', 'Boof!']) },
+    bark:        { from: 'sit', to: 'sit', say: () => pick(PET.species === 'cat' ? ['Meow!', 'Mrrp!', 'Mew!'] : ['Woof!', 'Arf!', 'Boof!']) },
     puppy:       { from: 'sit', to: 'sit', say: '🥺' },
     poop:        { from: 'sit', to: 'sit', say: '💩 …oops', sayAt: 0.6 },
     lie_down:    { from: 'sit', to: 'lie' },

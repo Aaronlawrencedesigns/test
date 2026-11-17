@@ -83,6 +83,14 @@ SHADE_NO_SEX_CHECK = set()
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
+# Cats: cat versions of the dog-only tricks (a cat doesn't bark or pant) and their menu names
+CAT_ACTIONS = {
+    'bark': "The {species} meows at the camera two times, like a cat talking: each meow it opens its mouth showing its small teeth and pink tongue, its whiskers move, then it closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera. It is a cat meowing, never barking or panting.",
+    'wag': "The {species} is happy and content while staying firmly seated the whole time: it purrs, squeezes its eyes into slow happy blinks, rubs its cheek against the air and kneads its front paws on the floor a few times, then settles back into exactly the same calm sitting pose as the start, looking at the camera. It is a cat, so it never pants or sticks its tongue out.",
+    'puppy': "The {species} looks up at the camera with big round pleading eyes, pupils wide, tilting its head slightly to one side as if asking for a treat, then returns to exactly the same calm sitting pose as the start, looking at the camera.",
+}
+CAT_LABELS = {'bark': 'Meow', 'wag': 'Happy purr', 'puppy': 'Kitten eyes'}
+
 # menu names that differ from the default for female pets (the app and preview read manifest['labels'])
 FEMALE_LABELS = {}   # (was {'stand': 'Bow'} while girls did a play bow; Seedance 2.5 stands them up properly)
 
