@@ -147,6 +147,9 @@ def make(oid):
         o['code'] = new_code()
         s3.put_object(Bucket=BUCKET, Key=f'codes/{o["code"]}', Body=oid.encode())
     o.setdefault('approve_token', secrets.token_urlsafe(24))
+    # running total over every run of this pet (each run only counts what it newly generated)
+    total = (o.get('ai_cost_total_usd') if 'ai_cost_total_usd' in o else o.get('ai_cost_usd', 0)) or 0
+    o['ai_cost_total_usd'] = round(total + cost, 2)
     o.update(status='review', made_at=now(), ready=ok, needs_look=failed, photo_warnings=warn, ai_cost_usd=cost,
              error=job.error, pet_zip=f'orders/{oid}/pet.zip', report=f'orders/{oid}/report.html')
     put_order(o)

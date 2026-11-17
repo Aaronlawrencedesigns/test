@@ -41,6 +41,22 @@ export async function stripe(env, path, params) {
   return data;
 }
 
+// GET from Stripe (e.g. a payment's fee); returns null instead of throwing, for best-effort lookups
+export async function stripeGet(env, path) {
+  try {
+    const r = await fetch(`https://api.stripe.com/v1/${path}`, { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+// Stripe's fee for an order's payment, in cents (null if Stripe doesn't have it yet / the key can't read it)
+export async function stripeFee(env, paymentIntent) {
+  if (!paymentIntent) return null;
+  const pi = await stripeGet(env, `payment_intents/${encodeURIComponent(paymentIntent)}?expand[]=latest_charge.balance_transaction`);
+  const fee = pi?.latest_charge?.balance_transaction?.fee;
+  return Number.isFinite(fee) ? fee : null;
+}
+
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 function safeEqual(a, b) {
   if (a.length !== b.length) return false;

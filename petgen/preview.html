@@ -19,6 +19,9 @@
     .panel button.done { background: #e6f4ea; border-color: #9ccfaa; }
     .panel button.done::after { content: " ✓"; color: #2e7d32; }
     .panel a { color: #2f45c4; }
+    #photos { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    #photos a { display: block; text-align: center; color: #6a6170; font-size: 11px; text-decoration: none; }
+    #photos img { height: 84px; width: 84px; object-fit: cover; border-radius: 8px; display: block; border: 1px solid #d3cad9; }
     #menu { position: fixed; display: none; min-width: 230px; padding: 5px; background: rgba(246,244,248,.97); backdrop-filter: blur(12px);
       border: 1px solid rgba(0,0,0,.14); border-radius: 9px; box-shadow: 0 12px 34px rgba(0,0,0,.25); font-size: 13.5px; z-index: 10; }
     #menu div.i { padding: 3px 12px; border-radius: 5px; cursor: default; white-space: nowrap; display: flex; justify-content: space-between; gap: 18px; }
@@ -33,6 +36,7 @@
     <p>Works like the Mac app: hover the pet for <b>Menu</b>, right-click it, drag it, move your mouse around for head tracking.
       Leave the mouse still for 30 s and it naps. Each button turns green once you've played it.</p>
     <div class="row" id="quick"></div>
+    <div id="photos" aria-label="Uploaded photos"></div>
   </div>
   <iframe id="stage" srcdoc="" title="__NAME__"></iframe>
   <div id="menu" role="menu"></div>
@@ -124,6 +128,15 @@
       const b = document.createElement('button');
       b.textContent = l; b.dataset.a = a; b.onclick = () => act(a);
       quick.appendChild(b);
+    });
+    // the customer's uploaded photos (served next to the preview on the site; absent locally)
+    const ph = document.getElementById('photos');
+    ['front', 'side', 'back', 'sit'].forEach((v) => {
+      const a = document.createElement('a'), img = new Image();
+      a.href = `photos/${v}`; a.target = '_blank';
+      img.alt = v; img.onerror = () => a.remove(); img.src = `photos/${v}`;
+      a.append(img, v);
+      ph.appendChild(a);
     });
     layout();
   </script>

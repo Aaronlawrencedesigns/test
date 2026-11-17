@@ -192,4 +192,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Lying / sleeping are a 3/4 view like Chunky's (lie_down prompt), not side-on.
 - Owner QA email has a "Try it" link: `/api/admin/preview/<id>/<token>/index.html` (petgen/preview.html, uploaded by the
   worker to `orders/<id>/preview/`): works like the Mac app (Menu pill, right-click menu, sizes, feed, drag).
+- Owner orders page `/admin/orders` (`site/functions/admin/orders.js`, `?format=csv`, `?month=YYYY-MM`, `?all=1`):
+  paid / Stripe fee / AI cost / profit per order with totals. Protected by Cloudflare Access on /admin/*; the function
+  also verifies the Access JWT (`site/lib/access.js`, Pages vars ACCESS_TEAM_DOMAIN + ACCESS_AUD) and refuses
+  everyone until they're set. The webhook saves Stripe's exact fee (`stripe_fee_cents`, needs PaymentIntents +
+  Charges read on the key; otherwise the page estimates 2.9% + 30c). The worker keeps `ai_cost_total_usd`
+  (all runs of a pet). The QA report and Try-it page also show the customer's uploaded photos (`photos/<view>`).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
