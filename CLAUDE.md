@@ -182,4 +182,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Spending cap per pet run `PETGEN_BUDGET` (default $12, est.): over it, no more retries; best try kept
   and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
+- Female pets: `plan.SHADE_TRICKS` (poop, stand = play bow) get `media.shade_belly`: a soft dark shadow where
+  the belly meets the gap between the legs (only while the legs are apart, faded in/out), hiding male anatomy.
+  Female pets' `stand` is labelled "Bow" (`plan.FEMALE_LABELS` -> manifest `labels`, read by the app menu and preview).
+- Lying / sleeping are a 3/4 view like Chunky's (lie_down prompt), not side-on.
+- Owner QA email has a "Try it" link: `/api/admin/preview/<id>/<token>/index.html` (petgen/preview.html, uploaded by the
+  worker to `orders/<id>/preview/`): works like the Mac app (Menu pill, right-click menu, sizes, feed, drag).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".

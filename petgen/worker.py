@@ -140,6 +140,7 @@ def make(oid):
     zip_path = shutil.make_archive(os.path.join(d, 'pet'), 'zip', job.pet)
     s3.upload_file(zip_path, BUCKET, f'orders/{oid}/pet.zip', ExtraArgs={'ContentType': 'application/zip'})
     s3.upload_file(f'{job.out}/report.html', BUCKET, f'orders/{oid}/report.html', ExtraArgs={'ContentType': 'text/html'})
+    upload_preview(oid, f'{job.out}/preview')
 
     o = get_order(oid)
     if not o.get('code'):                          # the customer's pet code (works once approved)
@@ -159,9 +160,26 @@ def make(oid):
                 + (f'Photo warnings: {", ".join(warn)}\n' if warn else '')
                 + (f'Error: {job.error}\n' if job.error else '')
                 + f'\nReview it, then approve and send it to the customer:\n{approve}\n'
+                + f'\nTry it like on your Mac (menu, sizes, every trick):\n{SITE}/api/admin/preview/{oid}/{o["approve_token"]}/index.html\n'
                 + f'\nQA report:\n{SITE}/api/admin/report?id={oid}&t={o["approve_token"]}\n'
                 + f'\nPet pack (link valid 7 days):\n{link(f"orders/{oid}/pet.zip")}\n'
                 + f'\nTo remake it instead: sidekicks-requeue {oid}\n')
+
+
+PREVIEW_TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+                 '.webp': 'image/webp', '.webm': 'video/webm', '.png': 'image/png'}
+
+
+def upload_preview(oid, pv):
+    """The playable preview (petgen/preview.html + player + pet files) -> orders/<id>/preview/ for the owner."""
+    if not os.path.isdir(pv):
+        return
+    for root, _, files in os.walk(pv):
+        for f in files:
+            src = os.path.join(root, f)
+            rel = os.path.relpath(src, pv).replace(os.sep, '/')
+            ct = PREVIEW_TYPES.get(os.path.splitext(f)[1], 'application/octet-stream')
+            s3.upload_file(src, BUCKET, f'orders/{oid}/preview/{rel}', ExtraArgs={'ContentType': ct})
 
 
 def tick():

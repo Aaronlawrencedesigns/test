@@ -459,6 +459,9 @@ class Job:
             if self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS) and 'sit' in self.still:
                 fixed, n = media.patch_groin(fixed, self.still['sit'])
                 metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
+            if self.sex == 'female' and key in plan.SHADE_TRICKS:
+                fixed, n = media.shade_belly(fixed)
+                metrics['belly_shaded'] = f'{n}/{len(fixed)} frames'
             if derive and paws_low:   # the paws really leave the video (the low crop reaches its bottom)
                 problems_extra.append('paws cut off at the bottom of the frame in the resting pose')
             fitted_end = None
@@ -467,7 +470,7 @@ class Job:
                 fitted_end = [media.affine(frames[-1], sc, o)]
             # (seated tricks of female pets are belly-patched above; the vision check misreads a smooth
             # front-on belly as male, so only the tail is checked there)
-            patched = self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS)
+            patched = self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS or key in plan.SHADE_TRICKS)
             problems_extra += [p for p in self.anatomy_problems(fixed, f'{key}_{attempt}')
                                if not (patched and 'male anatomy' in p)]
             if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:

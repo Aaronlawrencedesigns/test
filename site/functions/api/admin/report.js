@@ -9,5 +9,8 @@ export async function onRequestGet({ request, env }) {
   if (!order || !order.approve_token || order.approve_token !== t) return new Response('not found', { status: 404 });
   const obj = await env.ORDERS.get(`orders/${id}/report.html`);
   if (!obj) return new Response('no report yet', { status: 404 });
-  return new Response(obj.body, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+  // link to the playable preview at the top of the report
+  const play = `/api/admin/preview/${id}/${encodeURIComponent(t)}/index.html`;
+  const html = (await obj.text()).replace(/<body[^>]*>/i, (b) => `${b}<p style="font:600 16px system-ui;margin:12px 16px">▶ <a href="${play}">Try the pet like on your Mac (menu, sizes, feed, every trick)</a></p>`);
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
 }

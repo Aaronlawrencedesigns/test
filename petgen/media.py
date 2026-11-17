@@ -319,6 +319,67 @@ def patch_groin(frames, still, min_iou=0.85):
     return patch_from(frames, still, groin_mask(still), min_iou=min_iou)
 
 
+def _leg_gap_top(a):
+    """Top of the see-through gap between the legs under the body (front-on standing / squatting),
+    as (x, y, gap width); None when the legs are together (sitting, lying)."""
+    x0, y0, x1, y1 = bbox(a)
+    w, h = x1 - x0, y1 - y0
+    cx = (x0 + x1) // 2
+    lo, hi = max(0, int(cx - 0.3 * w)), min(a.shape[1], int(cx + 0.3 * w))
+    m = a[..., 3] > 128
+    gap = np.zeros_like(m)
+    for y in range(int(y0 + 0.4 * h), y1):
+        idx = np.flatnonzero(m[y, lo:hi])
+        if len(idx) >= 2:
+            gap[y, lo + idx[0]:lo + idx[-1]] = ~m[y, lo + idx[0]:lo + idx[-1]]
+    band = max(2, int(0.06 * w))
+    ys = np.flatnonzero(gap[:, cx - band:cx + band].any(1))
+    if len(ys) == 0:
+        return None
+    top = ys[-1]
+    for y in ys[::-1]:              # the run of gap rows reaching up from the bottom
+        if y < top - 1:
+            break
+        top = y
+    if y1 - top < 0.12 * h:
+        return None
+    gx = np.flatnonzero(gap[min(top + 3, a.shape[0] - 1), lo:hi])
+    return (lo + gx.mean() if len(gx) else cx), top, max(len(gx), 0.06 * w), w, h
+
+
+def shade_belly(frames, strength=0.85, fade=6):
+    """Female pets, front-on standing / squatting tricks: a soft dark shadow where the belly meets the
+    gap between the legs, deep enough to hide what the video model draws there. Only in frames where
+    the legs are apart; it fades in and out over `fade` frames so it never pops. Returns (frames, n)."""
+    found = [_leg_gap_top(f) for f in frames]
+    on = np.array([g is not None for g in found], np.float32)
+    # fade: strength ramps toward each run of frames with a gap, and holds through 1-2 frame dropouts
+    k = np.zeros(len(frames), np.float32)
+    for i in range(len(frames)):
+        lo, hi = max(0, i - fade), min(len(frames), i + fade + 1)
+        near = np.flatnonzero(on[lo:hi])
+        if len(near):
+            k[i] = max(0.0, 1 - np.min(np.abs(near + lo - i)) / fade)
+    last = None
+    out, n = [], 0
+    yy, xx = np.mgrid[0:frames[0].shape[0], 0:frames[0].shape[1]]
+    for f, g, s in zip(frames, found, k):
+        g = g or last
+        if g is None or s <= 0:
+            out.append(f)
+            continue
+        if found[len(out)] is not None:
+            last = g
+        gx, top, gw, w, h = g
+        d = ((xx - gx) / (0.9 * gw + 0.05 * w)) ** 2 + ((yy - (top - 0.01 * h)) / (0.14 * h)) ** 2
+        m = np.clip(1 - d, 0, 1) ** 0.7 * (f[..., 3] > 128) * (strength * s)
+        f = f.copy()
+        f[..., :3] = (f[..., :3] * (1 - m)[..., None]).astype(np.uint8)
+        out.append(f)
+        n += 1
+    return out, n
+
+
 def edit_mask(orig, clean, max_share=0.08):
     """Soft mask of where an anatomy edit changed the pet (lower half of its body only).
     None if the edit moved / rescaled the pet or changed too much to trust."""

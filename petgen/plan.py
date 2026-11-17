@@ -71,6 +71,8 @@ SEX_EXTRA_TRIES = 1
 # tricks where the pet stays seated: female pets get the clean belly of the sitting pose patched in
 # (media.patch_groin); the video model adds male anatomy mid-clip whatever the prompt says
 SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
+# female pets: front-on standing / squatting tricks get a dark shadow between the legs (media.shade_belly)
+SHADE_TRICKS = {'poop', 'stand'}
 # lying / sleeping: female pets get a clean edit of each resting pose (FEMALE_EDIT), patched into the
 # frames of these clips wherever the pet is in that pose
 # tricks where the pet stands / moves: female pets get KEYFRAME_EDITS frames image-edited to a clean
@@ -143,7 +145,7 @@ ACTIONS = {
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
-    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it lowers itself onto its belly, turning its body to the side as it goes down, ending lying at an angle to the camera with its back legs tucked to one side, front legs resting on the floor in front of its chest, head up looking at the camera, exactly matching the final frame. Its paws never reach toward the camera; all four paws stay fully inside the frame.", {'spread': True, 'derive': 'lie', 'low': True}),
+    'lie_down': ('kf_sit', 'kf_lie', 5, "The {species} lies down: from sitting it lowers itself onto its belly, turning its body only partly as it goes down, ending lying at a three-quarter angle to the camera (body angled about 45 degrees, chest and face toward the camera, rear further back) with its back legs tucked to one side, front legs resting on the floor in front of its chest, head up looking at the camera, exactly matching the final frame. Its paws never reach toward the camera; all four paws stay fully inside the frame.", {'spread': True, 'derive': 'lie', 'low': True}),
     # 'lie' / 'sleep' are taken from the LAST FRAME of lie_down / fall_asleep ('derive'), so clips connect exactly
     # (an image-generated pose never quite matches where a video ends). 'sleep' is an
     # image edit of that lying frame (SLEEP_EDIT), made before fall_asleep runs.
