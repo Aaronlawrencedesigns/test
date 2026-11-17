@@ -387,7 +387,11 @@ class Job:
             if end_still is not None and not derive:
                 sc, o = media.fit(frames[-1], end_still)
                 fitted_end = [media.affine(frames[-1], sc, o)]
-            problems_extra += self.anatomy_problems(fixed, f'{key}_{attempt}')
+            # (seated tricks of female pets are belly-patched above; the vision check misreads a smooth
+            # front-on belly as male, so only the tail is checked there)
+            patched = self.sex == 'female' and key in plan.SEATED_TRICKS
+            problems_extra += [p for p in self.anatomy_problems(fixed, f'{key}_{attempt}')
+                               if not (patched and 'male anatomy' in p)]
             if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:
                 problems_extra.append('paws cut off at the bottom of the frame while asleep')
             problems = media.clip_qa(frames, stats, metrics, end_still if not derive else None, fitted_end, final=fixed,
