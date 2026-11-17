@@ -72,7 +72,7 @@ SEX_EXTRA_TRIES = 1
 # (media.patch_groin); the video model adds male anatomy mid-clip whatever the prompt says
 SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 # female pets: front-on standing / squatting tricks get a dark shadow between the legs (media.shade_belly)
-SHADE_TRICKS = {'poop'}
+SHADE_TRICKS = set()   # (was {'poop'}: Seedance 2.5 draws girls correctly, and the shadow read as a dark blob)
 # of those, the vision check's 'male anatomy' is ignored only where it misreads the front-on shadow (play bow);
 # poop keeps the check: if it still shows, it's retried once and then flagged so the owner can drop it
 SHADE_NO_SEX_CHECK = set()
