@@ -78,6 +78,9 @@ SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
+# menu names that differ from the default for female pets (the app and preview read manifest['labels'])
+FEMALE_LABELS = {'stand': 'Bow'}
+
 FEMALE_ACTIONS = {
     'stand': "The {species} gets up from sitting and does a big happy play bow: it lowers its chest and front legs to the floor with its rear end raised, stretching and looking playfully at the camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, looking at the camera.",
     'poop': "The {species} stands up facing the camera and squats low to the ground right where it is, still facing the camera, with its rear tucked down under it the way a female {species} squats, holds briefly, then sits back down in exactly the same pose as the start, looking at the camera.",

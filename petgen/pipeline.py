@@ -655,6 +655,8 @@ class Job:
             'clips': sorted(os.path.splitext(f)[0] for f in os.listdir(f'{self.pet}/clips')),
         }
         manifest['features'] = plan.FEATURES
+        if self.sex == 'female':
+            manifest['labels'] = dict(plan.FEMALE_LABELS)   # stand is a play bow for female pets
         # completeness: every pet ships with everything Chunky has
         missing = [f'clip: {c}' for c in plan.REQUIRED_CLIPS if c not in manifest['clips']]
         missing += [f'still: {n}' for n in plan.REQUIRED_STILLS if not os.path.exists(f'{self.pet}/stills/{n}.webp')]

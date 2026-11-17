@@ -38,6 +38,7 @@
       <div id="tray"></div><div id="held"></div><script src="app.js"><\/script></body></html>`;
     const rect = () => { const r = frame.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; };
     addEventListener('mousemove', (e) => frame.contentWindow.postMessage({ t: 'c', c: { x: e.clientX, y: e.clientY }, bounds: rect() }, '*'));
+    for (const [a, label] of Object.entries(PET.labels || {})) { const b = document.querySelector(`[data-a="${a}"]`); if (b) b.textContent = label; }
     document.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => frame.contentWindow.postMessage({ t: 'a', a: b.dataset.a, bounds: rect() }, '*'));
   </script>
 </body>

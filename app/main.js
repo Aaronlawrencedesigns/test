@@ -221,7 +221,7 @@ function menu() {
     { type: 'separator' },
     { label: `Feed ${name}`, click: send('feed') },
     { type: 'separator' },
-    ...ACTIONS.map(([label, a]) => ({ label, click: send(a) })),
+    ...ACTIONS.map(([label, a]) => ({ label: (currentPet()?.manifest.labels || {})[a] || label, click: send(a) })),
     { type: 'separator' },
     {
       label: 'Size',
