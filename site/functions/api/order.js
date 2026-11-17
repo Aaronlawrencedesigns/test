@@ -8,7 +8,8 @@ export async function onRequestPost({ request, env }) {
   try { form = await request.formData(); } catch { return json({ error: 'Send the form as multipart/form-data.' }, 400); }
 
   const email = String(form.get('email') || '').trim();
-  const name = String(form.get('name') || '').trim().slice(0, 40) || 'your pet';
+  const name = String(form.get('name') || '').trim().slice(0, 40);
+  if (!name) return json({ error: "Add your pet's name." }, 400);
   const species = ['Dog', 'Cat', 'Other'].includes(form.get('species')) ? form.get('species') : 'Dog';
   const tail = ['yes', 'stub', 'none'].includes(form.get('tail')) ? form.get('tail') : 'yes';
   const sex = ['male', 'female'].includes(form.get('sex')) ? form.get('sex') : 'male';
@@ -31,7 +32,7 @@ export async function onRequestPost({ request, env }) {
   const origin = new URL(request.url).origin;
   const order = {
     id, status: 'awaiting_payment', created_at: new Date().toISOString(),
-    email, pet_name: name === 'your pet' ? '' : name, species: species.toLowerCase(), tail, sex,
+    email, pet_name: name, species: species.toLowerCase(), tail, sex,
     photos: Object.fromEntries(photos.map((p) => [p.view, `orders/${id}/photos/${p.view}.${p.ext}`])),
     price_cents: PRICE_CENTS,
   };
