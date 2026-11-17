@@ -166,7 +166,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   each derived resting pose (`plan.FEMALE_EDIT`, ~$0.08), `media.edit_mask` takes the small changed
   area, and `patch_from` puts it into the stills and the frames of `plan.REST_CLIPS` that match the pose.
   Standing / moving frames can't be patched (key-frame edits tried: too much motion), so female pets get
-  belly-hiding versions of stand (play bow), poop (low squat) and wag (stays seated): `plan.FEMALE_ACTIONS`.
+  belly-hiding versions: `plan.FEMALE_ACTIONS` (stand = play bow, poop = front-facing squat, wag = seated,
+  get_up = rises toward the camera). Side views show male anatomy; front-facing views hide it.
+- Clip QA rejects paws running off the bottom of the frame (>5% of frames; wake_up 30%, `plan.MAX_BOTTOM`).
+- Image requests retry on 429 / timeouts (GPTProto rate-limits under load).
 - sleep_loop is NOT decoded with the low crop (its ends-only correction left it hovering 40 px).
 - `stand` = standing up on the hind legs (begging), like Chunky's; on all fours looked like sitting.
   Female pets do a play bow instead.

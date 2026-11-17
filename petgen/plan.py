@@ -77,10 +77,11 @@ SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 # female belly, and every frame is patched from the nearest edited frame (media.patch_from)
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
-# whenever it's visible). Same clip names, so the app and menu don't change.
+# whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
 FEMALE_ACTIONS = {
     'stand': "The {species} gets up from sitting and does a big happy play bow: it lowers its chest and front legs to the floor with its rear end raised, stretching and looking playfully at the camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, looking at the camera.",
-    'poop': "The {species} stands up, turns a little to the side and squats low to the ground with its rear tucked down under it, the way a female {species} squats, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.",
+    'poop': "The {species} stands up facing the camera and squats low to the ground right where it is, still facing the camera, with its rear tucked down under it the way a female {species} squats, holds briefly, then sits back down in exactly the same pose as the start, looking at the camera.",
+    'get_up': "The {species} gets up from lying down by turning toward the camera as it rises, ending sitting upright and facing the camera, looking straight at the camera.",
     'wag': "The {species} gets excited and happy while staying firmly seated on its bottom the whole time (it never stands up): it wiggles its shoulders and whole body side to side, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.",
 }
 REST_CLIPS = {'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up'}
@@ -159,6 +160,8 @@ MAX_ZOOM = {'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.15, 'sleep_loop':
 MAX_ZOOM_DEFAULT = 1.35
 # share of frames the pet may touch a side/top edge (a big wake-up stretch brushes it for a moment)
 MAX_EDGE = {'wake_up': 0.06}
+# share of frames the paws may run off the bottom (the wake-up stretch reaches toward the camera; Chunky's: 26%)
+MAX_BOTTOM = {'wake_up': 0.3}
 # ...and for tricks where the pet keeps its shape, how much bigger than at the start it may get
 # (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
 MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.08, 'bark': 1.08, 'eat': 1.08, 'wag': 1.12}
