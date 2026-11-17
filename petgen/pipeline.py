@@ -460,6 +460,9 @@ class Job:
             if self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS) and 'sit' in self.still:
                 fixed, n = media.patch_groin(fixed, self.still['sit'])
                 metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
+            if self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE and 'sit' in self.still:
+                fixed, n = media.match_tint(fixed, self.still['sit'])   # Seedance 2.5's green cast
+                metrics['tint_matched'] = f'{n} frames'
             if self.sex == 'female' and key in plan.SHADE_TRICKS:
                 fixed, n = media.shade_belly(fixed)
                 metrics['belly_shaded'] = f'{n}/{len(fixed)} frames'

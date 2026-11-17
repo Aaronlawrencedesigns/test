@@ -319,6 +319,32 @@ def patch_groin(frames, still, min_iou=0.85):
     return patch_from(frames, still, groin_mask(still), min_iou=min_iou)
 
 
+def match_tint(frames, ref, smooth=9):
+    """Seedance 2.5 clips come back with a yellow-green cast (green-screen spill on pale fur) that the
+    other clips don't have. Per frame, scale R/G/B so the pet's average colour has the same balance as
+    the reference still (brightness kept), with the gains smoothed over time so it never flickers."""
+    def mean(a):
+        m = a[..., 3] > 200
+        return a[..., :3][m].astype(np.float32).mean(0) if m.any() else None
+    r = mean(ref)
+    if r is None:
+        return frames, 0
+    rc = r / r.mean()
+    g = []
+    for f in frames:
+        m = mean(f)
+        g.append(rc / (m / m.mean()) if m is not None else np.ones(3, np.float32))
+    g = np.clip(np.array(g, np.float32), 0.8, 1.25)
+    k = np.ones(smooth, np.float32) / smooth
+    g = np.stack([np.convolve(np.pad(g[:, c], smooth // 2, mode='edge'), k, 'valid') for c in range(3)], 1)
+    out = []
+    for f, gi in zip(frames, g):
+        f = f.copy()
+        f[..., :3] = np.clip(f[..., :3] * gi, 0, 255).astype(np.uint8)
+        out.append(f)
+    return out, len(out)
+
+
 def _leg_gap_top(a):
     """Top of the see-through gap between the legs under the body (front-on standing / squatting),
     as (x, y, gap width); None when the legs are together (sitting, lying)."""
