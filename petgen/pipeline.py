@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from . import plan, media
+from .providers import ProviderUnavailable
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -143,6 +144,8 @@ class Job:
             except FileNotFoundError as e:       # replay has no recording for a retry
                 self.log(f'       {item}: {e}')
                 break
+            except ProviderUnavailable:          # GPTProto down / out of credit: stop, the worker re-queues the order
+                raise
             except Exception as e:  # noqa: BLE001 - provider rejected / failed: count it as a failed try
                 self.record(item, attempt, [f'generation failed: {str(e)[:160]}'])
                 continue
@@ -343,6 +346,8 @@ class Job:
             self._frame_on_green(frames[i], src)
             try:
                 p = self.gen_image(f'female_{key}_{i}', plan.FEMALE_EDIT, [src])
+            except ProviderUnavailable:
+                raise
             except Exception as e:  # noqa: BLE001 - a missing edit just leaves those frames as they are
                 self.log(f'       {key}: frame {i} edit failed ({e})')
                 continue
@@ -545,6 +550,8 @@ class Job:
                         try:
                             f2, p2, _, _ = self.sweep(row, c0, c1)
                             pieces.append((c0, c1, f2, p2))
+                        except ProviderUnavailable:
+                            raise
                         except Exception as e:  # noqa: BLE001
                             self.log(f'       {row}: half sweep skipped ({e})')
                 return media.pick_row(pieces)
@@ -555,6 +562,8 @@ class Job:
                 for c0, c1 in ((0, 2), (2, 0), (2, 4), (4, 2)):
                     f2, p2, _, _ = self.sweep(row, c0, c1)
                     pieces.append((c0, c1, f2, p2))
+            except ProviderUnavailable:
+                raise
             except Exception as e:  # noqa: BLE001
                 self.log(f'       {row}: tilted sweeps failed ({e}) -> fallback')
             frames = media.pick_row_from_starts(pieces) if len(pieces) == 4 else None
@@ -694,6 +703,8 @@ class Job:
             for label, fn in steps:
                 self.log(f'== {label}')
                 fn()
+        except ProviderUnavailable:      # not a pet problem: the worker puts the order back in the queue
+            raise
         except Exception as e:  # noqa: BLE001 - report every failure
             self.error = f'{e.__class__.__name__}: {e}'
             self.log('FAILED: ' + self.error)

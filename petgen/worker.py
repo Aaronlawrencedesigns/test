@@ -21,7 +21,7 @@ import requests
 
 from . import plan
 from .pipeline import Job
-from .providers import GPTProtoProvider, S3Uploader
+from .providers import GPTProtoProvider, S3Uploader, ProviderUnavailable
 
 try:                                    # customers' iPhone photos (HEIC)
     from pillow_heif import register_heif_opener
@@ -185,7 +185,33 @@ def upload_preview(oid, pv):
             s3.upload_file(src, BUCKET, f'orders/{oid}/preview/{rel}', ExtraArgs={'ContentType': ct})
 
 
+# GPTProto unavailable (out of credit, key cap, model overloaded): orders wait in the queue and the
+# worker tries again every WAIT_SECONDS; the owner gets one email per outage. An order that keeps
+# hitting it for MAX_WAITS tries is marked failed so nothing waits forever.
+WAIT_SECONDS = int(os.environ.get('PROVIDER_WAIT_SECONDS', '900'))
+MAX_WAITS = int(os.environ.get('PROVIDER_MAX_WAITS', '48'))      # 48 x 15 min = 12 hours
+paused_until = 0.0
+outage_emailed = False
+
+
+def notify_new_order(o):
+    """One email to the owner when a paid order arrives (before it's made)."""
+    if o.get('owner_notified_at'):
+        return
+    paid = (o.get('amount_total') or 0) / 100
+    email_owner(f'New order: {o.get("pet_name") or "a pet"} ({"live" if o.get("livemode") else "test"}, ${paid:.2f})',
+                f'A new order just came in.\n\nPet: {o.get("pet_name")} ({o.get("species")}, {o.get("sex") or "?"}, tail: {o.get("tail") or "?"})\n'
+                f'Customer: {o.get("email")}\nPaid: ${paid:.2f} ({"live" if o.get("livemode") else "test mode"})\nOrder: {o["id"]}\n\n'
+                "It's being made now (about an hour). You'll get the review email with the approve link when it's done.\n"
+                f'All orders: {SITE}/admin/orders\n')
+    o['owner_notified_at'] = now()
+    put_order(o)
+
+
 def tick():
+    global paused_until, outage_emailed
+    if time.time() < paused_until:
+        return
     for oid in queued('paid'):
         try:
             o = get_order(oid)
@@ -197,18 +223,48 @@ def tick():
             move(oid, 'paid', 'test')
             continue
         try:
-            make(oid)
-        except Exception as e:  # noqa: BLE001
+            notify_new_order(o)
+        except Exception:  # noqa: BLE001 - a missed notice never blocks the order
             traceback.print_exc()
-            log(f'{oid}: FAILED {e}')
-            try:
-                o = get_order(oid)
-                o.update(status='failed', error=f'{e.__class__.__name__}: {e}', failed_at=now())
+        try:
+            make(oid)
+            outage_emailed = False
+        except ProviderUnavailable as e:
+            o = get_order(oid)
+            o['provider_waits'] = o.get('provider_waits', 0) + 1
+            if o['provider_waits'] <= MAX_WAITS:
+                log(f'{oid}: GPTProto unavailable ({e}); back in the queue, retry in {WAIT_SECONDS // 60} min')
+                o.update(status='waiting', waiting_reason=str(e)[:300], waiting_since=o.get('waiting_since') or now())
                 put_order(o)
-                move(oid, 'working', 'failed')
-            except Exception:  # noqa: BLE001
-                traceback.print_exc()
-            email_owner(f'Failed: order {oid[:8]}', f'Making order {oid} failed:\n{e}\n\nCheck the server log: journalctl -u sidekicks-worker')
+                move(oid, 'working', 'paid')
+                paused_until = time.time() + WAIT_SECONDS
+                if not outage_emailed:
+                    waiting = len(queued('paid'))
+                    email_owner(f'GPTProto unavailable: {waiting} order{"s" if waiting != 1 else ""} waiting',
+                                f'The worker can\'t make pets right now. GPTProto said:\n{str(e)[:400]}\n\n'
+                                "If it's credit or the key's monthly cap: top up / raise the cap of the sidekicks-worker key on gptproto.com.\n"
+                                f'If the model is overloaded: nothing to do, it usually clears within a few hours.\n\n'
+                                f'Orders wait in the queue and are made automatically once it works again (checked every '
+                                f'{WAIT_SECONDS // 60} min). Nothing is lost and finished steps aren\'t paid for twice.\n')
+                    outage_emailed = True
+                return
+            e = RuntimeError(f'GPTProto unavailable for {MAX_WAITS} tries in a row: {e}')
+            _failed(oid, e)
+        except Exception as e:  # noqa: BLE001
+            _failed(oid, e)
+
+
+def _failed(oid, e):
+    traceback.print_exc()
+    log(f'{oid}: FAILED {e}')
+    try:
+        o = get_order(oid)
+        o.update(status='failed', error=f'{e.__class__.__name__}: {e}', failed_at=now())
+        put_order(o)
+        move(oid, 'working', 'failed')
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+    email_owner(f'Failed: order {oid[:8]}', f'Making order {oid} failed:\n{e}\n\nCheck the server log: journalctl -u sidekicks-worker')
 
 
 def requeue(oid, tail=None, sex=None):
