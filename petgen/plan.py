@@ -73,6 +73,9 @@ SEX_EXTRA_TRIES = 1
 SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 # female pets: front-on standing / squatting tricks get a dark shadow between the legs (media.shade_belly)
 SHADE_TRICKS = {'poop', 'stand'}
+# of those, the vision check's 'male anatomy' is ignored only where it misreads the front-on shadow (play bow);
+# poop keeps the check: if it still shows, it's retried once and then flagged so the owner can drop it
+SHADE_NO_SEX_CHECK = {'stand'}
 # lying / sleeping: female pets get a clean edit of each resting pose (FEMALE_EDIT), patched into the
 # frames of these clips wherever the pet is in that pose
 # tricks where the pet stands / moves: female pets get KEYFRAME_EDITS frames image-edited to a clean
@@ -85,7 +88,8 @@ FEMALE_LABELS = {'stand': 'Bow'}
 
 FEMALE_ACTIONS = {
     'stand': "The {species} gets up from sitting and does a big happy play bow: it lowers its chest and front legs to the floor with its rear end raised, stretching and looking playfully at the camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, looking at the camera.",
-    'poop': "The {species} stands up facing the camera and squats low to the ground right where it is, still facing the camera, with its rear tucked down under it the way a female {species} squats, holds briefly, then sits back down in exactly the same pose as the start, looking at the camera.",
+    # like Chunky's poop, but at a three-quarter angle (side-on showed male anatomy) and low to the floor
+    'poop': "The {species} stands up, turns its body only partly so it is at a three-quarter angle to the camera (rear angled away, chest and face still toward the camera), hunches its back into a low squat as if pooping, with its back legs bent and its rear lowered close to the floor the way a female {species} squats, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start, looking at the camera.",
     'get_up': "The {species} gets up from lying down by turning toward the camera as it rises, ending sitting upright and facing the camera, looking straight at the camera.",
     'wag': "The {species} gets excited and happy while staying firmly seated on its bottom the whole time (it never stands up): it wiggles its shoulders and whole body side to side, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.",
 }

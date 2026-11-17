@@ -470,7 +470,7 @@ class Job:
                 fitted_end = [media.affine(frames[-1], sc, o)]
             # (seated tricks of female pets are belly-patched above; the vision check misreads a smooth
             # front-on belly as male, so only the tail is checked there)
-            patched = self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS or key in plan.SHADE_TRICKS)
+            patched = self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS or key in plan.SHADE_NO_SEX_CHECK)
             problems_extra += [p for p in self.anatomy_problems(fixed, f'{key}_{attempt}')
                                if not (patched and 'male anatomy' in p)]
             if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:

@@ -332,18 +332,38 @@ def _leg_gap_top(a):
         idx = np.flatnonzero(m[y, lo:hi])
         if len(idx) >= 2:
             gap[y, lo + idx[0]:lo + idx[-1]] = ~m[y, lo + idx[0]:lo + idx[-1]]
+    # the gap may be off-centre when the pet is at a three-quarter angle: take the column whose gap
+    # reaches highest up from the floor (the space under the belly)
+    def run_top(ys):
+        top = ys[-1]
+        for y in ys[::-1]:
+            if y < top - 1:
+                break
+            top = y
+        return top
+    best = None
     band = max(2, int(0.06 * w))
     ys = np.flatnonzero(gap[:, cx - band:cx + band].any(1))
-    if len(ys) == 0:
+    if len(ys) and y1 - run_top(ys) >= 0.12 * h:      # front-on: the gap under the middle of the body
+        best = (cx, run_top(ys))
+    for x in ([] if best or w < 0.85 * h else range(lo, hi, 2)):   # off-centre only for side / 3/4 views
+        ys = np.flatnonzero(gap[:, x])
+        if len(ys) == 0 or ys[-1] < y1 - 0.06 * h:      # must open onto the floor
+            continue
+        top = ys[-1]
+        for y in ys[::-1]:
+            if y < top - 1:
+                break
+            top = y
+        if best is None or top < best[1]:
+            best = (x, top)
+    if best is None or y1 - best[1] < 0.12 * h:
         return None
-    top = ys[-1]
-    for y in ys[::-1]:              # the run of gap rows reaching up from the bottom
-        if y < top - 1:
-            break
-        top = y
-    if y1 - top < 0.12 * h:
-        return None
+    cx, top = best
     gx = np.flatnonzero(gap[min(top + 3, a.shape[0] - 1), lo:hi])
+    if len(gx):     # the part of the gap row around the chosen column
+        runs = np.split(gx, np.flatnonzero(np.diff(gx) > 1) + 1)
+        gx = min(runs, key=lambda r: abs(lo + r.mean() - cx))
     return (lo + gx.mean() if len(gx) else cx), top, max(len(gx), 0.06 * w), w, h
 
 
@@ -372,7 +392,8 @@ def shade_belly(frames, strength=0.85, fade=6):
             last = g
         gx, top, gw, w, h = g
         d = ((xx - gx) / (0.9 * gw + 0.05 * w)) ** 2 + ((yy - (top - 0.01 * h)) / (0.14 * h)) ** 2
-        m = np.clip(1 - d, 0, 1) ** 0.7 * (f[..., 3] > 128) * (strength * s)
+        m = np.clip(1 - d, 0, 1) ** 0.7
+        m = m * (f[..., 3] > 128) * (strength * s)
         f = f.copy()
         f[..., :3] = (f[..., :3] * (1 - m)[..., None]).astype(np.uint8)
         out.append(f)
