@@ -106,7 +106,7 @@ def verdict(job):
         final[q['item']] = q
     failed = [k for k, q in final.items() if q['problems'] and not k.startswith('photo')]
     warn = [k for k, q in final.items() if q['problems'] and k.startswith('photo')]
-    cost = job.cost['images'] * plan.PRICE_IMAGE + job.cost['video_seconds'] * plan.PRICE_VIDEO_PER_SECOND
+    cost = plan.est_cost(job.cost)
     ok = job.error is None and not failed
     return ok, failed, warn, round(cost, 2)
 

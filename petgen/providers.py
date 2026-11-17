@@ -36,6 +36,7 @@ class GPTProtoProvider:
     image_model = 'gemini-3-pro-image-preview'
     vision_model = 'gemini-3-flash-preview'   # cheap checks (well under a cent per image)
     video_path = 'doubao/dreamina-seedance-2-0-mini-260615/image-to-video'
+    video_path_hq = 'doubao/dreamina-seedance-2-5-260628/image-to-video'   # female pets' belly-showing clips
 
     def __init__(self, log=print):
         self.s = _session()
@@ -102,7 +103,7 @@ class GPTProtoProvider:
                 time.sleep(4 * (attempt + 1))
         return None
 
-    def video(self, key, prompt, first_url, last_url, seconds, out_path):
+    def video(self, key, prompt, first_url, last_url, seconds, out_path, hq=False):
         """Seedance 2.0 Mini first/last-frame image-to-video, 720p square, no audio.
         The job id is saved next to out_path (.pending) as soon as it is submitted, so a restart
         resumes waiting for the same (already paid) job instead of ordering a new one."""
@@ -114,9 +115,12 @@ class GPTProtoProvider:
         else:
             body = {'prompt': prompt, 'image': first_url, 'aspect_ratio': '1:1', 'duration': int(seconds),
                     'resolution': '720p', 'generate_audio': False, 'is_upload_media': False, 'seed': -1}
+            if hq:      # Seedance 2.5 takes the square from the image (no aspect_ratio) and needs >= 4 s
+                body.pop('aspect_ratio')
+                body['duration'] = max(4, int(seconds))
             if last_url:
                 body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
-            r = self.s.post(f'{API}/api/v3/{self.video_path}', json=body, timeout=120)
+            r = self.s.post(f'{API}/api/v3/{self.video_path_hq if hq else self.video_path}', json=body, timeout=120)
             j = r.json()
             d = j.get('data') or {}
             if not d.get('id'):
@@ -178,7 +182,7 @@ class ReplayProvider:
     def ask_image(self, path, question):
         return None
 
-    def video(self, key, prompt, first_url, last_url, seconds, out_path):
+    def video(self, key, prompt, first_url, last_url, seconds, out_path, hq=False):
         return self._get(key, out_path)
 
 
