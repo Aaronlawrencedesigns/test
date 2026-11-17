@@ -14,7 +14,7 @@ def _img(path, width=None):
 
 
 def write_report(job):
-    cost = job.cost['images'] * plan.PRICE_IMAGE + job.cost['video_seconds'] * plan.PRICE_VIDEO_PER_SECOND
+    cost = plan.est_cost(job.cost)
     final = {}
     for q in job.qa:
         final[q['item']] = q            # last attempt per item
@@ -64,7 +64,7 @@ figure{{margin:0 0 14px}} figcaption{{color:var(--muted);font-size:12px;margin-b
 <div class="stats">
  <div><b>${cost:.2f}</b>est. AI cost</div>
  <div><b>{job.cost['images']}</b>images made</div>
- <div><b>{job.cost['video_seconds']} s</b>video made</div>
+ <div><b>{job.cost['video_seconds'] + job.cost.get('video_seconds_hq', 0)} s</b>video made</div>
  <div><b>{job.cost['cached']}</b>reused from cache</div>
  <div><b>{len(retried)}</b>items retried</div>
  <div><b>{int(time.time() - job.t0)} s</b>run time</div>

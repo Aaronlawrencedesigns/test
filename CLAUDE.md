@@ -182,11 +182,13 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Spending cap per pet run `PETGEN_BUDGET` (default $12, est.): over it, no more retries; best try kept
   and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
-- Female pets: `plan.SHADE_TRICKS` (poop, stand = play bow) get `media.shade_belly`: a soft dark shadow where
-  the belly meets the gap between the legs (only while the legs are apart, faded in/out), hiding male anatomy.
-  Female poop = up onto all fours facing the camera (like her happy-wiggle stance), squat still facing the camera, back onto all fours, sit (side-on showed anatomy); unlike the bow it keeps the vision
-  sex check, so if anatomy still shows it's retried once then flagged (owner may drop poop for that pet).
-  Female pets' `stand` is labelled "Bow" (`plan.FEMALE_LABELS` -> manifest `labels`, read by the app menu and preview).
+- Female pets: Stand and Poop are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
+  `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind
+  legs, it drew female anatomy correctly where 2.0 Mini always drew male parts (Kling 3.0 was worse; Veo 3.1
+  isn't enabled on the account). So girls get the real hind-legs Stand again (the play bow / "Bow" label is gone).
+  Female poop = up onto all fours facing the camera, squat, back onto all fours, sit; `media.shade_belly`
+  (`plan.SHADE_TRICKS`) adds a soft shadow between the legs. GPTProto video downloads also come from
+  oss-us.gptproto.com (allowed on the "test" environment).
 - Lying / sleeping are a 3/4 view like Chunky's (lie_down prompt), not side-on.
 - Owner QA email has a "Try it" link: `/api/admin/preview/<id>/<token>/index.html` (petgen/preview.html, uploaded by the
   worker to `orders/<id>/preview/`): works like the Mac app (Menu pill, right-click menu, sizes, feed, drag).

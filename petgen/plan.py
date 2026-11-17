@@ -72,10 +72,10 @@ SEX_EXTRA_TRIES = 1
 # (media.patch_groin); the video model adds male anatomy mid-clip whatever the prompt says
 SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 # female pets: front-on standing / squatting tricks get a dark shadow between the legs (media.shade_belly)
-SHADE_TRICKS = {'poop', 'stand'}
+SHADE_TRICKS = {'poop'}
 # of those, the vision check's 'male anatomy' is ignored only where it misreads the front-on shadow (play bow);
 # poop keeps the check: if it still shows, it's retried once and then flagged so the owner can drop it
-SHADE_NO_SEX_CHECK = {'stand'}
+SHADE_NO_SEX_CHECK = set()
 # lying / sleeping: female pets get a clean edit of each resting pose (FEMALE_EDIT), patched into the
 # frames of these clips wherever the pet is in that pose
 # tricks where the pet stands / moves: female pets get KEYFRAME_EDITS frames image-edited to a clean
@@ -84,10 +84,9 @@ MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion 
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
 # menu names that differ from the default for female pets (the app and preview read manifest['labels'])
-FEMALE_LABELS = {'stand': 'Bow'}
+FEMALE_LABELS = {}   # (was {'stand': 'Bow'} while girls did a play bow; Seedance 2.5 stands them up properly)
 
 FEMALE_ACTIONS = {
-    'stand': "The {species} gets up from sitting and does a big happy play bow: it lowers its chest and front legs to the floor with its rear end raised, stretching and looking playfully at the camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, looking at the camera.",
     # like Chunky's poop, but at a three-quarter angle (side-on showed male anatomy) and low to the floor
     'poop': "The {species} gets up from sitting onto all four paws (it never rises onto its hind legs), standing facing the camera with its body turned only slightly, chest and face toward the camera and its rear behind it, like a happy dog standing in front of the camera. Then it bends its back legs and lowers its rear toward the floor into a squat as if pooping, still facing the camera so its chest and front legs hide its belly, the way a female {species} squats, and holds the squat for about two seconds in the middle of the clip, then rises back onto all four paws and stands for a moment, then sits down again in exactly the same pose as the start, looking at the camera.",
     'get_up': "The {species} gets up from lying down by turning toward the camera as it rises, ending sitting upright and facing the camera, looking straight at the camera.",
@@ -185,3 +184,13 @@ FEATURES = ['head tracking (5 heights x 33 positions)', 'feed mode (treat tray, 
 # rough GPTProto prices (USD) for the cost estimate in the report
 PRICE_IMAGE = 0.0804
 PRICE_VIDEO_PER_SECOND = 0.08
+# Female pets: clips that show the belly are made with Seedance 2.5 (GPTProto dreamina-seedance-2-5), which
+# draws female anatomy correctly even standing on the hind legs (tested on Chewie, Nov 2026); 2.0 Mini
+# draws male parts whatever the prompt says. About 3-5x the price, so only these clips use it.
+HQ_CLIPS_FEMALE = {'stand', 'poop'}   # (lying / sleeping clips are fixed with image edits + patches, cheaper)
+PRICE_HQ_VIDEO_PER_SECOND = 0.2    # estimate (720p 1:1; GPTProto lists 480p at ~$0.10/s)
+
+
+def est_cost(cost):
+    return (cost['images'] * PRICE_IMAGE + cost['video_seconds'] * PRICE_VIDEO_PER_SECOND
+            + cost.get('video_seconds_hq', 0) * PRICE_HQ_VIDEO_PER_SECOND)

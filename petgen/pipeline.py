@@ -43,7 +43,7 @@ class Job:
         self.pet = f'{self.out}/pet'
         for d in (self.gen, self.kfdir, f'{self.work}/photos', f'{self.work}/sheets', f'{self.pet}/clips', f'{self.pet}/stills'):
             os.makedirs(d, exist_ok=True)
-        self.cost = {'images': 0, 'video_seconds': 0, 'cached': 0}
+        self.cost = {'images': 0, 'video_seconds': 0, 'video_seconds_hq': 0, 'cached': 0}
         self.image_path = {}  # (item, attempt) -> generated file (names carry a content tag)
         self._gaze_events, self._gaze_started = {}, set()
         self.rest_fix = {}    # female pets: rest pose -> (clean 640 still, mask) for belly patching
@@ -95,7 +95,8 @@ class Job:
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
         # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
         kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
-        key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}'
+        hq = self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE
+        key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}' + ('hq' if hq else '')
         if first == 'kf_sleep_end':
             key += 'u2'   # (made before the stale-upload fix: those clips started from the wrong image)
         p = self._gen_path(key, attempt, 'mp4')
@@ -104,8 +105,8 @@ class Job:
             return p
         self.log(f'clip   {key} (try {attempt})')
         self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt, video=True, attempt=attempt), self.url(first),
-                            self.url(last) if last else None, seconds, p)
-        with self.lock: self.cost['video_seconds'] += seconds
+                            self.url(last) if last else None, seconds, p, hq=hq)
+        with self.lock: self.cost['video_seconds_hq' if hq else 'video_seconds'] += seconds
         return p
 
     def url(self, kfname):
@@ -123,7 +124,7 @@ class Job:
         self.log(f'QA     {item} try {attempt}: ' + ('pass' if not problems else '; '.join(problems)))
 
     def spent(self):
-        return self.cost['images'] * plan.PRICE_IMAGE + self.cost['video_seconds'] * plan.PRICE_VIDEO_PER_SECOND
+        return plan.est_cost(self.cost)
 
     def with_retries(self, item, fn, video=False):
         """fn(attempt) -> (result, problems). Retries while problems, up to max_retries extra tries
