@@ -1,6 +1,7 @@
 // /api/admin/preview/<order id>/<approve token>/index.html (and the files it loads):
 // a playable preview of a made pet for the owner, working like the Mac app (menu, sizes,
-// feed, drag). Files are uploaded by the worker to orders/<id>/preview/.
+// feed, drag). Files are uploaded by the worker to orders/<id>/preview/; photos/<view> serves the
+// customer's uploaded photos.
 import { validId, getOrder } from '../../../../lib/orders.js';
 
 const TYPES = { html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8',
@@ -14,6 +15,15 @@ export async function onRequestGet({ request, env, params }) {
     return new Response('not found', { status: 404 });
   const order = await getOrder(env, id);
   if (!order || !order.approve_token || order.approve_token !== t) return new Response('not found', { status: 404 });
+  // the customer's uploaded photos (photos/<view>), for comparing the pet with the real one
+  const pm = /^photos\/([a-z]+)$/.exec(file);
+  if (pm) {
+    const key = (order.photos || {})[pm[1]];
+    const ph = key && await env.ORDERS.get(key);
+    if (!ph) return new Response('not found', { status: 404 });
+    return new Response(ph.body, { headers: { 'content-type': (ph.httpMetadata && ph.httpMetadata.contentType) || 'image/jpeg',
+      'cache-control': 'private, max-age=600', 'x-robots-tag': 'noindex' } });
+  }
   const obj = await env.ORDERS.get(`orders/${id}/preview/${file}`);
   if (!obj) return new Response(file === 'index.html' ? 'no preview yet (made before previews existed: remake to get one)' : 'not found', { status: 404 });
   const ext = file.split('.').pop();
