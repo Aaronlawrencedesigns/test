@@ -165,9 +165,11 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   anatomy check. Free; no retries needed. Lying / sleeping: `female_rest_fix` makes a clean image edit of
   each derived resting pose (`plan.FEMALE_EDIT`, ~$0.08), `media.edit_mask` takes the small changed
   area, and `patch_from` puts it into the stills and the frames of `plan.REST_CLIPS` that match the pose.
-  Not covered yet: frames where a female pet stands or moves (stand, poop, mid-wag).
+  Standing / moving frames can't be patched (key-frame edits tried: too much motion), so female pets get
+  belly-hiding versions of stand (play bow), poop (low squat) and wag (stays seated): `plan.FEMALE_ACTIONS`.
 - sleep_loop is NOT decoded with the low crop (its ends-only correction left it hovering 40 px).
 - `stand` = standing up on the hind legs (begging), like Chunky's; on all fours looked like sitting.
+  Female pets do a play bow instead.
 - Lying / sleeping / getting-up / waking clips are decoded with a crop shifted to the very bottom of the
   video (`decode_keyed(low=True)`): the normal crop cut off paws stretched toward the camera.
 - Site: `site/legal.html` (Terms, Refund Policy, Privacy Policy), linked from a small footer on the

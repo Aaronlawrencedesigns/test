@@ -324,6 +324,44 @@ class Job:
         (self.still[name],), _ = media.patch_from([self.still[name]], clean, mask, min_iou=0)
         Image.fromarray(self.still[name]).save(f'{self.pet}/stills/{name}.webp', quality=90, method=6)
 
+    def _frame_on_green(self, frame, path):
+        k = np.zeros((media.S, media.S, 4), np.uint8)
+        cx0, cy0, cx1, cy1 = media.CROP_1024
+        k[cy0:cy1, cx0:cx1] = np.asarray(Image.fromarray(frame).resize((cx1 - cx0, cy1 - cy0), Image.LANCZOS))
+        media.save_green(k, path)
+
+    def patch_moving(self, key, frames):
+        """Female pets, tricks where the pet stands / moves: image-edit a few frames to a clean female
+        belly and patch every frame from the nearest edited one (where it lines up)."""
+        n_keys = plan.MOVING_TRICKS[key]
+        N = len(frames)
+        picks = np.linspace(int(0.15 * N), int(0.85 * N), n_keys).round().astype(int)
+        fixes = []   # (frame index, clean frame, mask)
+        for i in picks:
+            src = f'{self.work}/female_{key}_{i}.png'
+            self._frame_on_green(frames[i], src)
+            try:
+                p = self.gen_image(f'female_{key}_{i}', plan.FEMALE_EDIT, [src])
+            except Exception as e:  # noqa: BLE001 - a missing edit just leaves those frames as they are
+                self.log(f'       {key}: frame {i} edit failed ({e})')
+                continue
+            k, _ = media.key_file(p)
+            clean = self.to_still(k)
+            mask = media.edit_mask(frames[i], clean)
+            if mask is None or mask.max() <= 0:
+                continue
+            clean = media.apply_tf(clean, media.tf_to(media.dog_stats(clean), media.dog_stats(frames[i])))
+            fixes.append((int(i), clean, mask))
+        if not fixes:
+            return frames, 0
+        out, n = [], 0
+        for j, f in enumerate(frames):
+            _, clean, mask = min(fixes, key=lambda t: abs(t[0] - j))
+            (f2,), k = media.patch_from([f], clean, mask, min_iou=0.88)
+            out.append(f2)
+            n += k
+        return out, n
+
     def patch_rest(self, frames):
         n = 0
         for clean, mask in self.rest_fix.values():
@@ -394,6 +432,8 @@ class Job:
 
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
+        if self.sex == 'female' and key in plan.FEMALE_ACTIONS:
+            prompt = plan.FEMALE_ACTIONS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
         derive = opts.get('derive')
         if opts.get('sleep_edit'):
@@ -416,7 +456,7 @@ class Job:
             if self.sex == 'female' and key in plan.REST_CLIPS and self.rest_fix:
                 fixed, n = self.patch_rest(fixed)
                 metrics['belly_patched'] = f'{n} frames'
-            if self.sex == 'female' and key in plan.SEATED_TRICKS and 'sit' in self.still:
+            if self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS) and 'sit' in self.still:
                 fixed, n = media.patch_groin(fixed, self.still['sit'])
                 metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
             if derive and paws_low:   # the paws really leave the video (the low crop reaches its bottom)
@@ -427,7 +467,7 @@ class Job:
                 fitted_end = [media.affine(frames[-1], sc, o)]
             # (seated tricks of female pets are belly-patched above; the vision check misreads a smooth
             # front-on belly as male, so only the tail is checked there)
-            patched = self.sex == 'female' and key in plan.SEATED_TRICKS
+            patched = self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS)
             problems_extra += [p for p in self.anatomy_problems(fixed, f'{key}_{attempt}')
                                if not (patched and 'male anatomy' in p)]
             if key == 'sleep_loop' and np.mean([bool(t.get('touches_bottom')) for t in stats]) > 0.1:
@@ -450,6 +490,9 @@ class Job:
             self.female_rest_fix(derive)
             if derive in self.rest_fix:
                 fixed, _ = self.patch_rest(fixed)
+        if self.sex == 'female' and key in plan.MOVING_TRICKS:
+            fixed, n = self.patch_moving(key, fixed)
+            self.log(f'       {key}: female belly patched in {n}/{len(fixed)} frames from edited key frames')
         start_ref = self.still_for(first)
         end_ref = self.still.get(derive) if derive else (self.still.get(end_name) if end_name else None)
         fixed = media.blend_clip_colours(fixed, start_ref, end_ref)

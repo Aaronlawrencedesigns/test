@@ -73,6 +73,16 @@ SEX_EXTRA_TRIES = 1
 SEATED_TRICKS = {'eat', 'bark', 'puppy', 'wag'}
 # lying / sleeping: female pets get a clean edit of each resting pose (FEMALE_EDIT), patched into the
 # frames of these clips wherever the pet is in that pose
+# tricks where the pet stands / moves: female pets get KEYFRAME_EDITS frames image-edited to a clean
+# female belly, and every frame is patched from the nearest edited frame (media.patch_from)
+MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
+# Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
+# whenever it's visible). Same clip names, so the app and menu don't change.
+FEMALE_ACTIONS = {
+    'stand': "The {species} gets up from sitting and does a big happy play bow: it lowers its chest and front legs to the floor with its rear end raised, stretching and looking playfully at the camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, looking at the camera.",
+    'poop': "The {species} stands up, turns a little to the side and squats low to the ground with its rear tucked down under it, the way a female {species} squats, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.",
+    'wag': "The {species} gets excited and happy while staying firmly seated on its bottom the whole time (it never stands up): it wiggles its shoulders and whole body side to side, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.",
+}
 REST_CLIPS = {'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up'}
 FEMALE_EDIT = ("Edit this photo. Keep EVERYTHING identical: the same {species}, same pose, same position, same size "
                "and scale, same lighting, same flat chroma-key green background. Change only one small detail: "
