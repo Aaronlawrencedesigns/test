@@ -33,6 +33,8 @@
       // While the pointer is over Chunky this frame receives the events itself.
       addEventListener('mousemove', (e) => onCursor({ cursor: { x: e.clientX + bounds.x, y: e.clientY + bounds.y }, bounds }));
       window.dogApi = {
+        trayLift: 0.3,        // above the trick buttons, at the right edge
+        trayAlign: 'right',   // toward the browser's right edge
         onCursor: (fn) => (onCursor = fn),
         onAction: (fn) => (onAction = fn),
         setHover: (over) => post({ type: 'hover', over }),

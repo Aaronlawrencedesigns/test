@@ -355,6 +355,11 @@
   const inRect = (r, x, y, pad = 0) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
   const trayOpen = () => tray.classList.contains('show');
   let trayTimer;
+  // Pages can place the tray differently (dogApi.trayLift: gap above the ears x his width;
+  // dogApi.trayAlign 'right': at the right edge instead of over his head).
+  const LIFT = typeof api.trayLift === 'number' ? api.trayLift : TRAY_LIFT;
+  if (LIFT !== TRAY_LIFT) tray.style.bottom = `calc(${(1 - EAR_TOP) * 100}vw + 6px + ${LIFT * 100}vw)`;
+  if (api.trayAlign === 'right') tray.classList.add('align-right');
   function showTray(on = !trayOpen()) {
     tray.classList.toggle('show', on);
     clearTimeout(trayTimer);
@@ -365,7 +370,7 @@
   // height above his square to fit it (0 when it's closed).
   let extraAsked = -1;
   function fitTray() {
-    const need = trayOpen() ? Math.ceil(tray.offsetHeight + 14 + TRAY_LIFT * SZ() - EAR_TOP * SZ()) : 0;
+    const need = trayOpen() ? Math.ceil(tray.offsetHeight + 14 + LIFT * SZ() - EAR_TOP * SZ()) : 0;
     const px = Math.max(0, need);
     if (Math.abs(px - extraAsked) > 1) { extraAsked = px; api.setExtraTop && api.setExtraTop(px); }
   }
