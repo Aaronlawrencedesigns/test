@@ -311,24 +311,71 @@ def groin_mask(still):
 
 def patch_groin(frames, still, min_iou=0.85):
     """Seated tricks of female pets: copy the clean belly area of the sitting pose into every frame
-    whose lower body lines up with it (video models keep adding male anatomy mid-clip). Frames where
-    the pet has moved (IoU of the area around the patch < min_iou) are left alone."""
-    M = groin_mask(still)
-    if M.max() <= 0:
+    (following the pet as it shifts) where its lower body lines up with the sitting pose."""
+    return patch_from(frames, still, groin_mask(still), min_iou=min_iou)
+
+
+def edit_mask(orig, clean, max_share=0.08):
+    """Soft mask of where an anatomy edit changed the pet (lower half of its body only).
+    None if the edit moved / rescaled the pet or changed too much to trust."""
+    from scipy import ndimage
+    ao, ac = orig[..., 3] > 128, clean[..., 3] > 128
+    if (ao & ac).sum() / max(1, (ao | ac).sum()) < 0.93:
+        return None
+    x0, y0, x1, y1 = bbox(orig)
+    d = np.abs(orig[..., :3].astype(np.int16) - clean[..., :3].astype(np.int16)).max(-1) > 40
+    d &= ao & ac
+    d[:y0 + int(0.45 * (y1 - y0))] = False
+    d = ndimage.binary_opening(d, iterations=1)
+    lab, n = ndimage.label(d)
+    if n == 0:
+        return np.zeros(orig.shape[:2], np.float32)
+    sizes = ndimage.sum_labels(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+    keep = lab == (1 + int(np.argmax(sizes)))
+    if keep.sum() > max_share * ao.sum():
+        return None
+    keep = ndimage.binary_dilation(keep, iterations=6)
+    return np.clip(ndimage.gaussian_filter(keep.astype(np.float32), 3) * 1.5, 0, 1)
+
+
+def _shift(a, dx, dy):
+    out = np.zeros_like(a)
+    h, w = a.shape[:2]
+    ys, yd = (slice(0, h - dy), slice(dy, h)) if dy >= 0 else (slice(-dy, h), slice(0, h + dy))
+    xs, xd = (slice(0, w - dx), slice(dx, w)) if dx >= 0 else (slice(-dx, w), slice(0, w + dx))
+    out[yd, xd] = a[ys, xs]
+    return out
+
+
+def patch_from(frames, ref, mask, min_iou=0.85, pad=24, search=40, step=4):
+    """Blend ref into frames under mask. For each frame the ref + mask are moved (up to `search` px)
+    to where the pet's shape around the mask lines up best (the pet shifts a little as it moves);
+    frames where nothing lines up (IoU < min_iou) are left alone."""
+    if mask is None or mask.max() <= 0:
         return frames, 0
-    ys, xs = np.nonzero(M > 0.01)
-    pad = 24
-    y0, y1 = max(0, ys.min() - pad), min(M.shape[0], ys.max() + pad)
-    x0, x1 = max(0, xs.min() - pad), min(M.shape[1], xs.max() + pad)
-    sa = still[y0:y1, x0:x1, 3] > 128
-    st = still.astype(np.float32)
-    m = M[..., None]
+    ys, xs = np.nonzero(mask > 0.01)
+    y0, y1 = max(0, ys.min() - pad), min(mask.shape[0], ys.max() + pad)
+    x0, x1 = max(0, xs.min() - pad), min(mask.shape[1], xs.max() + pad)
+    ra = ref[..., 3] > 128
+    rf = ref.astype(np.float32)
     out, n = [], 0
     for f in frames:
-        fa = f[y0:y1, x0:x1, 3] > 128
-        iou = (sa & fa).sum() / max(1, (sa | fa).sum())
-        if iou >= min_iou:
-            f = np.clip(f.astype(np.float32) * (1 - m) + st * m, 0, 255).astype(np.uint8)
+        fa = f[..., 3] > 128
+        best = (-1.0, 0, 0)
+        for dy in (range(-search, search + 1, step) if search else [0]):
+            for dx in (range(-search // 2, search // 2 + 1, step) if search else [0]):
+                if not (0 <= y0 + dy and y1 + dy <= fa.shape[0] and 0 <= x0 + dx and x1 + dx <= fa.shape[1]):
+                    continue
+                a = ra[y0:y1, x0:x1]
+                b = fa[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+                iou = (a & b).sum() / max(1, (a | b).sum())
+                if iou > best[0]:
+                    best = (iou, dx, dy)
+        iou, dx, dy = best
+        if iou >= (min_iou if not (dx or dy) else max(min_iou, 0.94)):   # shifted: only a near-exact fit
+            m = (_shift(mask, dx, dy) if (dx or dy) else mask)[..., None]
+            r = _shift(rf, dx, dy) if (dx or dy) else rf
+            f = np.clip(f.astype(np.float32) * (1 - m) + r * m, 0, 255).astype(np.uint8)
             n += 1
         out.append(f)
     return out, n
