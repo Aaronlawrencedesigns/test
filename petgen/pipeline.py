@@ -34,7 +34,7 @@ class Job:
         self.max_retries, self.workers = max_retries, workers
         # videos cost ~5x an image: fewer retries, and a spending cap per pet (USD, estimated)
         self.video_retries = int(os.environ.get('PETGEN_VIDEO_RETRIES', '1'))
-        self.budget = float(os.environ.get('PETGEN_BUDGET', '12'))
+        self.budget = float(os.environ.get('PETGEN_BUDGET', '10'))
         self._log = log
         self.lock = threading.Lock()
         self.upload_lock = threading.Lock()
@@ -449,7 +449,7 @@ class Job:
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
-            frames, stats = media.decode_keyed(src, low=opts.get('low', False))
+            frames, stats = media.decode_keyed(src, low=opts.get('low', False), wide=opts.get('wide', False))
             start_still = self.still_for(first)
             problems_extra, pose_k, paws_low = [], None, False
             if derive:

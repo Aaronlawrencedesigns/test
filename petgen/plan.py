@@ -152,7 +152,7 @@ def sweep_item(row, c0=0, c1=4):
 ACTIONS = {
     'wag': ('kf_sit', 'kf_sit', 5, "The {species} gets excited and happy: it wiggles its whole rear end{tail_and} side to side while staying seated, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'puppy': ('kf_sit', 'kf_sit', 5, "The {species} gives sweet puppy-dog eyes: it slowly lowers and tilts its head to one side, looks up at the camera with big soulful pleading eyes, ears slightly back, then slowly straightens its head and returns to exactly the same sitting pose as the start.", {}),
-    'stand': ('kf_sit', 'kf_sit', 7, "The {species} stands up on its hind legs, like it is begging: it rises from sitting onto its back legs with its front paws raised in front of its chest, balancing upright for a moment while looking at the camera, then lowers itself and sits back down in exactly the same calm sitting pose as the start, looking at the camera.", {}),
+    'stand': ('kf_sit', 'kf_sit', 7, "The {species} stands up on its hind legs, like it is begging: it rises from sitting onto its back legs with its front paws raised in front of its chest, balancing upright for a moment while looking at the camera, then lowers itself and sits back down in exactly the same calm sitting pose as the start, looking at the camera.", {'wide': True}),
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
@@ -180,7 +180,8 @@ MAX_EDGE = {'wake_up': 0.06}
 MAX_BOTTOM = {'wake_up': 0.3}
 # ...and for tricks where the pet keeps its shape, how much bigger than at the start it may get
 # (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
-MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.08, 'bark': 1.08, 'eat': 1.08, 'wag': 1.12}
+# (seated tricks: 1.08 failed tiny, barely visible push-ins on a live order and every retry costs ~$0.40)
+MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.2}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)

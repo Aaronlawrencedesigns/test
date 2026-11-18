@@ -156,7 +156,7 @@ def last_frame_1024(video, out_png):
 LOW_SHIFT = S - CROP_1024[3]   # 64 px (1024 canvas): the strip below the usual crop
 
 
-def decode_keyed(src, fps=24, low=False):
+def decode_keyed(src, fps=24, low=False, wide=False):
     """Decode a green-screen clip into keyed RGBA frames in the shared 640x640 frame.
     low=True (lying / sleeping clips): crop the same size but LOW_SHIFT lower, so it reaches the
     very bottom of the video (paws stretched toward the camera sit there; the usual crop cut them
@@ -165,7 +165,9 @@ def decode_keyed(src, fps=24, low=False):
                                                'stream=width', '-of', 'json', src]))
     sc = info['streams'][0]['width'] / S
     cx0, cy0, cx1, cy1 = CROP_1024
-    if low:
+    if wide:      # the whole video (stand: a dog on its hind legs is taller than the usual crop; the clip is
+        cx0, cy0, cx1, cy1 = 0, 0, S, S     # re-scaled onto the sitting pose afterwards, so the size still matches)
+    elif low:
         cy0, cy1 = cy0 + LOW_SHIFT, cy1 + LOW_SHIFT
     x0, y0, x1, y1 = (round(c * sc) for c in (cx0, cy0, cx1, cy1))
     raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', src, '-vf',

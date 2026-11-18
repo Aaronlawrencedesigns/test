@@ -179,7 +179,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   desktop ("Contact: hello@desktopsidekicks.com · Privacy Policy & Terms") and under checkout.
 - Retry cost: videos get 2 tries (`PETGEN_VIDEO_RETRIES`=1), images 3; a clip failing only the
   female-anatomy check gets one extra try with positive wording (`SEX_NOTE_STRONG`, attempt >= 3).
-  Spending cap per pet run `PETGEN_BUDGET` (default $12, est.): over it, no more retries; best try kept
+  Spending cap per pet run `PETGEN_BUDGET` (default $10, est.; the owner's 'Needs a look' threshold): over it, no more retries; best try kept
   and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - Female pets: Stand and Poop are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
@@ -205,4 +205,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Cats (species 'cat'): `plan.CAT_ACTIONS` replace the dog-only tricks (bark -> meow, wag -> happy purr with slow blinks
   and kneading, puppy -> big pleading eyes), menu names from `plan.CAT_LABELS` (Meow / Happy purr / Kitten eyes) via
   manifest `labels`, and the engine's bark bubble says Meow!/Mrrp!/Mew! when `PET.species === 'cat'`.
+- First live order (Chewie, new photos, sitting at an angle) cost $17.85: seated tricks failed for tiny push-ins
+  (1.09x vs 1.08) and every retry costs ~$0.40, so `MAX_GROWTH` for puppy/bark/eat is 1.12 and wag 1.2. `stand` is
+  decoded from the whole video (`decode_keyed(wide=True)`): a dog on its hind legs is taller than the usual crop
+  (paws at the bottom in 47% of frames -> 0%). Customers are NOT asked for new photos; flagged pets go to the owner.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
