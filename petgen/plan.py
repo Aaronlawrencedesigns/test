@@ -83,6 +83,26 @@ SHADE_NO_SEX_CHECK = set()
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
+# Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
+RETRY_HINTS = [
+    (('cut off', 'frame edge', 'paws cut off'),
+     " The camera is further back: the whole {species}, from the tips of its ears to its paws, stays well inside the frame with empty space on every side, even at its tallest or most stretched moment."),
+    (('pushes in', 'zoom', 'grows'),
+     " The camera is locked off on a tripod: no zoom, no push-in, no camera movement. The {species} stays exactly the same size in the frame for the whole clip."),
+    (('does not end', 'expected pose', 'end in'),
+     " It must end in exactly the same pose, position and size in the frame as the final frame image."),
+    (('male anatomy',),
+     " The {species} is a girl: female body, smooth belly between the back legs, nothing hanging below the belly."),
+    (('tail',),
+     " Keep the {species}'s rear in view without any tail."),
+]
+
+
+def retry_hint(problems):
+    text = ' '.join(problems or []).lower()
+    return ''.join(h for keys, h in RETRY_HINTS if any(k in text for k in keys))
+
+
 # Cats: cat versions of the dog-only tricks (a cat doesn't bark or pant) and their menu names
 CAT_ACTIONS = {
     'bark': "The {species} meows at the camera two times, like a cat talking: each meow it opens its mouth showing its small teeth and pink tongue, its whiskers move, then it closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera. It is a cat meowing, never barking or panting.",

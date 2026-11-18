@@ -209,4 +209,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   (1.09x vs 1.08) and every retry costs ~$0.40, so `MAX_GROWTH` for puppy/bark/eat is 1.12 and wag 1.2. `stand` is
   decoded from the whole video (`decode_keyed(wide=True)`): a dog on its hind legs is taller than the usual crop
   (paws at the bottom in 47% of frames -> 0%). Customers are NOT asked for new photos; flagged pets go to the owner.
+- Retries learn: a failed try's problems add fixes to the next try's prompt (`plan.RETRY_HINTS` / `retry_hint`: camera
+  further back, locked-off camera, exact end pose, female anatomy). The worker saves every try's QA to
+  `orders/<id>/qa.json`; `/admin/orders?view=qa` shows failure rates and top problems per clip across all pets (tune there).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
