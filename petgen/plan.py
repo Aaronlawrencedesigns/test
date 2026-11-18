@@ -17,8 +17,12 @@ MASTER = ("Photorealistic photo of this exact {species} (use all reference photo
           "seamless light-grey studio background, soft even studio lighting, sharp focus, the whole {species} in "
           "frame with generous space around it, no collar, no props, no text. Square image.")
 
-GREEN_SIT = ("Recreate the first image exactly: the same {species}, identical pose, identical framing, size and "
-             "position in the frame, same lighting, facing the camera and looking straight into the lens. Only change "
+# The sitting pose is the start of everything (head tracking, every trick), so it is always FRONT-ON, even when the
+# customer's sitting photo is at an angle (an angled sit made the first live order drift into side views).
+GREEN_SIT = ("Recreate the first image: the same {species}, sitting upright and turned to face the camera straight "
+             "on: chest and face toward the lens, both front legs side by side and visible, body symmetrical, even "
+             "if the photo shows it sitting at an angle. Same size and position in the frame, same lighting, looking "
+             "straight into the lens. Only change "
              "the background: replace the entire background and floor with a perfectly flat, uniform chroma-key green "
              "screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep "
              "the {species} photorealistic with natural colours (no green tint). Use the other reference photos only to "

@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tools'))
-from key import alpha_and_despill, clean_alpha, bbox, on_green, CROP_1024, OUT_SIZE  # noqa: E402
+from key import clean_alpha, bbox, on_green, CROP_1024, OUT_SIZE  # noqa: E402
 
 S = 1024
 GROUND = int(0.9 * S)
@@ -56,11 +56,79 @@ def soften_shadow(rgba):
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def alpha_and_despill(rgb):
+    """The product's green-screen key (Chunky's tools/key.py is left as it is). The screen is green AND
+    saturated: (0, 177, 64) has green 64% above red/blue. Light fur lit by green bounce light, e.g. a
+    white chest (185, 215, 175), is only ~14% above, so it keys by how strongly green a pixel is relative
+    to its brightness, not by the absolute difference (which cut out pale chests and bellies)."""
+    f = rgb.astype(np.float32)
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    spill = g - np.maximum(r, b)
+    ratio = spill / np.maximum(g, 1)
+    t = np.clip((ratio - 0.28) / (0.5 - 0.28), 0, 1) * np.clip((spill - 14) / 20, 0, 1)
+    alpha = 1.0 - t
+    g2 = np.where(spill > 0, np.maximum(r, b), g)
+    out = np.stack([r, np.minimum(g, g2 + 4), b], -1)
+    return np.clip(np.concatenate([out, alpha[..., None] * 255], -1), 0, 255).astype(np.uint8)
+
+
+def fill_translucent(rgba, r=7, solid=0.72):
+    """Shaded fur under the chest / belly (green-floor bounce light) keys as see-through patches, so the
+    desktop shows through the pet as white / grey smudges. A partly transparent pixel whose neighbourhood
+    (radius r) is mostly solid pet is inside the body, not on its outline: make it solid and fill its colour
+    from the surrounding fur. Real edges (about half their neighbourhood is background) stay soft."""
+    from scipy import ndimage
+    a = rgba[..., 3].astype(np.float32) / 255
+    part = (a > 0.04) & (a < 0.94)
+    if not part.any():
+        return rgba
+    op = (a >= 0.94).astype(np.float32)
+    share = ndimage.uniform_filter(op, 2 * r + 1)
+    inner = part & (share >= solid)
+    if not inner.any():
+        return rgba
+    out = rgba.copy()
+    rgb = rgba[..., :3].astype(np.float32)
+    k = 2 * r + 1
+    den = ndimage.uniform_filter(op, k) + 1e-6
+    fill = np.stack([ndimage.uniform_filter(rgb[..., c] * op, k) / den for c in range(3)], -1)
+    ai = a[inner][:, None]
+    out[..., :3][inner] = np.clip(rgb[inner] * ai + fill[inner] * (1 - ai), 0, 255).astype(np.uint8)
+    out[..., 3][inner] = 255
+    return out
+
+
+def fix_spill(rgba, rgb, r=9, solid=0.72):
+    """Green light bouncing onto the pet's underside (chest, belly, inner legs) despills to flat grey /
+    white streaks. Inside the body, give those pixels the colour of the surrounding fur (keeping their
+    brightness), so the underside reads as shaded fur, not a grey smear."""
+    from scipy import ndimage
+    o = rgb.astype(np.float32)
+    spill = np.clip((o[..., 1] - np.maximum(o[..., 0], o[..., 2]) - 8) / 40, 0, 1)
+    a = rgba[..., 3].astype(np.float32) / 255
+    body = a >= 0.5
+    share = ndimage.uniform_filter(body.astype(np.float32), 2 * r + 1)
+    target = body & (share >= solid) & (spill > 0.05)
+    if not target.any():
+        return rgba
+    cur = rgba[..., :3].astype(np.float32)
+    clean = (body & (spill <= 0.05)).astype(np.float32)
+    k = 4 * r + 1
+    den = ndimage.uniform_filter(clean, k) + 1e-6
+    fur = np.stack([ndimage.uniform_filter(cur[..., c] * clean, k) / den for c in range(3)], -1)
+    lum = cur.mean(-1, keepdims=True)
+    tint = fur / (fur.mean(-1, keepdims=True) + 1e-6) * lum            # fur hue, this pixel's brightness
+    w = spill[..., None]
+    out = rgba.copy()
+    out[..., :3][target] = np.clip(cur * (1 - w) + tint * w, 0, 255)[target].astype(np.uint8)
+    return out
+
+
 def key_rgb(rgb):
     """rgb uint8 HxWx3 -> (rgba, stats). stats: area fraction, share of keyed area
     thrown away as specks/extra blobs, and whether the subject touches the frame edge."""
     raw = alpha_and_despill(rgb)
-    rgba = soften_shadow(clean_alpha(raw))
+    rgba = fix_spill(fill_translucent(soften_shadow(clean_alpha(raw))), rgb)
     a_raw = (raw[..., 3] > 128).sum()
     a = (rgba[..., 3] > 128)
     H, W = a.shape
