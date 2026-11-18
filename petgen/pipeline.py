@@ -438,7 +438,9 @@ class Job:
 
     def action(self, key):
         first, last, seconds, prompt, opts = plan.ACTIONS[key]
-        if self.sex == 'female' and key in plan.FEMALE_ACTIONS:
+        if self.species == 'cat' and key in plan.CAT_ACTIONS:      # cats meow and purr (all seated: belly-safe)
+            prompt = plan.CAT_ACTIONS[key]
+        elif self.sex == 'female' and key in plan.FEMALE_ACTIONS:
             prompt = plan.FEMALE_ACTIONS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
         derive = opts.get('derive')
@@ -671,8 +673,11 @@ class Job:
             'clips': sorted(os.path.splitext(f)[0] for f in os.listdir(f'{self.pet}/clips')),
         }
         manifest['features'] = plan.FEATURES
-        if self.sex == 'female':
-            manifest['labels'] = dict(plan.FEMALE_LABELS)   # stand is a play bow for female pets
+        labels = dict(plan.FEMALE_LABELS) if self.sex == 'female' else {}
+        if self.species == 'cat':
+            labels.update(plan.CAT_LABELS)                    # Meow / Happy purr / Kitten eyes
+        if labels:
+            manifest['labels'] = labels
         # completeness: every pet ships with everything Chunky has
         missing = [f'clip: {c}' for c in plan.REQUIRED_CLIPS if c not in manifest['clips']]
         missing += [f'still: {n}' for n in plan.REQUIRED_STILLS if not os.path.exists(f'{self.pet}/stills/{n}.webp')]
