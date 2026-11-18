@@ -83,6 +83,8 @@ class Job:
 
     def gen_image(self, key, prompt, refs, attempt=1):
         base = key
+        if attempt > 1:     # retries say what went wrong last time (turned to the side, glitch, ...)
+            prompt = prompt + plan.retry_hint(self.hints.get(key))
         key = f'{key}@{self._content_tag(self.fill(prompt), refs)}'
         p = self._gen_path(key, attempt, 'png')
         self.image_path[(base, attempt)] = p
@@ -214,6 +216,12 @@ class Job:
                 problems = media.keyframe_ok(st)
                 if not problems:   # sitting / lying poses: right anatomy (tail, sex)
                     problems += self.anatomy_problems([k], f'{key}_{attempt}', picks=(0,))
+                if not problems and key == 'green_sit':   # straight-on like Chunky, no image glitches
+                    ans = self.provider.ask_image(p, plan.SIT_CHECK.replace('{species}', self.species)) or {}
+                    if ans.get('front_on') is False:
+                        problems.append('not sitting straight facing the camera (turned to one side)')
+                    if ans.get('artifacts') is True:
+                        problems.append('image glitch: dark patch or smudge on the pet')
                 return (p, k, attempt), problems, st
             p, k, att = self.with_retries(key, attempt_fn)
             self.best_attempt[key] = att

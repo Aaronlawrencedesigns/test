@@ -19,9 +19,10 @@ MASTER = ("Photorealistic photo of this exact {species} (use all reference photo
 
 # The sitting pose is the start of everything (head tracking, every trick), so it is always FRONT-ON, even when the
 # customer's sitting photo is at an angle (an angled sit made the first live order drift into side views).
-GREEN_SIT = ("Recreate the first image: the same {species}, sitting upright and turned to face the camera straight "
-             "on: chest and face toward the lens, both front legs side by side and visible, body symmetrical, even "
-             "if the photo shows it sitting at an angle. Same size and position in the frame, same lighting, looking "
+GREEN_SIT = ("Recreate the first image: the same {species}, sitting perfectly straight like a statue posing for a "
+             "portrait, turned to face the camera straight on: chest and face toward the lens, shoulders square to the "
+             "camera, both front legs straight and side by side, body symmetrical left to right, head upright, even "
+             "if the photo shows it sitting at an angle. Natural, even fur everywhere (no dark patches or blocks). Same size and position in the frame, same lighting, looking "
              "straight into the lens. Only change "
              "the background: replace the entire background and floor with a perfectly flat, uniform chroma-key green "
              "screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep "
@@ -87,6 +88,13 @@ SHADE_NO_SEX_CHECK = set()
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
+# Vision check on the sitting pose (everything else starts from it): straight-on, symmetric, no glitches.
+SIT_CHECK = ('Look at this photo of a {species} on a green background. Answer only JSON: {"front_on": true|false, '
+             '"artifacts": true|false}. "front_on" = it sits straight facing the camera (chest toward the camera, '
+             'shoulders square, both front legs side by side, body roughly symmetric left/right), not turned to one '
+             'side or at a three-quarter angle. "artifacts" = the image has a glitch: a dark rectangle or block, a '
+             'smudge, a hole or a patch of odd colour on the animal that real fur would not have.')
+
 # Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
 RETRY_HINTS = [
     (('cut off', 'frame edge', 'paws cut off'),
@@ -97,6 +105,10 @@ RETRY_HINTS = [
      " It must end in exactly the same pose, position and size in the frame as the final frame image."),
     (('male anatomy',),
      " The {species} is a girl: female body, smooth belly between the back legs, nothing hanging below the belly."),
+    (('not sitting straight', 'turned'),
+     " It sits perfectly straight and symmetrical, square to the camera, like a statue: not turned to either side."),
+    (('glitch', 'dark patch'),
+     " Clean, natural fur everywhere, with no dark rectangles, blocks, smudges or odd-coloured patches."),
     (('tail',),
      " Keep the {species}'s rear in view without any tail."),
 ]

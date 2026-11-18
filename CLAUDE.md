@@ -213,7 +213,9 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   its brightness (the shared absolute threshold cut out pale chests/bellies lit by green bounce light), then
   `fill_translucent` makes see-through patches inside the body solid and `fix_spill` gives grey despilled underside
   streaks the surrounding fur colour. `plan.GREEN_SIT` always turns the pet to sit front-on (an angled customer sit
-  photo made the first live order drift into side views); customers still send any photos.
+  photo made the first live order drift into side views); customers still send any photos. The sitting image gets a vision check (`plan.SIT_CHECK`: front_on + artifacts,
+  e.g. a dark block the image model painted on the chest) and is remade (~$0.08/try, with retry hints) if it isn't
+  straight-on like Chunky or has a glitch; all dogs should sit straight so the head can turn without bending.
 - Retries learn: a failed try's problems add fixes to the next try's prompt (`plan.RETRY_HINTS` / `retry_hint`: camera
   further back, locked-off camera, exact end pose, female anatomy). The worker saves every try's QA to
   `orders/<id>/qa.json`; `/admin/orders?view=qa` shows failure rates and top problems per clip across all pets (tune there).
