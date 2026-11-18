@@ -141,6 +141,10 @@ def make(oid):
     s3.upload_file(zip_path, BUCKET, f'orders/{oid}/pet.zip', ExtraArgs={'ContentType': 'application/zip'})
     s3.upload_file(f'{job.out}/report.html', BUCKET, f'orders/{oid}/report.html', ExtraArgs={'ContentType': 'text/html'})
     upload_preview(oid, f'{job.out}/preview')
+    # every QA result of every try, kept per order so retry rates and costs can be tuned over time
+    s3.put_object(Bucket=BUCKET, Key=f'orders/{oid}/qa.json', ContentType='application/json',
+                  Body=json.dumps({'made_at': now(), 'species': o.get('species'), 'sex': o.get('sex'), 'cost': job.cost,
+                                   'qa': [{k: q.get(k) for k in ('item', 'attempt', 'problems')} for q in job.qa]}).encode())
 
     o = get_order(oid)
     if not o.get('code'):                          # the customer's pet code (works once approved)

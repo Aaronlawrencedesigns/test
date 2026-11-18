@@ -83,6 +83,26 @@ SHADE_NO_SEX_CHECK = set()
 MOVING_TRICKS = {}   # tried {'stand': 5, 'poop': 6, 'wag': 4}: too much motion to match frames; poses changed instead
 # Female pets: versions of tricks that keep the belly out of view (the video model adds male anatomy
 # whenever it's visible, i.e. in side views; front-facing views hide it). Same clip names.
+# Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
+RETRY_HINTS = [
+    (('cut off', 'frame edge', 'paws cut off'),
+     " The camera is further back: the whole {species}, from the tips of its ears to its paws, stays well inside the frame with empty space on every side, even at its tallest or most stretched moment."),
+    (('pushes in', 'zoom', 'grows'),
+     " The camera is locked off on a tripod: no zoom, no push-in, no camera movement. The {species} stays exactly the same size in the frame for the whole clip."),
+    (('does not end', 'expected pose', 'end in'),
+     " It must end in exactly the same pose, position and size in the frame as the final frame image."),
+    (('male anatomy',),
+     " The {species} is a girl: female body, smooth belly between the back legs, nothing hanging below the belly."),
+    (('tail',),
+     " Keep the {species}'s rear in view without any tail."),
+]
+
+
+def retry_hint(problems):
+    text = ' '.join(problems or []).lower()
+    return ''.join(h for keys, h in RETRY_HINTS if any(k in text for k in keys))
+
+
 # Cats: cat versions of the dog-only tricks (a cat doesn't bark or pant) and their menu names
 CAT_ACTIONS = {
     'bark': "The {species} meows at the camera two times, like a cat talking: each meow it opens its mouth showing its small teeth and pink tongue, its whiskers move, then it closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera. It is a cat meowing, never barking or panting.",
@@ -152,7 +172,7 @@ def sweep_item(row, c0=0, c1=4):
 ACTIONS = {
     'wag': ('kf_sit', 'kf_sit', 5, "The {species} gets excited and happy: it wiggles its whole rear end{tail_and} side to side while staying seated, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'puppy': ('kf_sit', 'kf_sit', 5, "The {species} gives sweet puppy-dog eyes: it slowly lowers and tilts its head to one side, looks up at the camera with big soulful pleading eyes, ears slightly back, then slowly straightens its head and returns to exactly the same sitting pose as the start.", {}),
-    'stand': ('kf_sit', 'kf_sit', 7, "The {species} stands up on its hind legs, like it is begging: it rises from sitting onto its back legs with its front paws raised in front of its chest, balancing upright for a moment while looking at the camera, then lowers itself and sits back down in exactly the same calm sitting pose as the start, looking at the camera.", {}),
+    'stand': ('kf_sit', 'kf_sit', 7, "The {species} stands up on its hind legs, like it is begging: it rises from sitting onto its back legs with its front paws raised in front of its chest, balancing upright for a moment while looking at the camera, then lowers itself and sits back down in exactly the same calm sitting pose as the start, looking at the camera.", {'wide': True}),
     'eat': ('kf_sit', 'kf_sit', 4, "The {species} has just been given a treat: it happily chews with its mouth, jaw moving up and down, swallows, then licks its lips and nose with its tongue a couple of times, looking pleased, then closes its mouth and returns to exactly the same calm sitting pose as the start, looking at the camera.", {}),
     'bark': ('kf_sit', 'kf_sit', 4, "The {species} barks loudly at the camera two times: each bark it opens its mouth wide showing teeth and tongue, its head jerks slightly forward, cheeks puff, then it closes its mouth and returns to exactly the same calm sitting pose as the start.", {}),
     'poop': ('kf_sit', 'kf_sit', 8, "The {species} stands up, turns its body sideways, hunches its back into a squat{tail_raised} as if pooping, holds briefly, then stands, turns back toward the camera and sits down again in exactly the same pose as the start.", {}),
@@ -180,7 +200,8 @@ MAX_EDGE = {'wake_up': 0.06}
 MAX_BOTTOM = {'wake_up': 0.3}
 # ...and for tricks where the pet keeps its shape, how much bigger than at the start it may get
 # (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
-MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.08, 'bark': 1.08, 'eat': 1.08, 'wag': 1.12}
+# (seated tricks: 1.08 failed tiny, barely visible push-ins on a live order and every retry costs ~$0.40)
+MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.2}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)

@@ -34,7 +34,7 @@ class Job:
         self.max_retries, self.workers = max_retries, workers
         # videos cost ~5x an image: fewer retries, and a spending cap per pet (USD, estimated)
         self.video_retries = int(os.environ.get('PETGEN_VIDEO_RETRIES', '1'))
-        self.budget = float(os.environ.get('PETGEN_BUDGET', '12'))
+        self.budget = float(os.environ.get('PETGEN_BUDGET', '10'))
         self._log = log
         self.lock = threading.Lock()
         self.upload_lock = threading.Lock()
@@ -49,6 +49,7 @@ class Job:
         self._gaze_events, self._gaze_started = {}, set()
         self.rest_fix = {}    # female pets: rest pose -> (clean 640 still, mask) for belly patching
         self.qa = []          # {item, attempt, problems, metrics}
+        self.hints = {}       # item -> problems of its last failed try (added to the next try's prompt)
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
         self.still = {}       # still name -> 640 RGBA
@@ -96,6 +97,8 @@ class Job:
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
         # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
         kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
+        if attempt > 1:     # retries say what went wrong last time (cut off, zoom, wrong end pose, anatomy)
+            prompt = prompt + plan.retry_hint(self.hints.get(key))
         hq = self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE
         key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}' + ('hq' if hq else '')
         if first == 'kf_sleep_end':
@@ -150,6 +153,8 @@ class Job:
                 self.record(item, attempt, [f'generation failed: {str(e)[:160]}'])
                 continue
             self.record(item, attempt, problems, metrics)
+            if problems:
+                self.hints[item] = problems       # the next try is told what went wrong (plan.retry_hint)
             if best is None or len(problems) < len(best[1]):
                 best = (res, problems)
             if not problems:
@@ -449,7 +454,7 @@ class Job:
 
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
-            frames, stats = media.decode_keyed(src, low=opts.get('low', False))
+            frames, stats = media.decode_keyed(src, low=opts.get('low', False), wide=opts.get('wide', False))
             start_still = self.still_for(first)
             problems_extra, pose_k, paws_low = [], None, False
             if derive:

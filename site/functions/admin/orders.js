@@ -45,6 +45,39 @@ const cell = (v) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
+// ?view=qa: which clips fail most across every pet made so far (orders/<id>/qa.json from the worker),
+// so prompts and QA limits can be tuned where retries cost the most.
+async function qaStats(env) {
+  const all = await allOrders(env);
+  const per = {};
+  let pets = 0;
+  for (let i = 0; i < all.length; i += 25) {
+    const docs = await Promise.all(all.slice(i, i + 25).map(async (o) => {
+      const obj = await env.ORDERS.get(`orders/${o.id}/qa.json`).catch(() => null);
+      return obj ? obj.json().catch(() => null) : null;
+    }));
+    for (const d of docs.filter(Boolean)) {
+      pets++;
+      const seen = new Set();
+      for (const q of d.qa || []) {
+        const base = String(q.item || '').split('@')[0].replace(/_\d\d$/, '');
+        const s = (per[base] ||= { pets: 0, tries: 0, failed: 0, problems: {} });
+        if (!seen.has(base)) { s.pets++; seen.add(base); }
+        s.tries++;
+        if ((q.problems || []).length) {
+          s.failed++;
+          for (const p of q.problems) {
+            const k = String(p).replace(/[\d.]+%?x?/g, '#').slice(0, 70);
+            s.problems[k] = (s.problems[k] || 0) + 1;
+          }
+        }
+      }
+    }
+  }
+  return { pets, rows: Object.entries(per).map(([item, s]) => ({ item, ...s, rate: s.tries ? s.failed / s.tries : 0 }))
+    .sort((a, b) => b.failed - a.failed) };
+}
+
 export async function onRequestGet({ request, env }) {
   const who = await accessUser(request, env);
   if (!who) {
@@ -52,6 +85,23 @@ export async function onRequestGet({ request, env }) {
       { status: 403, headers: { 'cache-control': 'no-store' } });
   }
   const u = new URL(request.url);
+  if (u.searchParams.get('view') === 'qa') {
+    const { pets, rows } = await qaStats(env);
+    const body = rows.map((r) => `<tr><td>${esc(r.item)}</td><td class="n">${r.pets}</td><td class="n">${r.tries}</td>`
+      + `<td class="n ${r.rate > 0.4 ? 'neg' : ''}">${Math.round(100 * r.rate)}%</td><td>${Object.entries(r.problems)
+        .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p, n]) => `${esc(p)} (${n})`).join('<br>')}</td></tr>`).join('');
+    return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>QA stats · Desktop Sidekicks</title><style>
+body{margin:0;font:14px/1.45 -apple-system,system-ui,sans-serif;padding:20px 16px 40px;background:#e6e1ea;color:#221d27}
+@media(prefers-color-scheme:dark){body{background:#1b1820;color:#efeaf3}}a{color:#6a7bff}
+table{border-collapse:collapse;width:100%;max-width:1100px}th,td{padding:7px 10px;border-bottom:1px solid #8884;text-align:left;vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums}.neg{color:#c0392b}</style></head><body>
+<h1 style="margin:0 0 4px;font-size:24px">QA stats</h1><p><a href="?">← Orders</a> · ${pets} pet${pets === 1 ? '' : 's'} with QA data.
+Each failed try is a paid retry: the top rows are where prompt or limit changes save the most.</p>
+<table><thead><tr><th>Clip / image</th><th>Pets</th><th>Tries</th><th>Failed</th><th>Most common problems</th></tr></thead>
+<tbody>${body || '<tr><td colspan="5">No QA data yet (it is saved for pets made from now on).</td></tr>'}</tbody></table></body></html>`,
+      { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+  }
   const all = u.searchParams.get('all') === '1';
   const month = /^\d{4}-\d{2}$/.test(u.searchParams.get('month') || '') ? u.searchParams.get('month') : '';
   const everything = (await allOrders(env)).map(row).filter((r) => all || r.status !== 'awaiting_payment');
@@ -97,7 +147,8 @@ th{font-weight:600;color:var(--muted)}td.n,th.n{text-align:right;font-variant-nu
 <div class="muted">Signed in as ${esc(who)}. Grey Stripe fees are estimates (2.9% + 30¢); AI cost is our estimate of GPTProto spend, re-makes included. Team orders with the 100%-off code show $0 paid.</div>
 <div class="bar"><a href="${esc(link({ format: 'csv' }))}">⬇ Download CSV</a>
 <select aria-label="Month" onchange="location.search=this.value"><option value="${esc(link({ month: '' }))}">All months</option>${months.map((m) => `<option value="${esc(link({ month: m }))}"${m === month ? ' selected' : ''}>${m}</option>`).join('')}</select>
-<a href="${esc(link({ all: all ? '' : '1' }))}">${all ? 'Hide unpaid checkouts' : 'Show unpaid checkouts'}</a></div>
+<a href="${esc(link({ all: all ? '' : '1' }))}">${all ? 'Hide unpaid checkouts' : 'Show unpaid checkouts'}</a>
+<a href="?view=qa">QA stats</a></div>
 <div class="tiles">${tiles.map(([k, v]) => `<div class="tile"><span class="muted">${k}</span><b>${v}</b></div>`).join('')}</div>
 <div class="wrap"><table><thead><tr>${COLS.map(([k, h]) => `<th${MONEY.has(k) ? ' class="n"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>
 ${rows.map((r) => `<tr>${COLS.map(([k]) => (MONEY.has(k) ? money(r, k) : k === 'id' ? `<td><code>${esc(r.id.slice(0, 8))}</code></td>` : `<td>${esc(r[k])}</td>`)).join('')}</tr>`).join('')
