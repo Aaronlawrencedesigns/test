@@ -22,7 +22,7 @@ MASTER = ("Photorealistic photo of this exact {species} (use all reference photo
 GREEN_SIT = ("Recreate the first image: the same {species}, sitting perfectly straight like a statue posing for a "
              "portrait, turned to face the camera straight on: chest and face toward the lens, shoulders square to the "
              "camera, both front legs straight and side by side, body symmetrical left to right, head upright, even "
-             "if the photo shows it sitting at an angle. Natural, even fur everywhere (no dark patches or blocks). Same size and position in the frame, same lighting, looking "
+             "if the photo shows it sitting at an angle. Natural, even fur everywhere (no dark patches, blocks or green on the animal). Same size and position in the frame, same lighting, looking "
              "straight into the lens. Only change "
              "the background: replace the entire background and floor with a perfectly flat, uniform chroma-key green "
              "screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep "
@@ -93,7 +93,8 @@ SIT_CHECK = ('Look at this photo of a {species} on a green background. Answer on
              '"artifacts": true|false}. "front_on" = it sits straight facing the camera (chest toward the camera, '
              'shoulders square, both front legs side by side, body roughly symmetric left/right), not turned to one '
              'side or at a three-quarter angle. "artifacts" = the image has a glitch: a dark rectangle or block, a '
-             'smudge, a hole or a patch of odd colour on the animal that real fur would not have.')
+             'smudge, a hole, a patch of the green background colour ON the animal (chest, chin, belly) or a patch '
+             'of odd colour on the animal that real fur would not have.')
 
 # Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
 RETRY_HINTS = [
@@ -108,7 +109,7 @@ RETRY_HINTS = [
     (('not sitting straight', 'turned'),
      " It sits perfectly straight and symmetrical, square to the camera, like a statue: not turned to either side."),
     (('glitch', 'dark patch'),
-     " Clean, natural fur everywhere, with no dark rectangles, blocks, smudges or odd-coloured patches."),
+     " Clean, natural fur everywhere, with no dark rectangles, blocks, smudges, green patches or odd-coloured patches on the animal."),
     (('tail',),
      " Keep the {species}'s rear in view without any tail."),
 ]
