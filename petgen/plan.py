@@ -237,7 +237,9 @@ PRICE_VIDEO_PER_SECOND = 0.08
 # Female pets: clips that show the belly are made with Seedance 2.5 (GPTProto dreamina-seedance-2-5), which
 # draws female anatomy correctly even standing on the hind legs (tested on Chewie, Nov 2026); 2.0 Mini
 # draws male parts whatever the prompt says. About 3-5x the price, so only these clips use it.
-HQ_CLIPS_FEMALE = {'stand', 'poop'}   # (lying / sleeping clips are fixed with image edits + patches, cheaper)
+# lie_down + get_up added Nov 19: 2.0 Mini drew male parts on Chewie lying down (her lie pose is lie_down's
+# last frame) and standing side-on while getting up; patches can't follow that much movement (~+$1.25 per girl)
+HQ_CLIPS_FEMALE = {'stand', 'poop', 'lie_down', 'get_up'}
 PRICE_HQ_VIDEO_PER_SECOND = 0.2    # estimate (720p 1:1; GPTProto lists 480p at ~$0.10/s)
 
 

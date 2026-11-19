@@ -577,36 +577,74 @@ def _shift(a, dx, dy):
 
 
 def patch_from(frames, ref, mask, min_iou=0.85, pad=24, search=40, step=4):
-    """Blend ref into frames under mask. For each frame the ref + mask are moved (up to `search` px)
-    to where the pet's shape around the mask lines up best (the pet shifts a little as it moves);
-    frames where nothing lines up (IoU < min_iou) are left alone."""
+    """Blend ref into frames under mask, following the pet as it shifts. Two passes so the patch moves WITH the
+    body instead of jiggling (Tess's puppy eyes / sleep, Nov 19: it snapped in 4 px steps and switched on/off
+    from frame to frame): (1) per frame, the best offset (coarse search, then 1 px refinement) and how well the
+    pet's shape lines up (IoU); (2) offsets smoothed over time, and the patch faded in / out over a few frames
+    instead of popping. Frames where nothing lines up get no patch."""
     if mask is None or mask.max() <= 0:
         return frames, 0
     ys, xs = np.nonzero(mask > 0.01)
     y0, y1 = max(0, ys.min() - pad), min(mask.shape[0], ys.max() + pad)
     x0, x1 = max(0, xs.min() - pad), min(mask.shape[1], xs.max() + pad)
     ra = ref[..., 3] > 128
+    a = ra[y0:y1, x0:x1]
     rf = ref.astype(np.float32)
-    out, n = [], 0
+    H, W = ra.shape
+
+    def iou_at(fa, dx, dy):
+        if not (0 <= y0 + dy and y1 + dy <= H and 0 <= x0 + dx and x1 + dx <= W):
+            return -1.0
+        b = fa[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+        return (a & b).sum() / max(1, (a | b).sum())
+
+    fits = []
     for f in frames:
         fa = f[..., 3] > 128
         best = (-1.0, 0, 0)
         for dy in (range(-search, search + 1, step) if search else [0]):
             for dx in (range(-search // 2, search // 2 + 1, step) if search else [0]):
-                if not (0 <= y0 + dy and y1 + dy <= fa.shape[0] and 0 <= x0 + dx and x1 + dx <= fa.shape[1]):
-                    continue
-                a = ra[y0:y1, x0:x1]
-                b = fa[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
-                iou = (a & b).sum() / max(1, (a | b).sum())
-                if iou > best[0]:
-                    best = (iou, dx, dy)
-        iou, dx, dy = best
-        if iou >= (min_iou if not (dx or dy) else max(min_iou, 0.94)):   # shifted: only a near-exact fit
-            m = (_shift(mask, dx, dy) if (dx or dy) else mask)[..., None]
-            r = _shift(rf, dx, dy) if (dx or dy) else rf
-            f = np.clip(f.astype(np.float32) * (1 - m) + r * m, 0, 255).astype(np.uint8)
-            n += 1
-        out.append(f)
+                v = iou_at(fa, dx, dy)
+                if v > best[0]:
+                    best = (v, dx, dy)
+        if search and step > 1:          # refine to 1 px around the coarse best
+            _, bx, by = best
+            for dy in range(by - step + 1, by + step):
+                for dx in range(bx - step + 1, bx + step):
+                    v = iou_at(fa, dx, dy)
+                    if v > best[0]:
+                        best = (v, dx, dy)
+        fits.append(best)
+    n_f = len(frames)
+    if not n_f:
+        return frames, 0
+    iou = np.array([b[0] for b in fits])
+    off = np.array([[b[1], b[2]] for b in fits], np.float32)
+    shifted = np.abs(off).sum(1) > 0
+    ok = iou >= np.where(shifted, max(min_iou, 0.92), min_iou)
+    # smooth the offsets over time (median of accepted neighbours), so the patch glides with the body
+    sm = off.copy()
+    for i in range(n_f):
+        lo, hi = max(0, i - 3), min(n_f, i + 4)
+        good = [k for k in range(lo, hi) if ok[k]]
+        if good:
+            sm[i] = np.median(off[good], axis=0)
+    # fade the patch in / out over ~4 frames instead of switching it on and off
+    w = ok.astype(np.float32)
+    k = np.array([0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25], np.float32)
+    w = np.minimum(w, np.convolve(w, k / k.max(), mode='same').clip(0, 1)) if n_f > 7 else w
+    w = np.convolve(w, np.ones(3) / 3, mode='same') if n_f > 3 else w
+    out, n = [], 0
+    for f, (dx, dy), wi in zip(frames, sm, w):
+        if wi <= 0.02:
+            out.append(f)
+            continue
+        dx, dy = int(round(dx)), int(round(dy))
+        m = (_shift(mask, dx, dy) if (dx or dy) else mask)[..., None] * float(wi)
+        r = _shift(rf, dx, dy) if (dx or dy) else rf
+        m = m * (f[..., 3:4] > 128)          # never paint outside the pet in this frame
+        out.append(np.clip(f.astype(np.float32) * (1 - m) + r * m, 0, 255).astype(np.uint8))
+        n += 1
     return out, n
 
 

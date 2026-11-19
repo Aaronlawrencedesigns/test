@@ -162,7 +162,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   adding male anatomy mid-clip in seated tricks, so for female pets `media.patch_groin` copies the clean
   belly area of the sit still into frames of `plan.SEATED_TRICKS` (eat, bark, puppy, wag) whose lower
   body lines up with it (IoU >= 0.85; the patch follows small shifts only on a near-exact fit), before the
-  anatomy check. Free; no retries needed. Lying / sleeping: `female_rest_fix` makes a clean image edit of
+  anatomy check. Free; no retries needed. The same patch runs on every head-tracking sweep frame of female pets (Tess, Nov 19: male parts in some head-turn frames). `patch_from` follows the body smoothly: 1 px offsets,
+  smoothed over time, faded in/out (it used to snap in 4 px steps and pop on/off: a 'jiggle' on puppy eyes / sleep). Lying / sleeping: `female_rest_fix` makes a clean image edit of
   each derived resting pose (`plan.FEMALE_EDIT`, ~$0.08), `media.edit_mask` takes the small changed
   area, and `patch_from` puts it into the stills and the frames of `plan.REST_CLIPS` that match the pose.
   Standing / moving frames can't be patched (key-frame edits tried: too much motion), so female pets get
@@ -182,7 +183,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Spending cap per pet run `PETGEN_BUDGET` (default $10, est.; the owner's 'Needs a look' threshold): over it, no more retries; best try kept
   and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
-- Female pets: Stand and Poop are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
+- Female pets: Stand, Poop, Lie down and Get up are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
   `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind
   legs, it drew female anatomy correctly where 2.0 Mini always drew male parts (Kling 3.0 was worse; Veo 3.1
   isn't enabled on the account). So girls get the real hind-legs Stand again (the play bow / "Bow" label is gone).
