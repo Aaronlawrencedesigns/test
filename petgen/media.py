@@ -98,6 +98,30 @@ def fill_translucent(rgba, r=7, solid=0.72):
     return out
 
 
+def fill_holes(rgba, r=11):
+    """The image model sometimes paints green-screen green INSIDE the pet (a patch on the chest, under the
+    chin), which keys out as a hole. A hole fully enclosed by the pet can't be background: make it solid
+    and fill it with the surrounding fur colour (blurred from the solid pixels around it)."""
+    from scipy import ndimage
+    solid = rgba[..., 3] > 128
+    holes = ndimage.binary_fill_holes(solid) & ~solid
+    if not holes.any():
+        return rgba
+    holes = ndimage.binary_dilation(holes, iterations=1) & ~(rgba[..., 3] > 250)
+    rgb = rgba[..., :3].astype(np.float32)
+    op = (rgba[..., 3] > 250).astype(np.float32)
+    out = rgba.copy()
+    fill = rgb.copy()
+    for k in (2 * r + 1, 4 * r + 1, 8 * r + 1):      # widen until every hole pixel has fur around it
+        den = ndimage.uniform_filter(op, k)
+        f = np.stack([ndimage.uniform_filter(rgb[..., c] * op, k) for c in range(3)], -1) / (den[..., None] + 1e-6)
+        todo = holes & (den > 0.02) & (fill is not None)
+        fill[todo] = f[todo]
+    out[..., :3][holes] = np.clip(fill[holes], 0, 255).astype(np.uint8)
+    out[..., 3][holes] = 255
+    return out
+
+
 def fix_spill(rgba, rgb, r=9, solid=0.72):
     """Green light bouncing onto the pet's underside (chest, belly, inner legs) despills to flat grey /
     white streaks. Inside the body, give those pixels the colour of the surrounding fur (keeping their
@@ -128,7 +152,7 @@ def key_rgb(rgb):
     """rgb uint8 HxWx3 -> (rgba, stats). stats: area fraction, share of keyed area
     thrown away as specks/extra blobs, and whether the subject touches the frame edge."""
     raw = alpha_and_despill(rgb)
-    rgba = fix_spill(fill_translucent(soften_shadow(clean_alpha(raw))), rgb)
+    rgba = fix_spill(fill_holes(fill_translucent(soften_shadow(clean_alpha(raw)))), rgb)
     a_raw = (raw[..., 3] > 128).sum()
     a = (rgba[..., 3] > 128)
     H, W = a.shape

@@ -49,6 +49,7 @@ def _unavailable(status, text):
 
 class GPTProtoProvider:
     image_model = 'gemini-3-pro-image-preview'
+    image_fallbacks = ['gemini-3.1-flash-image']   # used only while the main image model is overloaded / down
     vision_model = 'gemini-3-flash-preview'   # cheap checks (well under a cent per image)
     video_path = 'doubao/dreamina-seedance-2-0-mini-260615/image-to-video'
     video_path_hq = 'doubao/dreamina-seedance-2-5-260628/image-to-video'   # female pets' belly-showing clips
@@ -63,12 +64,28 @@ class GPTProtoProvider:
         return f'data:image/{ext};base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 
     def image(self, key, prompt, ref_paths, out_path):
-        """Nano Banana Pro via the OpenAI-style chat endpoint (accepts base64 images)."""
+        """Nano Banana Pro; when it's overloaded / down, a backup image model (same API) takes over so pets
+        don't wait for hours (Nov 18: gemini-3-pro-image-preview overloaded 8+ hours, gemini-3.1-flash-image
+        was up and made a clean sleeping-pose edit in 11 s)."""
+        try:
+            return self._image_with(self.image_model, key, prompt, ref_paths, out_path, tries=2)
+        except ProviderUnavailable as e:
+            first = e
+        for model in self.image_fallbacks:
+            self.log(f'  {key}: {self.image_model} unavailable, using backup {model}')
+            try:
+                return self._image_with(model, key, prompt, ref_paths, out_path, tries=4)
+            except ProviderUnavailable:
+                continue
+        raise first
+
+    def _image_with(self, model, key, prompt, ref_paths, out_path, tries=5):
+        """One image model via the OpenAI-style chat endpoint (accepts base64 images)."""
         content = [{'type': 'text', 'text': prompt}] + [{'type': 'image_url', 'image_url': {'url': self._data_uri(p)}} for p in ref_paths]
         last = ''
-        for attempt in range(5):
+        for attempt in range(tries):
             try:
-                r = self.s.post(f'{API}/v1/chat/completions', json={'model': self.image_model, 'messages': [{'role': 'user', 'content': content}],
+                r = self.s.post(f'{API}/v1/chat/completions', json={'model': model, 'messages': [{'role': 'user', 'content': content}],
                                                                    'modalities': ['image', 'text']}, timeout=300)
             except requests.RequestException as e:   # timeout / dropped connection: wait and try again
                 self.log(f'  {key}: {e.__class__.__name__}, retrying')
