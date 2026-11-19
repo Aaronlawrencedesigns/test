@@ -14,7 +14,7 @@ Env (/etc/sidekicks.env): GPTPROTO_API_KEY, S3_ENDPOINT, S3_BUCKET, AWS_ACCESS_K
 AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK,
 PETGEN_WORKERS (clips made at once; default 3, each needs ~0.5-1 GB of memory).
 """
-import datetime, json, os, secrets, shutil, sys, time, traceback
+import datetime, json, os, secrets, shutil, subprocess, sys, time, traceback
 
 import boto3
 import requests
@@ -288,6 +288,28 @@ def requeue(oid, tail=None, sex=None):
     log(f'{oid}: not found in test/failed/review/delivered')
 
 
+UPDATE_EVERY = int(os.environ.get('UPDATE_CHECK_SECONDS', '300'))
+_last_update_check = 0.0
+
+
+def code_update_waiting():
+    """True when GitHub main has a newer commit than the code this worker runs. The worker then exits between
+    orders and systemd restarts it (Restart=always), which pulls main (ExecStartPre): code fixes go live on
+    their own, nobody has to run a restart in the web console."""
+    global _last_update_check
+    if time.time() - _last_update_check < UPDATE_EVERY:
+        return False
+    _last_update_check = time.time()
+    try:
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        local = subprocess.run(['git', '-c', 'safe.directory=*', '-C', here, 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=30).stdout.strip()
+        remote = subprocess.run(['git', '-c', 'safe.directory=*', '-C', here, 'ls-remote', 'origin', 'refs/heads/main'], capture_output=True, text=True,
+                                timeout=60).stdout.split()
+        return bool(local and remote and remote[0] != local)
+    except Exception:  # noqa: BLE001 - no network / no git: just keep running
+        return False
+
+
 def main():
     if len(sys.argv) > 2 and sys.argv[1] == 'requeue':
         opt = lambda k: next((a.split('=', 1)[1] for a in sys.argv[3:] if a.startswith(k + '=')), None)
@@ -304,6 +326,9 @@ def main():
             traceback.print_exc()
         if '--once' in sys.argv:
             return
+        if code_update_waiting():        # between orders only (tick() makes a pet start to finish)
+            log('new code on GitHub main: restarting to pick it up')
+            return                       # systemd restarts the worker and pulls main
         time.sleep(POLL)
 
 

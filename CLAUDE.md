@@ -226,4 +226,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Retries learn: a failed try's problems add fixes to the next try's prompt (`plan.RETRY_HINTS` / `retry_hint`: camera
   further back, locked-off camera, exact end pose, female anatomy). The worker saves every try's QA to
   `orders/<id>/qa.json`; `/admin/orders?view=qa` shows failure rates and top problems per clip across all pets (tune there).
+- No web-console runs needed: the worker checks GitHub main every 5 min (`code_update_waiting`) and, between orders,
+  exits so systemd restarts it with a fresh `git pull` (Restart=always + ExecStartPre). Claude can re-queue an order
+  itself through the Cloudflare R2 API (move `queue/<review|delivered|failed|test>/<id>` to `queue/paid/<id>`; edit
+  order.json for tail/sex), which is what `sidekicks-requeue` does.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
