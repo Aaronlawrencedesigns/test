@@ -183,7 +183,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Spending cap per pet run `PETGEN_BUDGET` (default $10, est.; the owner's 'Needs a look' threshold): over it, no more retries; best try kept
   and the pet goes to the owner as Needs a look. Price stays $20 for launch.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
-- Female pets: Stand and Poop are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
+- Female pets: Stand, Poop, Lie down and Get up are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
   `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind
   legs, it drew female anatomy correctly where 2.0 Mini always drew male parts (Kling 3.0 was worse; Veo 3.1
   isn't enabled on the account). So girls get the real hind-legs Stand again (the play bow / "Bow" label is gone).
