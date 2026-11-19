@@ -216,6 +216,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   photo made the first live order drift into side views); customers still send any photos. The sitting image gets a vision check (`plan.SIT_CHECK`: front_on + artifacts,
   e.g. a dark block the image model painted on the chest) and is remade (~$0.08/try, with retry hints) if it isn't
   straight-on like Chunky or has a glitch; all dogs should sit straight so the head can turn without bending.
+- Backup image model: `GPTProtoProvider.image` tries gemini-3-pro-image-preview twice, and if it's overloaded / down
+  (`ProviderUnavailable`) switches to `image_fallbacks` (gemini-3.1-flash-image, tested on a sleeping-pose edit: same
+  dog/spot/size, clean green) before the order goes to `waiting`. Nov 18 the main model was overloaded 8+ hours.
+  `media.fill_holes` fills holes fully enclosed by the pet (green the image model painted on a chest / chin).
 - Retries learn: a failed try's problems add fixes to the next try's prompt (`plan.RETRY_HINTS` / `retry_hint`: camera
   further back, locked-off camera, exact end pose, female anatomy). The worker saves every try's QA to
   `orders/<id>/qa.json`; `/admin/orders?view=qa` shows failure rates and top problems per clip across all pets (tune there).
