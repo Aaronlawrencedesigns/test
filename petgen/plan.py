@@ -72,6 +72,10 @@ SEX_NOTE = {'female': ' This {species} is female: anatomically a female, with no
 # of a clip whose earlier tries still showed male anatomy (Chewie's eat / bark, 3 tries each).
 SEX_NOTE_STRONG = {'female': ' She is a female {species}: between her hind legs her belly is smooth, plain and soft, '
                              'exactly like in the first frame, all the way through the clip.', 'male': ''}
+# Image model: words like "genitals / penis / sheath" make it pixelate that area (a mosaic censor block on
+# Tess's and Chewie's sitting images, Nov 19), so images get a plain description of a female body instead.
+SEX_NOTE_IMAGE = {'female': ' She is a female {species}: her chest, belly and the area between her hind legs are covered '
+                            'in the same smooth, natural fur as the rest of her body.', 'male': ''}
 SEX_EXTRA_TRIES = 1
 # tricks where the pet stays seated: female pets get the clean belly of the sitting pose patched in
 # (media.patch_groin); the video model adds male anatomy mid-clip whatever the prompt says

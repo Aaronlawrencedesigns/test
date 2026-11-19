@@ -61,7 +61,12 @@ class Job:
 
     def fill(self, text, video=False, attempt=1):
         t = self.tail
-        sex = plan.SEX_NOTE_STRONG[self.sex] if (video and attempt >= 3 and self.sex == 'female') else plan.SEX_NOTE[self.sex]
+        if not video:
+            sex = plan.SEX_NOTE_IMAGE[self.sex]       # (no anatomy words: they make the image model pixelate)
+        elif attempt >= 3 and self.sex == 'female':
+            sex = plan.SEX_NOTE_STRONG[self.sex]
+        else:
+            sex = plan.SEX_NOTE[self.sex]
         text = (text.replace('{tail_and}', t['and']).replace('{tail_raised}', t['raised'])
                 + t['note'] + sex + (plan.IN_FRAME if video else ''))
         return text.replace('{species}', self.species).replace('{pet}', self.name)

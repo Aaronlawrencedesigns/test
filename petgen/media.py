@@ -67,6 +67,16 @@ def alpha_and_despill(rgb):
     ratio = spill / np.maximum(g, 1)
     t = np.clip((ratio - 0.28) / (0.5 - 0.28), 0, 1) * np.clip((spill - 14) / 20, 0, 1)
     alpha = 1.0 - t
+    # Semi-transparent edge pixels (fluffy fur) are a MIX of fur and green screen: take the screen colour back
+    # out (fg = (pixel - (1 - a) * screen) / a), otherwise the outline keeps a dark teal fringe.
+    scr = alpha < 0.02
+    screen = np.median(f[scr][::97], axis=0) if scr.sum() > 1000 else np.array([0.0, 177.0, 64.0], np.float32)  # sampled: fast
+    edge = (alpha > 0.04) & (alpha < 0.96)
+    if edge.any():
+        a3 = np.maximum(alpha[edge], 0.04)[:, None]
+        f[edge] = np.clip((f[edge] - (1 - a3) * screen) / a3, 0, 255)
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    spill = g - np.maximum(r, b)
     g2 = np.where(spill > 0, np.maximum(r, b), g)
     out = np.stack([r, np.minimum(g, g2 + 4), b], -1)
     return np.clip(np.concatenate([out, alpha[..., None] * 255], -1), 0, 255).astype(np.uint8)
@@ -105,6 +115,19 @@ def fill_holes(rgba, r=11):
     from scipy import ndimage
     solid = rgba[..., 3] > 128
     holes = ndimage.binary_fill_holes(solid) & ~solid
+    if not holes.any():
+        return rgba
+    # Only small holes in the upper body (chest, chin). Real background enclosed between the legs / paws
+    # (lower part of the pet, often larger) must stay see-through: filling it painted a dark block there.
+    x0, y0, x1, y1 = bbox(rgba)
+    lab, n = ndimage.label(holes)
+    keep = np.zeros_like(holes)
+    for i in range(1, n + 1):
+        comp = lab == i
+        ys, xs = np.nonzero(comp)
+        if ys.mean() < y0 + 0.6 * (y1 - y0) and comp.sum() < 0.02 * solid.sum():
+            keep |= comp
+    holes = keep
     if not holes.any():
         return rgba
     holes = ndimage.binary_dilation(holes, iterations=1) & ~(rgba[..., 3] > 250)
