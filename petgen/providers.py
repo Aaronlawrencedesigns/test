@@ -158,9 +158,17 @@ class GPTProtoProvider:
                 body['duration'] = max(4, int(seconds))
             if last_url:
                 body['last_image'] = last_url          # (Seedance 2.0 Mini rejects camera_fixed entirely)
-            r = self.s.post(f'{API}/api/v3/{self.video_path_hq if hq else self.video_path}', json=body, timeout=120)
-            j = r.json()
-            d = j.get('data') or {}
+            for sub in range(4):     # a busy / rate-limited submit (429, 5xx) usually clears within a minute
+                r = self.s.post(f'{API}/api/v3/{self.video_path_hq if hq else self.video_path}', json=body, timeout=120)
+                try:
+                    j = r.json()
+                except ValueError:
+                    j = {'raw': r.text[:300]}
+                d = j.get('data') or {}
+                if d.get('id') or not (r.status_code == 429 or r.status_code >= 500) or sub == 3:
+                    break
+                self.log(f'  {key}: video submit busy ({r.status_code}), retrying')
+                time.sleep(30 * (sub + 1))
             if not d.get('id'):
                 if _unavailable(r.status_code, str(j)) or r.status_code >= 500 or r.status_code == 429:
                     raise ProviderUnavailable(f'{key}: video submit refused ({r.status_code}): {str(j)[:200]}')
