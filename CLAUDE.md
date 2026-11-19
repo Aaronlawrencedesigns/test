@@ -219,7 +219,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Backup image model: `GPTProtoProvider.image` tries gemini-3-pro-image-preview twice, and if it's overloaded / down
   (`ProviderUnavailable`) switches to `image_fallbacks` (gemini-3.1-flash-image, tested on a sleeping-pose edit: same
   dog/spot/size, clean green) before the order goes to `waiting`. Nov 18 the main model was overloaded 8+ hours.
-  `media.fill_holes` fills holes fully enclosed by the pet (green the image model painted on a chest / chin).
+  `media.fill_holes` fills small holes enclosed in the UPPER body only (chest / chin), never the real background
+  between the legs. The keyer unmixes semi-transparent edge pixels from the screen colour (no teal fringe on fluffy
+  fur). Image prompts use `plan.SEX_NOTE_IMAGE` (plain "smooth fur" wording): "genitals / penis / sheath" made the
+  image model paint a pixelated mosaic between the legs / on the chest (Tess, Chewie, Nov 19).
 - Retries learn: a failed try's problems add fixes to the next try's prompt (`plan.RETRY_HINTS` / `retry_hint`: camera
   further back, locked-off camera, exact end pose, female anatomy). The worker saves every try's QA to
   `orders/<id>/qa.json`; `/admin/orders?view=qa` shows failure rates and top problems per clip across all pets (tune there).
