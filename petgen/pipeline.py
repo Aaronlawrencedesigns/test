@@ -543,6 +543,9 @@ class Job:
         def attempt_fn(attempt):
             src = self.gen_video(it['key'], it['prompt'], it['first'], it['last'], it['seconds'], attempt)
             frames, prog, info = media.sweep_frames(src, self.still['sit'])
+            patched = 0
+            if self.sex == 'female':      # the video model adds male anatomy in some head-turn frames: the body
+                frames, patched = media.patch_groin(frames, self.still['sit'])   # barely moves, so the clean belly fits
             problems = []
             need = 0.25 * (1.0 if (c0, c1) == (0, 4) else 0.6)   # (tuned on Chunky + Chewie: good turns >= 0.33)
             if info['turn'] < need:
@@ -552,6 +555,8 @@ class Job:
                 problems.append('subject vanishes in some frames')
             left, right = media.half_coverage(prog)
             metrics = {'turn': round(info['turn'], 3), 'left_share': round(left, 2), 'right_share': round(right, 2)}
+            if self.sex == 'female':
+                metrics['belly_patched'] = f'{patched}/{len(frames)} frames'
             return (frames, prog, left, right), problems, metrics
         return self.with_retries(it['key'], attempt_fn, video=True)
 
