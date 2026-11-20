@@ -214,9 +214,9 @@
   // No mouse movement for NAP_AFTER_MS: he lies down and falls asleep, and stays
   // asleep until the mouse moves again. His little tricks only happen while
   // you're around (mouse moved recently). Playful mode (on by default; menu checkbox, sent as the
-  // action 'playful:on' / 'playful:off'): a random trick about every 3 minutes while you use the mouse.
+  // action 'playful:on' / 'playful:off'): a random trick about every 2 minutes while you use the mouse.
   const NAP_AFTER_MS = 30000;
-  const TRICK_EVERY = [160000, 200000];   // ~3 min (was 20-45 s: too busy)
+  const TRICK_EVERY = [105000, 135000];   // ~2 min (was 20-45 s: too busy)
   let nextIdleAt = performance.now() + rand(...TRICK_EVERY);
   function autonomy(now) {
     if (S.busy || S.dragging || S.noAuto || S.food) return;
