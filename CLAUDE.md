@@ -238,7 +238,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   partner's Chewie, Nov 20); look-frame hysteresis 0.85 col / 0.75 row. Lying down: while the mouse is in use she
   gets up (own lie 5-10 s, menu "Lie down" 20 s); a missing timer is always started, so she never stays down
   for good. Changes to the player reach the Mac app only with a new DMG (app/scripts/sync-engine.js copies it).
-- Playful mode (menu checkbox, on by default, saved in the app's settings.json as `playful`): a random trick about every
+- Playful Mode (Do Random Tricks) (menu On / Off, on by default, saved in the app's settings.json as `playful`): a random trick about every
   3 min (`TRICK_EVERY` 160-200 s) while the mouse is in use; off = no tricks on her own (naps still happen). Sent to the
   player as action `playful:on|off`. Menu item "Sleep (Pause)" = chosen sleep, stays asleep until another action.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".

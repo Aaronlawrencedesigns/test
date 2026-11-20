@@ -231,8 +231,11 @@ function menu() {
       })),
     },
     {
-      label: 'Playful mode', type: 'checkbox', checked: settings.playful !== false,
-      click: (item) => { settings.playful = item.checked; saveSettings(); send(item.checked ? 'playful:on' : 'playful:off')(); },
+      label: 'Playful Mode (Do Random Tricks)',
+      submenu: [['On', true], ['Off', false]].map(([label, on]) => ({
+        label, type: 'radio', checked: (settings.playful !== false) === on,
+        click: () => { settings.playful = on; saveSettings(); send(on ? 'playful:on' : 'playful:off')(); },
+      })),
     },
     { label: 'Back to corner', click: () => win && win.setPosition(...cornerPosition()) },
     { label: 'Show / hide', click: () => win && (win.isVisible() ? win.hide() : win.show()) },

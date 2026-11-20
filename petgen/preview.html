@@ -96,7 +96,8 @@
       sep();
       ACTIONS.forEach(([l, a]) => item(l, () => act(a)));
       sep();
-      item('Playful mode', () => { playful = !playful; send({ t: 'a', a: playful ? 'playful:on' : 'playful:off' }); }, playful ? '✓' : '');
+      const pm = document.createElement('div'); pm.className = 'sub'; pm.textContent = 'Playful Mode (Do Random Tricks)'; menu.appendChild(pm);
+      [['On', true], ['Off', false]].forEach(([l, on]) => item(`   ${l}`, () => { playful = on; send({ t: 'a', a: on ? 'playful:on' : 'playful:off' }); }, playful === on ? '✓' : ''));
       sep();
       const h = document.createElement('div'); h.className = 'sub'; h.textContent = 'Size'; menu.appendChild(h);
       SIZES.forEach(([l, s]) => item(`   ${l}`, () => { scale = s; layout(); }, s === scale ? '✓' : ''));
