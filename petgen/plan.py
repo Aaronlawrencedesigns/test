@@ -22,7 +22,7 @@ MASTER = ("Photorealistic photo of this exact {species} (use all reference photo
 GREEN_SIT = ("Recreate the first image: the same {species}, sitting perfectly straight like a statue posing for a "
              "portrait, turned to face the camera straight on: chest and face toward the lens, shoulders square to the "
              "camera, both front legs straight and side by side, body symmetrical left to right, head upright, even "
-             "if the photo shows it sitting at an angle. Natural, even fur everywhere (no dark patches, blocks or green on the animal). Same size and position in the frame, same lighting, looking "
+             "if the photo shows it sitting at an angle. Its chest, chin and belly show the same clean fur colour as in the photos, matching its real markings. Same size and position in the frame, same lighting, looking "
              "straight into the lens. Only change "
              "the background: replace the entire background and floor with a perfectly flat, uniform chroma-key green "
              "screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep "
@@ -113,7 +113,9 @@ RETRY_HINTS = [
     (('not sitting straight', 'turned'),
      " It sits perfectly straight and symmetrical, square to the camera, like a statue: not turned to either side."),
     (('glitch', 'dark patch'),
-     " Clean, natural fur everywhere, with no dark rectangles, blocks, smudges, green patches or odd-coloured patches on the animal."),
+     " Its chest, chin and belly show the same clean, natural fur colour as in the reference photos."),
+    # (positive wording only: naming "dark patches / blocks / smudges" made the image model paint them on the chest,
+    #  Chunky's order Nov 20: all 3 sitting images had a dark blotch; the same lesson as SEX_NOTE_IMAGE)
     (('tail',),
      " Keep the {species}'s rear in view without any tail."),
 ]
