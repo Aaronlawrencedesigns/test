@@ -289,6 +289,12 @@ function petItems(code) {
     ...(several ? [{ label: `Hide ${name}`, click: () => setShown(code, false) }] : []),
   ];
 }
+// 'Add 2nd Pet…' with one pet, 'Add 3rd Pet…' with two, ...
+function addLabel(n) {
+  if (!n) return 'Add a pet…';
+  const k = n + 1, sfx = (k % 100 >= 11 && k % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[k % 10] || 'th');
+  return `Add ${k}${sfx} Pet…`;
+}
 // app-wide items: which pets are out, add a pet, login, quit
 function appItems() {
   const pets = listPets();
@@ -301,7 +307,7 @@ function appItems() {
         click: (item) => setShown(p.code, item.checked),
       })),
     }] : []),
-    { label: 'Add a pet…', click: () => showAdd() },
+    { label: addLabel(pets.length), click: () => showAdd() },
     {
       label: 'Open at login', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
       click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
