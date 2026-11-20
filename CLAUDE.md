@@ -241,4 +241,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Playful Mode (Do Random Tricks) (menu On / Off, on by default, saved in the app's settings.json as `playful`): a random trick about every
   2 min (`TRICK_EVERY` 105-135 s) while the mouse is in use; off = no tricks on her own (naps still happen). Sent to the
   player as action `playful:on|off`. Menu item "Sleep (Pause)" = chosen sleep, stays asleep until another action.
+- App: several pets at once. Each shown pet has its own window (`wins` map in app/main.js; IPC is routed by sender).
+  settings.json: `shown` (codes on the desktop, first in the corner, the next to its left; old `pet` setting migrates)
+  and `petPrefs[code]` (scale, playful). A newly added code joins the pets already out. Right-click menu = that pet's
+  items + "Pets on desktop" checkboxes (2+ pets) / Add a pet / login / Quit; the menu-bar icon has a submenu per pet.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
