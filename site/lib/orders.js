@@ -151,7 +151,23 @@ ol{margin:0;padding-left:20px;display:grid;gap:6px}
     { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
 }
 
-export function deliveryEmail(order, code) {
+// Which pets a customer already has: customers/<sha256(email)> -> JSON list of delivered order ids
+// (written on approve). Used to add "it joins your other pets" to a second pet's delivery email.
+async function customerKey(email) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(email || '').trim().toLowerCase()));
+  return `customers/${[...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+export async function customerPets(env, email) {
+  const obj = await env.ORDERS.get(await customerKey(email));
+  if (!obj) return [];
+  try { const ids = JSON.parse(await obj.text()); return Array.isArray(ids) ? ids : []; } catch { return []; }
+}
+export async function rememberPet(env, order) {
+  const ids = await customerPets(env, order.email);
+  if (!ids.includes(order.id)) await env.ORDERS.put(await customerKey(order.email), JSON.stringify([...ids, order.id]));
+}
+
+export function deliveryEmail(order, code, { morePets = false } = {}) {
   const pet = order.pet_name || 'Your pet';
   const add = `${SITE}/add/${code}`;
   const text = `${pet} is ready!
@@ -161,7 +177,9 @@ export function deliveryEmail(order, code) {
    (or paste this code into the app: ${code})
 
 ${pet} will appear in the bottom-right corner of your screen, follow your mouse, nap when you step away and eat the treats you drag over. Right-click ${pet} for tricks, sizes and more.
-
+${morePets ? `
+Adding to your pack? Download the app again from the link above (it updates it), then click the add link: ${pet} joins your other pets on the desktop. Show or hide each one under "Pets on desktop" in the menu.
+` : ''}
 Keep this email: the code works on any of your Macs.
 
 Questions? Just reply to this email.
@@ -174,6 +192,7 @@ Desktop Sidekicks · ${SITE}`;
 <p><a href="${add}" style="display:inline-block;background:#2f45c4;color:#fff;text-decoration:none;font-weight:600;padding:12px 18px;border-radius:8px">Add ${esc(pet)} to Desktop Sidekicks</a></p>
 <p style="color:#6a6170">Or paste this code into the app: <b style="font-family:ui-monospace,Menlo,monospace;color:#221d27;letter-spacing:.05em">${esc(code)}</b></p>
 <p>${esc(pet)} will sit in the bottom-right corner, follow your mouse, nap when you step away and eat the treats you drag over. Right-click for tricks, sizes and more.</p>
+${morePets ? `<p style="background:#f3f0f6;border-radius:8px;padding:12px 14px"><b>Adding to your pack?</b> <a href="${SITE}/download" style="color:#2f45c4">Download the app again</a> (it updates it), then click the Add button above: ${esc(pet)} joins your other pets on the desktop. Show or hide each one under <b>Pets on desktop</b> in the menu.</p>` : ''}
 <p style="color:#6a6170;font-size:13px">Keep this email: the code works on any of your Macs. Questions? Just reply.<br>Desktop Sidekicks &middot; <a href="${SITE}" style="color:#2f45c4">desktopsidekicks.com</a></p>
 </div>`;
   return { subject: `${pet} is ready for your desktop`, text, html, tag: 'pet-delivery' };

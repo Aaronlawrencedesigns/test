@@ -245,4 +245,6 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   settings.json: `shown` (codes on the desktop, first in the corner, the next to its left; old `pet` setting migrates)
   and `petPrefs[code]` (scale, playful). A newly added code joins the pets already out. Right-click menu = that pet's
   items + "Pets on desktop" checkboxes (2+ pets) / Add a pet / login / Quit; the menu-bar icon has a submenu per pet.
+  Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
+  Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, the pet joins the others).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
