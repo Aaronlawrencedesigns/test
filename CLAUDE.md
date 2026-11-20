@@ -251,7 +251,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   and `petPrefs[code]` (scale, playful). A newly added code joins the pets already out. Right-click menu = that pet's
   items + "Pets on desktop" checkboxes (2+ pets) / Add a pet / login / Quit; the menu-bar icon has a submenu per pet.
   Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
-  Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, the pet joins the others).
+  Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add 2nd Pet…" (ordinal from
+  the count), enter the code).
 - Poop removed from the product Nov 20 (owner's call, cost): not in `plan.DEFAULT_ACTIONS` (10 tricks now; prompts kept),
   not in the app menu / Try-it / player idle tricks, site says 10 tricks. Older pets keep the clip, unused.
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
