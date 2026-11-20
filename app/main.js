@@ -26,11 +26,10 @@ const ACTIONS = [
   ['Happy wiggle', 'wag'], ['Puppy eyes', 'puppy'], ['Bark', 'bark'], ['Poop', 'poop'],
 ];
 
-let win = null;          // the pet
+// Several pets can be out at once: each shown pet has its own window (wins: code -> entry).
+const wins = new Map();  // code -> { win, extraTop, clickThrough, timer }
 let addWin = null;       // "Add your pet"
 let tray = null;
-let clickThrough = null;
-let extraTop = 0;
 let pendingCode = null;  // from a desktopsidekicks:// link that arrived before we were ready
 
 // ------------------------------------------------------------------ settings + pets
@@ -54,11 +53,20 @@ function listPets() {
       .map((code) => ({ code, manifest: JSON.parse(fs.readFileSync(path.join(petsDir(), code, 'manifest.json'), 'utf8')) }));
   } catch { return []; }
 }
-const currentPet = () => {
-  const pets = listPets();
-  return pets.find((p) => p.code === settings.pet) || pets[0] || null;
-};
-const petName = () => (currentPet()?.manifest.name) || 'your pet';
+const findPet = (code) => listPets().find((p) => p.code === code) || null;
+const petName = (code) => (findPet(code)?.manifest.name) || 'your pet';
+// which pets are out on the desktop (older settings had one `pet`; default: the first pet)
+function shownCodes() {
+  const have = listPets().map((p) => p.code);
+  if (!Array.isArray(settings.shown)) settings.shown = [settings.pet && have.includes(settings.pet) ? settings.pet : have[0]].filter(Boolean);
+  return settings.shown.filter((c) => have.includes(c));
+}
+// per-pet size + Playful Mode (older settings kept one of each for the only pet)
+function petPrefs(code) {
+  settings.petPrefs = settings.petPrefs || {};
+  if (!settings.petPrefs[code]) settings.petPrefs[code] = { scale: settings.scale || 1, playful: settings.playful !== false };
+  return settings.petPrefs[code];
+}
 
 async function addPet(code, progress = () => {}) {
   code = normCode(code);
@@ -83,9 +91,10 @@ async function addPet(code, progress = () => {}) {
     if (!fs.existsSync(path.join(tmp, 'manifest.json'))) throw new Error('the download was incomplete');
     fs.rmSync(dest, { recursive: true, force: true });
     fs.renameSync(tmp, dest);
-    settings.pet = code;
+    const shown = shownCodes();
+    if (!shown.includes(code)) settings.shown = [...shown, code];   // a new pet joins the others
     saveSettings();
-    showPet();
+    showPet(code);   // (re-adding a pet that's out reloads it with the fresh footage)
     setTimeout(() => addWin && !addWin.isDestroyed() && addWin.close(), 1600);
     return { name: meta.name };
   } catch (e) {
@@ -93,45 +102,69 @@ async function addPet(code, progress = () => {}) {
   }
 }
 
-// ------------------------------------------------------------------ pet window
-const winSize = () => {
-  const k = settings.scale || 1;
-  return [Math.round(WIN_W * k), Math.round(WIN_H * k) + extraTop];
+// ------------------------------------------------------------------ pet windows
+const GAP = 8;
+const winSize = (code) => {
+  const k = petPrefs(code).scale || 1;
+  const extra = wins.get(code)?.extraTop || 0;
+  return [Math.round(WIN_W * k), Math.round(WIN_H * k) + extra];
 };
-function cornerPosition() {
+// each shown pet has its own spot along the bottom: the first in the corner, the next to its left, ...
+function cornerPosition(code) {
   const { workArea } = screen.getPrimaryDisplay();
-  const [w, h] = winSize();
-  return [Math.round(workArea.x + workArea.width - w - MARGIN), Math.round(workArea.y + workArea.height - h)];
+  let right = workArea.x + workArea.width - MARGIN;
+  for (const c of shownCodes()) {
+    if (c === code) break;
+    right -= Math.round(WIN_W * (petPrefs(c).scale || 1)) + GAP;
+  }
+  const [w, h] = winSize(code);
+  return [Math.round(right - w), Math.round(workArea.y + workArea.height - h)];
 }
-function applySize() {
-  if (!win) return;
-  const b = win.getBounds();
-  const [w, h] = winSize();
-  win.setResizable(true);
-  win.setBounds({ x: b.x + b.width - w, y: b.y + b.height - h, width: w, height: h });
-  win.setResizable(false);
+function applySize(code) {
+  const e = wins.get(code);
+  if (!e || e.win.isDestroyed()) return;
+  const b = e.win.getBounds();
+  const [w, h] = winSize(code);
+  e.win.setResizable(true);
+  e.win.setBounds({ x: b.x + b.width - w, y: b.y + b.height - h, width: w, height: h });
+  e.win.setResizable(false);
 }
-function setScale(scale) {
-  settings.scale = scale;
+function setScale(code, scale) {
+  petPrefs(code).scale = scale;
   saveSettings();
-  applySize();
+  applySize(code);
   refreshMenus();
 }
-function setClickThrough(on) {
-  if (!win || clickThrough === on) return;
-  clickThrough = on;
-  win.setIgnoreMouseEvents(on, { forward: true });
+function setClickThrough(code, on) {
+  const e = wins.get(code);
+  if (!e || e.win.isDestroyed() || e.clickThrough === on) return;
+  e.clickThrough = on;
+  e.win.setIgnoreMouseEvents(on, { forward: true });
+}
+function closePet(code) {
+  const e = wins.get(code);
+  if (!e) return;
+  clearInterval(e.timer);
+  wins.delete(code);
+  if (!e.win.isDestroyed()) e.win.destroy();
+}
+function setShown(code, on) {
+  const shown = shownCodes().filter((c) => c !== code);
+  settings.shown = on ? [...shown, code] : shown;
+  saveSettings();
+  if (on) showPet(code);
+  else closePet(code);
+  refreshMenus();
 }
 
-function showPet() {
-  const pet = currentPet();
-  if (!pet) return showAdd();
-  if (win && !win.isDestroyed()) win.destroy();   // switching pets: a fresh window with the new footage
-  clickThrough = null;
-  extraTop = 0;
-  const [x, y] = cornerPosition();
-  const [width, height] = winSize();
-  win = new BrowserWindow({
+function showPet(code) {
+  if (!findPet(code)) return;
+  closePet(code);   // re-showing a pet: a fresh window with its current footage
+  const e = { win: null, extraTop: 0, clickThrough: null, timer: null };
+  wins.set(code, e);
+  const [x, y] = cornerPosition(code);
+  const [width, height] = winSize(code);
+  const win = new BrowserWindow({
     width, height, x, y,
     transparent: true, frame: false, resizable: false, hasShadow: false, skipTaskbar: true,
     alwaysOnTop: true, fullscreenable: false, backgroundColor: '#00000000',
@@ -142,36 +175,46 @@ function showPet() {
       backgroundThrottling: false,
     },
   });
+  e.win = win;
   win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(__dirname, 'renderer', 'pet.html'));
-  win.webContents.on('did-finish-load', () => { if (settings.playful === false) send('playful:off')(); });
-  setClickThrough(true);
-  const timer = setInterval(() => {
-    if (!win || win.isDestroyed()) return clearInterval(timer);
+  win.webContents.on('did-finish-load', () => { if (petPrefs(code).playful === false) send(code, 'playful:off')(); });
+  setClickThrough(code, true);
+  e.timer = setInterval(() => {
+    if (win.isDestroyed()) return clearInterval(e.timer);
     win.webContents.send('cursor', { cursor: screen.getCursorScreenPoint(), bounds: win.getBounds() });
   }, 8);
   refreshMenus();
 }
+function showAllPets() {
+  for (const code of shownCodes()) showPet(code);
+}
 
-ipcMain.on('pet-info', (e) => {
-  const pet = currentPet();
-  e.returnValue = pet
+// which pet a message came from
+const codeOf = (sender) => [...wins.entries()].find(([, e]) => !e.win.isDestroyed() && e.win.webContents === sender)?.[0];
+
+ipcMain.on('pet-info', (ev) => {
+  const pet = findPet(codeOf(ev.sender));
+  ev.returnValue = pet
     ? { manifest: pet.manifest, assets: pathToFileURL(path.join(petsDir(), pet.code)).href + '/' }
     : { manifest: {}, assets: '' };
 });
-ipcMain.on('hover', (_e, over) => setClickThrough(!over));
-ipcMain.on('extend', (_e, px) => {
-  extraTop = Math.max(0, Math.min(800, Math.round(Number(px) || 0)));
-  applySize();
+ipcMain.on('hover', (ev, over) => { const c = codeOf(ev.sender); if (c) setClickThrough(c, !over); });
+ipcMain.on('extend', (ev, px) => {
+  const c = codeOf(ev.sender);
+  if (!c) return;
+  wins.get(c).extraTop = Math.max(0, Math.min(800, Math.round(Number(px) || 0)));
+  applySize(c);
 });
 // The pet's menu opens just above its head (macOS draws a popup downward from its top-left
 // corner, so place it a menu-height above; macOS keeps it on screen near the top edge).
 const MENU_W = 230, ITEM_H = 22, SEP_H = 11;
-ipcMain.on('context-menu', (_e, at) => {
-  if (!win) return;
-  const tpl = menu();
-  const opts = { window: win };
+ipcMain.on('context-menu', (ev, at) => {
+  const c = codeOf(ev.sender);
+  if (!c) return;
+  const tpl = petMenu(c);
+  const opts = { window: wins.get(c).win };
   if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
     const h = tpl.reduce((n, it) => n + (it.type === 'separator' ? SEP_H : ITEM_H), 10);
     opts.x = Math.round(at.x - MENU_W / 2);
@@ -179,9 +222,12 @@ ipcMain.on('context-menu', (_e, at) => {
   }
   Menu.buildFromTemplate(tpl).popup(opts);
 });
-ipcMain.on('drag', (_e, { dx, dy }) => {
-  const [x, y] = win.getPosition();
-  win.setPosition(Math.round(x + dx), Math.round(y + dy));
+ipcMain.on('drag', (ev, { dx, dy }) => {
+  const c = codeOf(ev.sender);
+  if (!c) return;
+  const w = wins.get(c).win;
+  const [x, y] = w.getPosition();
+  w.setPosition(Math.round(x + dx), Math.round(y + dy));
 });
 
 // ------------------------------------------------------------------ add-a-pet window
@@ -205,7 +251,7 @@ function showAdd(code) {
   });
   addWin.on('closed', () => {
     addWin = null;
-    if (!currentPet()) app.quit();          // nothing to show yet
+    if (!listPets().length) app.quit();     // nothing to show yet
   });
 }
 ipcMain.handle('add-pet', (e, code) => addPet(code, (m) => e.sender.send('add-progress', m)));
@@ -213,38 +259,47 @@ ipcMain.on('open-site', () => shell.openExternal(SITE));
 ipcMain.on('close-add', () => addWin && addWin.close());
 
 // ------------------------------------------------------------------ menus
-const send = (name) => () => win && !win.isDestroyed() && win.webContents.send('action', name);
-function menu() {
-  const pets = listPets();
-  const name = petName();
+const send = (code, name) => () => { const e = wins.get(code); if (e && !e.win.isDestroyed()) e.win.webContents.send('action', name); };
+// this pet's own items: feed, tricks, size, Playful Mode, corner, hide
+function petItems(code) {
+  const pet = findPet(code);
+  const name = petName(code);
+  const prefs = petPrefs(code);
+  const several = listPets().length > 1;
   return [
-    { label: '✕  Close menu', click: () => {} },   // clicking any item closes the menu
+    { label: `Feed ${name}`, click: send(code, 'feed') },
     { type: 'separator' },
-    { label: `Feed ${name}`, click: send('feed') },
-    { type: 'separator' },
-    ...ACTIONS.map(([label, a]) => ({ label: (currentPet()?.manifest.labels || {})[a] || label, click: send(a) })),
+    ...ACTIONS.map(([label, a]) => ({ label: (pet?.manifest.labels || {})[a] || label, click: send(code, a) })),
     { type: 'separator' },
     {
       label: 'Size',
       submenu: SIZES.map((s) => ({
-        label: s.label, type: 'radio', checked: (settings.scale || 1) === s.scale, click: () => setScale(s.scale),
+        label: s.label, type: 'radio', checked: (prefs.scale || 1) === s.scale, click: () => setScale(code, s.scale),
       })),
     },
     {
       label: 'Playful Mode (Do Random Tricks)',
       submenu: [['On', true], ['Off', false]].map(([label, on]) => ({
-        label, type: 'radio', checked: (settings.playful !== false) === on,
-        click: () => { settings.playful = on; saveSettings(); send(on ? 'playful:on' : 'playful:off')(); },
+        label, type: 'radio', checked: (prefs.playful !== false) === on,
+        click: () => { prefs.playful = on; saveSettings(); send(code, on ? 'playful:on' : 'playful:off')(); },
       })),
     },
-    { label: 'Back to corner', click: () => win && win.setPosition(...cornerPosition()) },
-    { label: 'Show / hide', click: () => win && (win.isVisible() ? win.hide() : win.show()) },
-    { type: 'separator' },
+    { label: 'Back to corner', click: () => { const e = wins.get(code); if (e && !e.win.isDestroyed()) e.win.setPosition(...cornerPosition(code)); } },
+    several
+      ? { label: `Hide ${name}`, click: () => setShown(code, false) }
+      : { label: 'Show / hide', click: () => { const e = wins.get(code); if (e && !e.win.isDestroyed()) (e.win.isVisible() ? e.win.hide() : e.win.show()); } },
+  ];
+}
+// app-wide items: which pets are out, add a pet, login, quit
+function appItems() {
+  const pets = listPets();
+  const shown = shownCodes();
+  return [
     ...(pets.length > 1 ? [{
-      label: 'Pets',
+      label: 'Pets on desktop',
       submenu: pets.map((p) => ({
-        label: p.manifest.name || p.code, type: 'radio', checked: p.code === currentPet()?.code,
-        click: () => { settings.pet = p.code; saveSettings(); showPet(); },
+        label: p.manifest.name || p.code, type: 'checkbox', checked: shown.includes(p.code),
+        click: (item) => setShown(p.code, item.checked),
       })),
     }] : []),
     { label: 'Add a pet…', click: () => showAdd() },
@@ -254,6 +309,28 @@ function menu() {
     },
     { type: 'separator' },
     { label: 'Quit Desktop Sidekicks', role: 'quit' },
+  ];
+}
+// right-click / Menu pill on a pet: that pet's items, then the app's
+function petMenu(code) {
+  return [
+    { label: '✕  Close menu', click: () => {} },   // clicking any item closes the menu
+    { type: 'separator' },
+    ...petItems(code),
+    { type: 'separator' },
+    ...appItems(),
+  ];
+}
+// menu-bar icon: one pet out -> its menu as before; several -> a submenu per pet
+function trayMenu() {
+  const shown = shownCodes();
+  if (shown.length === 1) return petMenu(shown[0]);
+  return [
+    { label: '✕  Close menu', click: () => {} },
+    { type: 'separator' },
+    ...shown.map((c) => ({ label: petName(c), submenu: petItems(c) })),
+    ...(shown.length ? [{ type: 'separator' }] : []),
+    ...appItems(),
   ];
 }
 
@@ -274,7 +351,7 @@ function createTray() {
   refreshMenus();
 }
 function refreshMenus() {
-  if (tray) tray.setContextMenu(Menu.buildFromTemplate(menu()));
+  if (tray) tray.setContextMenu(Menu.buildFromTemplate(trayMenu()));
 }
 
 // ------------------------------------------------------------------ desktopsidekicks://add/<CODE>
@@ -291,7 +368,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', (_e, argv) => {
     const link = argv.find((a) => a.startsWith('desktopsidekicks://'));
     if (link) handleLink(link);
-    else if (!currentPet()) showAdd();
+    else if (!listPets().length) showAdd();
   });
 }
 
@@ -303,8 +380,8 @@ app.whenReady().then(() => {
   const argLink = /^desktopsidekicks:\/\/add\/([A-Za-z0-9-]+)/.exec(process.argv.find((a) => a.startsWith('desktopsidekicks://')) || '');
   if (argLink) pendingCode = argLink[1];
   createTray();
-  if (currentPet()) showPet();
-  if (pendingCode || !currentPet()) showAdd(pendingCode);
+  showAllPets();
+  if (pendingCode || !listPets().length) showAdd(pendingCode);
 });
 
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });

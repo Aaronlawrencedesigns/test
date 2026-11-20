@@ -1,7 +1,7 @@
 // /api/admin/approve?id=<order>&t=<approve token>   (link in the owner's review email)
 // GET shows the pet and a button (so email link scanners can't approve by visiting);
 // POST marks the order delivered and emails the customer their pet code.
-import { validId, getOrder, putOrder, sendEmail, deliveryEmail, page, esc } from '../../../lib/orders.js';
+import { validId, getOrder, putOrder, sendEmail, deliveryEmail, customerPets, rememberPet, page, esc } from '../../../lib/orders.js';
 
 async function load(request, env) {
   const u = new URL(request.url);
@@ -33,9 +33,11 @@ export async function onRequestPost({ request, env }) {
   const { order, id } = await load(request, env);
   if (!order) return page('Not found', '<h1>Link not valid</h1>', 404);
   if (!['review', 'delivered'].includes(order.status)) return page('Not ready', `<h1>Not ready</h1><p>This order is "${esc(order.status)}".</p>`, 409);
-  const r = await sendEmail(env, { to: order.email, ...deliveryEmail(order, order.code) });
+  const morePets = (await customerPets(env, order.email)).some((other) => other !== id);   // their 2nd+ pet
+  const r = await sendEmail(env, { to: order.email, ...deliveryEmail(order, order.code, { morePets }) });
   Object.assign(order, { status: 'delivered', delivered_at: order.delivered_at || new Date().toISOString(), delivery_email: r?.MessageID || order.delivery_email });
   await putOrder(env, order);
+  await rememberPet(env, order);
   await env.ORDERS.delete(`queue/review/${id}`);
   await env.ORDERS.put(`queue/delivered/${id}`, order.delivered_at);
   return page('Sent', `<h1>Sent</h1><p>${esc(order.pet_name || 'The pet')} is on its way to ${esc(order.email)}.</p>
