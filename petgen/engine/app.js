@@ -243,8 +243,8 @@
     if (S.rest === 'lie') return;   // (getting up is handled above)
     // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
-    if (r < 0.03) act('poop', false);
-    else if (r < 0.35) act('wag', false);
+    // (no poop: removed from the product Nov 20; older pets still have the clip but it isn't offered)
+    if (r < 0.35) act('wag', false);
     else if (r < 0.55) act('puppy', false);
     else if (r < 0.7) act('stand', false);
     else act('lie', false).then(() => { S.lieUntil = performance.now() + rand(5000, 10000); });

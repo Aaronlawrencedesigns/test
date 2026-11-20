@@ -23,7 +23,7 @@ const SIZES = [
 ];
 const ACTIONS = [
   ['Sit (Default - Mouse Tracking)', 'sit'], ['Lie down', 'lie'], ['Sleep (Pause)', 'sleep'], ['Stand up', 'stand'],
-  ['Happy wiggle', 'wag'], ['Puppy eyes', 'puppy'], ['Bark', 'bark'], ['Poop', 'poop'],
+  ['Happy wiggle', 'wag'], ['Puppy eyes', 'puppy'], ['Bark', 'bark'],
 ];
 
 // Several pets can be out at once: each shown pet has its own window (wins: code -> entry).
