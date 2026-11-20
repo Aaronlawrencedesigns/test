@@ -226,9 +226,11 @@ MAX_BOTTOM = {'wake_up': 0.3}
 # (catches a slow push-in, e.g. Chewie's yawn-to-sleep grew 1.18x; Chunky's: 1.01x)
 # (seated tricks: 1.08 failed tiny, barely visible push-ins on a live order and every retry costs ~$0.40)
 MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.2}
-DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'poop', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
+# Poop removed Nov 20 (owner's call: cost, $0.64 boys / $1.60 girls, and not core). Its prompts stay in ACTIONS /
+# FEMALE_ACTIONS so it can be brought back by adding it here.
+DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
-REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 11 animations (eat powers Feed mode)
+REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 10 animations (eat powers Feed mode)
 REQUIRED_STILLS = ['sit', 'lie', 'sleep']
 REQUIRED_ROWS = 5                                  # head-tracking heights
 FEATURES = ['head tracking (5 heights x 33 positions)', 'feed mode (treat tray, drag to feed, eat + wiggle)',
@@ -242,7 +244,7 @@ PRICE_VIDEO_PER_SECOND = 0.08
 # draws male parts whatever the prompt says. About 3-5x the price, so only these clips use it.
 # lie_down + get_up added Nov 19: 2.0 Mini drew male parts on Chewie lying down (her lie pose is lie_down's
 # last frame) and standing side-on while getting up; patches can't follow that much movement (~+$1.25 per girl)
-HQ_CLIPS_FEMALE = {'stand', 'poop', 'lie_down', 'get_up'}
+HQ_CLIPS_FEMALE = {'stand', 'lie_down', 'get_up'}   # (+ 'poop' while it was made)
 PRICE_HQ_VIDEO_PER_SECOND = 0.2    # estimate (720p 1:1; GPTProto lists 480p at ~$0.10/s)
 
 
