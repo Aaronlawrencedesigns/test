@@ -285,9 +285,8 @@ function petItems(code) {
       })),
     },
     { label: 'Back to corner', click: () => { const e = wins.get(code); if (e && !e.win.isDestroyed()) e.win.setPosition(...cornerPosition(code)); } },
-    several
-      ? { label: `Hide ${name}`, click: () => setShown(code, false) }
-      : { label: 'Show / hide', click: () => { const e = wins.get(code); if (e && !e.win.isDestroyed()) (e.win.isVisible() ? e.win.hide() : e.win.show()); } },
+    // (no Show / hide: removed at the owner's request; with 2+ pets each can be hidden and brought back via Pets on desktop)
+    ...(several ? [{ label: `Hide ${name}`, click: () => setShown(code, false) }] : []),
   ];
 }
 // app-wide items: which pets are out, add a pet, login, quit
