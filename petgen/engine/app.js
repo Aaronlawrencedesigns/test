@@ -213,9 +213,11 @@
   // --------------------------------------------------------- autonomy
   // No mouse movement for NAP_AFTER_MS: he lies down and falls asleep, and stays
   // asleep until the mouse moves again. His little tricks only happen while
-  // you're around (mouse moved recently).
+  // you're around (mouse moved recently). Playful mode (on by default; menu checkbox, sent as the
+  // action 'playful:on' / 'playful:off'): a random trick about every 2 minutes while you use the mouse.
   const NAP_AFTER_MS = 30000;
-  let nextIdleAt = performance.now() + rand(15000, 30000);
+  const TRICK_EVERY = [105000, 135000];   // ~2 min (was 20-45 s: too busy)
+  let nextIdleAt = performance.now() + rand(...TRICK_EVERY);
   function autonomy(now) {
     if (S.busy || S.dragging || S.noAuto || S.food) return;
     const idle = now - S.lastMoveAt;
@@ -236,8 +238,8 @@
         return;
       }
     }
-    if (S.rest === 'sleep' || now < nextIdleAt) return;
-    nextIdleAt = now + rand(20000, 45000);
+    if (S.rest === 'sleep' || S.playfulOff || now < nextIdleAt) return;
+    nextIdleAt = now + rand(...TRICK_EVERY);
     if (S.rest === 'lie') return;   // (getting up is handled above)
     // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
@@ -337,6 +339,11 @@
   });
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); api.contextMenu(petTop()); });
   api.onAction((name) => {
+    if (name === 'playful:on' || name === 'playful:off') {   // a setting, not an action
+      S.playfulOff = name === 'playful:off';
+      nextIdleAt = performance.now() + rand(...TRICK_EVERY);
+      return;
+    }
     S.napping = false;
     if (name === 'feed') return showTray();
     S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen

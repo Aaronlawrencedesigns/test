@@ -22,7 +22,7 @@ const SIZES = [
   { label: 'Large', scale: 1.3 },
 ];
 const ACTIONS = [
-  ['Sit (Default - Mouse Tracking)', 'sit'], ['Lie down', 'lie'], ['Sleep', 'sleep'], ['Stand up', 'stand'],
+  ['Sit (Default - Mouse Tracking)', 'sit'], ['Lie down', 'lie'], ['Sleep (Pause)', 'sleep'], ['Stand up', 'stand'],
   ['Happy wiggle', 'wag'], ['Puppy eyes', 'puppy'], ['Bark', 'bark'], ['Poop', 'poop'],
 ];
 
@@ -145,6 +145,7 @@ function showPet() {
   win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(__dirname, 'renderer', 'pet.html'));
+  win.webContents.on('did-finish-load', () => { if (settings.playful === false) send('playful:off')(); });
   setClickThrough(true);
   const timer = setInterval(() => {
     if (!win || win.isDestroyed()) return clearInterval(timer);
@@ -227,6 +228,13 @@ function menu() {
       label: 'Size',
       submenu: SIZES.map((s) => ({
         label: s.label, type: 'radio', checked: (settings.scale || 1) === s.scale, click: () => setScale(s.scale),
+      })),
+    },
+    {
+      label: 'Playful Mode (Do Random Tricks)',
+      submenu: [['On', true], ['Off', false]].map(([label, on]) => ({
+        label, type: 'radio', checked: (settings.playful !== false) === on,
+        click: () => { settings.playful = on; saveSettings(); send(on ? 'playful:on' : 'playful:off')(); },
       })),
     },
     { label: 'Back to corner', click: () => win && win.setPosition(...cornerPosition()) },
