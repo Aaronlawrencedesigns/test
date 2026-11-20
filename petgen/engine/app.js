@@ -223,16 +223,22 @@
       if (S.rest !== 'sleep') { S.napping = true; act('sleep', false); }
       return;
     }
-    // When he lay down on his own, he gets back up after a short rest (if YOU
-    // chose "Lie down", he stays down until you pick something else).
-    if (S.rest === 'lie' && !S.userLie && S.lieUntil && now > S.lieUntil) {
-      S.lieUntil = 0;
-      act('sit', false);
-      return;
+    // Lying down: head tracking only works sitting, so while the mouse is being used he gets back up.
+    // Lay down on his own: after a 5-10 s rest. Chosen "Lie down" from the menu: respected for 20 s.
+    // However he ended up lying (e.g. a nap interrupted half-way), a missing timer is started here,
+    // so he never stays down for good while you move the mouse.
+    if (S.rest === 'lie') {
+      if (!S.lieUntil) S.lieUntil = now + (S.userLie ? 20000 : rand(5000, 10000));
+      if (now > S.lieUntil && idle < 3000) {
+        S.lieUntil = 0;
+        S.userLie = false;
+        act('sit', false);
+        return;
+      }
     }
     if (S.rest === 'sleep' || now < nextIdleAt) return;
     nextIdleAt = now + rand(20000, 45000);
-    if (S.rest === 'lie') { if (!S.userLie) act('sit', false); return; }
+    if (S.rest === 'lie') return;   // (getting up is handled above)
     // (no barking on his own: bark only plays when chosen from the menu)
     const r = Math.random();
     if (r < 0.03) act('poop', false);
@@ -334,7 +340,8 @@
     S.napping = false;
     if (name === 'feed') return showTray();
     S.stayAsleep = name === 'sleep'; // chosen sleep lasts until another action is chosen
-    S.userLie = name === 'lie';       // chosen lie-down lasts until another action is chosen
+    S.userLie = name === 'lie';       // chosen lie-down: stays down 20 s, then gets up once the mouse moves
+    S.lieUntil = 0;
     act(name);
   });
 
@@ -491,8 +498,12 @@
     if (!S.centerGaze) {
       const dx = S.cursor.x - HEAD.x * W;
       const dy = S.cursor.y - (stageTop() + HEAD.y * W);
-      tu = 2 + 2 * Math.tanh(dx / 380);
-      tv = 1 + Math.tanh(dy / 260);
+      // Pointer on the pet itself (e.g. over the Menu pill): aiming at her own body is unstable (tiny hand
+      // movements swing the target across her), so she looks at you instead, easing in near her body.
+      const near = Math.hypot(dx / W, dy / W);
+      const k = S.overDog ? 0 : Math.min(1, Math.max(0, (near - 0.12) / 0.18));
+      tu = 2 + 2 * Math.tanh(dx / 380) * k;
+      tv = 1 + Math.tanh(dy / 260) * k;
     }
     // Critically damped spring: snappy start, settles without overshoot.
     const dt = Math.min(0.05, (t - (S.lastGazeT || t)) / 1000);
@@ -524,8 +535,10 @@
       const M = LOOK;
       const x = (S.u / 4) * (M.cols - 1);
       const y = (S.v / 2) * (M.rows - 1);
-      const nc = S.lc != null && Math.abs(x - S.lc) < 0.6 ? S.lc : Math.round(x);
-      const nr = S.lr != null && Math.abs(y - S.lr) < 0.6 ? S.lr : Math.round(y);
+      // hysteresis: a small hand tremor never flips between neighbouring frames (some neighbours come
+      // from different clips and differ more, so a flip there reads as a glitch)
+      const nc = S.lc != null && Math.abs(x - S.lc) < 0.85 ? S.lc : Math.round(x);
+      const nr = S.lr != null && Math.abs(y - S.lr) < 0.75 ? S.lr : Math.round(y);
       S.lc = nc; S.lr = nr;
       S.gr = Math.round(S.v); S.gc = nc;
       const k = gazeCanvas.width / M.frame;

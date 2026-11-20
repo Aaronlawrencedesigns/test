@@ -232,4 +232,9 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   exits so systemd restarts it with a fresh `git pull` (Restart=always + ExecStartPre). Claude can re-queue an order
   itself through the Cloudflare R2 API (move `queue/<review|delivered|failed|test>/<id>` to `queue/paid/<id>`; edit
   order.json for tail/sex), which is what `sidekicks-requeue` does.
+- Player (petgen/engine/app.js): with the pointer on the pet (`S.overDog`) she looks at you instead of aiming at
+  her own body (that swung the target across her and flipped between look frames at row/column seams, e.g. the
+  partner's Chewie, Nov 20); look-frame hysteresis 0.85 col / 0.75 row. Lying down: while the mouse is in use she
+  gets up (own lie 5-10 s, menu "Lie down" 20 s); a missing timer is always started, so she never stays down
+  for good. Changes to the player reach the Mac app only with a new DMG (app/scripts/sync-engine.js copies it).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
