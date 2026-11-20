@@ -145,6 +145,7 @@ function showPet() {
   win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(__dirname, 'renderer', 'pet.html'));
+  win.webContents.on('did-finish-load', () => { if (settings.playful === false) send('playful:off')(); });
   setClickThrough(true);
   const timer = setInterval(() => {
     if (!win || win.isDestroyed()) return clearInterval(timer);
@@ -228,6 +229,10 @@ function menu() {
       submenu: SIZES.map((s) => ({
         label: s.label, type: 'radio', checked: (settings.scale || 1) === s.scale, click: () => setScale(s.scale),
       })),
+    },
+    {
+      label: 'Playful mode', type: 'checkbox', checked: settings.playful !== false,
+      click: (item) => { settings.playful = item.checked; saveSettings(); send(item.checked ? 'playful:on' : 'playful:off')(); },
     },
     { label: 'Back to corner', click: () => win && win.setPosition(...cornerPosition()) },
     { label: 'Show / hide', click: () => win && (win.isVisible() ? win.hide() : win.show()) },
