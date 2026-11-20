@@ -33,8 +33,9 @@ export async function onRequestPost({ request, env }) {
   const { order, id } = await load(request, env);
   if (!order) return page('Not found', '<h1>Link not valid</h1>', 404);
   if (!['review', 'delivered'].includes(order.status)) return page('Not ready', `<h1>Not ready</h1><p>This order is "${esc(order.status)}".</p>`, 409);
-  const morePets = (await customerPets(env, order.email)).some((other) => other !== id);   // their 2nd+ pet
-  const r = await sendEmail(env, { to: order.email, ...deliveryEmail(order, order.code, { morePets }) });
+  const others = (await customerPets(env, order.email)).filter((other) => other !== id);
+  const petNumber = others.length + 1;   // 2 = their 2nd pet (gets the "Adding to your pack?" note)
+  const r = await sendEmail(env, { to: order.email, ...deliveryEmail(order, order.code, { petNumber }) });
   Object.assign(order, { status: 'delivered', delivered_at: order.delivered_at || new Date().toISOString(), delivery_email: r?.MessageID || order.delivery_email });
   await putOrder(env, order);
   await rememberPet(env, order);

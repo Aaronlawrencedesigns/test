@@ -167,7 +167,13 @@ export async function rememberPet(env, order) {
   if (!ids.includes(order.id)) await env.ORDERS.put(await customerKey(order.email), JSON.stringify([...ids, order.id]));
 }
 
-export function deliveryEmail(order, code, { morePets = false } = {}) {
+const ordinal = (k) => `${k}${(k % 100 >= 11 && k % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[k % 10] || 'th')}`;
+
+// petNumber: this pet is the customer's 2nd, 3rd, ... (0 / 1 = their first: no pack note). The app's menu item
+// reads the same ('Add 2nd Pet…', app/main.js addLabel).
+export function deliveryEmail(order, code, { petNumber = 0 } = {}) {
+  const morePets = petNumber >= 2;
+  const addItem = `Add ${ordinal(petNumber)} Pet…`;
   const pet = order.pet_name || 'Your pet';
   const add = `${SITE}/add/${code}`;
   const text = `${pet} is ready!
@@ -178,7 +184,7 @@ export function deliveryEmail(order, code, { morePets = false } = {}) {
 
 ${pet} will appear in the bottom-right corner of your screen, follow your mouse, nap when you step away and eat the treats you drag over. Right-click ${pet} for tricks, sizes and more.
 ${morePets ? `
-Adding to your pack? Download the app again from the link above (it updates it), then click the add link: ${pet} joins your other pets on the desktop. Show or hide each one under "Pets on desktop" in the menu.
+Adding to your pack? First download the latest app from the link above (it updates the one you have). Then click Menu on the pet you already have, choose "${addItem}" and enter the code above: ${pet} joins your other pets on the desktop.
 ` : ''}
 Keep this email: the code works on any of your Macs.
 
@@ -192,7 +198,7 @@ Desktop Sidekicks · ${SITE}`;
 <p><a href="${add}" style="display:inline-block;background:#2f45c4;color:#fff;text-decoration:none;font-weight:600;padding:12px 18px;border-radius:8px">Add ${esc(pet)} to Desktop Sidekicks</a></p>
 <p style="color:#6a6170">Or paste this code into the app: <b style="font-family:ui-monospace,Menlo,monospace;color:#221d27;letter-spacing:.05em">${esc(code)}</b></p>
 <p>${esc(pet)} will sit in the bottom-right corner, follow your mouse, nap when you step away and eat the treats you drag over. Right-click for tricks, sizes and more.</p>
-${morePets ? `<p style="background:#f3f0f6;border-radius:8px;padding:12px 14px"><b>Adding to your pack?</b> <a href="${SITE}/download" style="color:#2f45c4">Download the app again</a> (it updates it), then click the Add button above: ${esc(pet)} joins your other pets on the desktop. Show or hide each one under <b>Pets on desktop</b> in the menu.</p>` : ''}
+${morePets ? `<p style="background:#f3f0f6;border-radius:8px;padding:12px 14px"><b>Adding to your pack?</b> First <a href="${SITE}/download" style="color:#2f45c4">download the latest app</a> (it updates the one you have). Then click <b>Menu</b> on the pet you already have, choose <b>${addItem}</b> and enter the code above: ${esc(pet)} joins your other pets on the desktop.</p>` : ''}
 <p style="color:#6a6170;font-size:13px">Keep this email: the code works on any of your Macs. Questions? Just reply.<br>Desktop Sidekicks &middot; <a href="${SITE}" style="color:#2f45c4">desktopsidekicks.com</a></p>
 </div>`;
   return { subject: `${pet} is ready for your desktop`, text, html, tag: 'pet-delivery' };
