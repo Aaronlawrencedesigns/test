@@ -318,14 +318,22 @@ def iou(a, b):
     return float((A & B).sum() / max(1, (A | B).sum()))
 
 
-def correct_clip(frames, start_still=None, end_still=None, spread=False, ramp=1.0, fps=24):
+def correct_clip(frames, start_still=None, end_still=None, spread=False, ramp=1.0, fps=24, hold=False):
     """Ease framing drift so the clip starts/ends exactly on the stills.
-    spread: spend the correction while the subject moves (no visible shrink at the end)."""
+    spread: spend the correction while the subject moves (no visible shrink at the end).
+    hold: keep the correction for the whole clip, blending start -> end (clips decoded wide=True are on a
+    different scale from the stills, so easing the correction off after a second made the pet shrink and
+    float up mid-clip: Tess's stand, Nov 20, feet rose 56 px and glided back down)."""
     n = len(frames)
     out = list(frames)
     s0, o0 = fit(frames[0], start_still) if start_still is not None else (1.0, np.zeros(2, np.float32))
     s1, o1 = fit(frames[-1], end_still) if end_still is not None else (1.0, np.zeros(2, np.float32))
-    if spread:
+    if hold:
+        sm = lambda x: x * x * (3 - 2 * x)
+        weights = [(1 - sm(i / max(1, n - 1)), sm(i / max(1, n - 1))) for i in range(n)]
+        if start_still is None or end_still is None:   # one end only: hold that end's fit throughout
+            weights = [(1.0 if start_still is not None else 0.0, 1.0 if end_still is not None else 0.0)] * n
+    elif spread:
         alph = [f[..., 3].astype(np.float32) / 255 for f in frames]
         motion = np.array([0.0] + [float(np.abs(alph[i] - alph[i - 1]).mean()) for i in range(1, n)])
         motion = np.convolve(motion, np.ones(5) / 5, mode='same') + 1e-6

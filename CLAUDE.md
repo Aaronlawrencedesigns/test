@@ -210,7 +210,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - First live order (Chewie, new photos, sitting at an angle) cost $17.85: seated tricks failed for tiny push-ins
   (1.09x vs 1.08) and every retry costs ~$0.40, so `MAX_GROWTH` for puppy/bark/eat is 1.12 and wag 1.2. `stand` is
   decoded from the whole video (`decode_keyed(wide=True)`): a dog on its hind legs is taller than the usual crop
-  (paws at the bottom in 47% of frames -> 0%). Customers are NOT asked for new photos; flagged pets go to the owner.
+  (paws at the bottom in 47% of frames -> 0%). Wide clips keep their start->end framing correction for the whole clip (`correct_clip(hold=True)`):
+  easing it off after 1 s made the pet shrink and float up while standing (Tess, Nov 20: feet rose 56 px). Customers are NOT asked for new photos; flagged pets go to the owner.
 - Keying (product only, `petgen/media.py`): own `alpha_and_despill` keys by how strongly green a pixel is relative to
   its brightness (the shared absolute threshold cut out pale chests/bellies lit by green bounce light), then
   `fill_translucent` makes see-through patches inside the body solid and `fix_spill` gives grey despilled underside

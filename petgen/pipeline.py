@@ -483,7 +483,8 @@ class Job:
                     problems_extra.append(f'does not end {"lying down" if derive == "lie" else "asleep, lying down"}')
             else:
                 end_still = self.still.get(end_name) if end_name else None
-            fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0))
+            fixed, metrics = media.correct_clip(frames, start_still, end_still, spread=opts.get('spread', False), ramp=opts.get('ramp', 1.0),
+                                                  hold=opts.get('wide', False))
             if self.sex == 'female' and key in plan.REST_CLIPS and self.rest_fix:
                 fixed, n = self.patch_rest(fixed)
                 metrics['belly_patched'] = f'{n} frames'
