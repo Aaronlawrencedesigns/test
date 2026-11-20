@@ -221,6 +221,9 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   straight-on like Chunky or has a glitch; all dogs should sit straight so the head can turn without bending.
   Prompts and retry hints for images use POSITIVE wording only: "no dark patches / blocks / smudges" made the image
   model paint a dark blotch on the chest (Chunky's order, Nov 20: all 3 sit tries), like the anatomy words did.
+  The chain: SIT_CHECK called Chunky's real white chest patch a glitch -> retry hint named dark patches -> blotch.
+  SIT_CHECK now says natural markings (white chest patches, blazes, merle, brindle, slight green reflection) are fine;
+  tested: 3 clean Chunky sits pass, the blotched one still fails.
 - Backup image model: `GPTProtoProvider.image` tries gemini-3-pro-image-preview twice, and if it's overloaded / down
   (`ProviderUnavailable`) switches to `image_fallbacks` (gemini-3.1-flash-image, tested on a sleeping-pose edit: same
   dog/spot/size, clean green) before the order goes to `waiting`. Nov 18 the main model was overloaded 8+ hours.

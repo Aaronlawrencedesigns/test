@@ -97,8 +97,9 @@ SIT_CHECK = ('Look at this photo of a {species} on a green background. Answer on
              '"artifacts": true|false}. "front_on" = it sits straight facing the camera (chest toward the camera, '
              'shoulders square, both front legs side by side, body roughly symmetric left/right), not turned to one '
              'side or at a three-quarter angle. "artifacts" = the image has a glitch: a dark rectangle or block, a '
-             'smudge, a hole, a patch of the green background colour ON the animal (chest, chin, belly) or a patch '
-             'of odd colour on the animal that real fur would not have.')
+             'smudge, a hole, or a patch of the green background colour ON the animal (chest, chin, belly). Natural '
+             'markings are NOT glitches: white or pale chest patches, blazes, merle spots, brindle stripes, darker '
+             'muzzles or ears, and a slight green reflection on pale fur are all fine.')
 
 # Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
 RETRY_HINTS = [
