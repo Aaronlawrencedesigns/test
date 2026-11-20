@@ -187,7 +187,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind
   legs, it drew female anatomy correctly where 2.0 Mini always drew male parts (Kling 3.0 was worse; Veo 3.1
   isn't enabled on the account). So girls get the real hind-legs Stand again (the play bow / "Bow" label is gone).
-  Seedance 2.5 output has a yellow-green cast: `media.match_tint` balances its colour to the sit still. The
+  Seedance 2.5 output has a yellow-green cast: `media.match_tint` balances its colour to the sit still, right after
+  decoding (before a lie / sleep pose is derived from the clip, so the derived poses aren't green either). The
   belly shadow (`media.shade_belly`, `plan.SHADE_TRICKS`) is now off: 2.5 doesn't need it and it read as a dark blob. GPTProto video downloads also come from
   oss-us.gptproto.com (allowed on the "test" environment).
 - Lying / sleeping are a 3/4 view like Chunky's (lie_down prompt), not side-on.

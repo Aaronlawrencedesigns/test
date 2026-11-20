@@ -468,6 +468,11 @@ class Job:
         def attempt_fn(attempt):
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
             frames, stats = media.decode_keyed(src, low=opts.get('low', False), wide=opts.get('wide', False))
+            tinted = 0
+            if self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE and 'sit' in self.still:
+                # Seedance 2.5's green cast, removed BEFORE a resting pose is taken from the clip (Tess, Nov 20:
+                # her lying pose came from the untinted last frame, so lying / sleeping / getting up looked green)
+                frames, tinted = media.match_tint(frames, self.still['sit'])
             start_still = self.still_for(first)
             problems_extra, pose_k, paws_low = [], None, False
             if derive:
@@ -485,9 +490,8 @@ class Job:
             if self.sex == 'female' and (key in plan.SEATED_TRICKS or key in plan.MOVING_TRICKS) and 'sit' in self.still:
                 fixed, n = media.patch_groin(fixed, self.still['sit'])
                 metrics['belly_patched'] = f'{n}/{len(fixed)} frames'
-            if self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE and 'sit' in self.still:
-                fixed, n = media.match_tint(fixed, self.still['sit'])   # Seedance 2.5's green cast
-                metrics['tint_matched'] = f'{n} frames'
+            if tinted:
+                metrics['tint_matched'] = f'{tinted} frames'
             if self.sex == 'female' and key in plan.SHADE_TRICKS:
                 fixed, n = media.shade_belly(fixed)
                 metrics['belly_shaded'] = f'{n}/{len(fixed)} frames'
