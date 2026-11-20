@@ -255,4 +255,14 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   the count), enter the code).
 - Poop removed from the product Nov 20 (owner's call, cost): not in `plan.DEFAULT_ACTIONS` (10 tricks now; prompts kept),
   not in the app menu / Try-it / player idle tricks, site says 10 tricks. Older pets keep the clip, unused.
+- Safari (iPhone / iPad / Mac) can't play VP9 WebM with alpha (tricks showed a black/green box). Each clip also gets a
+  "stacked alpha" MP4 (`media.webm_to_stacked_mp4`: colour flattened onto grey on top, alpha as grey below, same frame
+  count); the player (`STACKED` in petgen/engine/app.js, UA check, `window.CHUNKY_STACKED` overrides) loads .mp4 and
+  `unstack()` rebuilds the transparent frame on a canvas (un-mixing the grey at soft edges); a missing .mp4 falls back to
+  .webm. Made for the Try-it preview only (pet.zip / Mac app stay WebM), served with byte ranges (Safari needs 206) by
+  the preview function; the site's Chunky demo uses committed copies in `site/safari-clips/` (build.py serves them as
+  assets/clips/*.mp4; Chunky's assets/ untouched).
+- Cost per action: `/admin/orders?view=qa` top chart = avg AI cost per pet per action (retries included), share,
+  % of pets needing a retry, extra tries per pet. qa.json now has `spend` (item -> $ actually spent this run, from
+  pipeline `self.spend`); older pets are estimated from their tries at list prices (marked *).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
