@@ -127,6 +127,8 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
   tray icon, hidden menu bar); an unsigned portable .exe built here (no Wine needed) is at `/download/windows` (R2
   `Desktop-Sidekicks-Windows.exe`, not linked on the site). Left: real-PC test, NSIS installer + exe icon built on
   Windows (Wine crashes in the container), code signing, then turn on the site's PC option + Windows download.
+  At Windows launch: drop the order form's Mac / PC choice (a pet is the same files and code on both), make /download
+  pick the right app from the visitor's browser, and give the "is ready" email one download button (~30 min).
 - Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
   unless asked.
 
