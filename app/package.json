@@ -1,7 +1,7 @@
 {
   "name": "desktop-sidekicks",
   "version": "1.0.0",
-  "description": "Your pet, living on your desktop. Desktop Sidekicks app for Mac.",
+  "description": "Your pet, living on your desktop. Desktop Sidekicks app for Mac and Windows.",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "sync": "node scripts/sync-engine.js",
     "start": "npm run sync && electron .",
     "dist": "npm run sync && electron-builder --mac",
-    "dist:signed": "npm run sync && APPLE_KEYCHAIN_PROFILE=chunky-notary electron-builder --mac"
+    "dist:signed": "npm run sync && APPLE_KEYCHAIN_PROFILE=chunky-notary electron-builder --mac",
+    "dist:win": "npm run sync && electron-builder --win --x64"
   },
   "license": "UNLICENSED",
   "devDependencies": {
@@ -19,10 +20,31 @@
   "build": {
     "appId": "com.desktopsidekicks.app",
     "productName": "Desktop Sidekicks",
-    "files": ["main.js", "preload.js", "add-preload.js", "add.html", "renderer/**"],
-    "protocols": [{ "name": "Desktop Sidekicks", "schemes": ["desktopsidekicks"] }],
+    "files": [
+      "main.js",
+      "preload.js",
+      "add-preload.js",
+      "add.html",
+      "renderer/**",
+      "tray-win.png"
+    ],
+    "protocols": [
+      {
+        "name": "Desktop Sidekicks",
+        "schemes": [
+          "desktopsidekicks"
+        ]
+      }
+    ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "category": "public.app-category.entertainment",
       "minimumSystemVersion": "12.0",
       "hardenedRuntime": true,
@@ -30,8 +52,33 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": true,
-      "extendInfo": { "LSUIElement": true }
+      "extendInfo": {
+        "LSUIElement": true
+      }
     },
-    "dmg": { "artifactName": "Desktop-Sidekicks.${ext}", "title": "Desktop Sidekicks" }
+    "dmg": {
+      "artifactName": "Desktop-Sidekicks.${ext}",
+      "title": "Desktop Sidekicks"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon-256.png",
+      "artifactName": "Desktop-Sidekicks-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Desktop Sidekicks",
+      "runAfterFinish": true
+    }
   }
 }

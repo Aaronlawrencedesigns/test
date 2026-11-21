@@ -118,6 +118,18 @@ customers (public repo).
 More tricks (stretch, roll over, head tilt), sound.
 The `stand` clip is him standing on his hind legs (the model's reading of "stand up").
 
+## Post-launch list (owner's, Nov 21)
+- Refunds: Stripe refunds aren't seen by the site yet (orders page keeps showing $20 paid, the pet code keeps working).
+  Handle `charge.refunded` in `site/functions/api/stripe-webhook.js` (mark refunded, $0 on /admin/orders). Keep the
+  pet code working (owner's call: it costs ~nothing, a pet.zip is ~12 MB in R2 at $0.015/GB-month and R2 downloads
+  are free). Test it with a real refund after launch. ~1 h, no AI cost.
+- Windows version: STARTED Nov 21 for the owner's brother's test. app/main.js runs on Windows (PowerShell unzip, colour
+  tray icon, hidden menu bar); an unsigned portable .exe built here (no Wine needed) is at `/download/windows` (R2
+  `Desktop-Sidekicks-Windows.exe`, not linked on the site). Left: real-PC test, NSIS installer + exe icon built on
+  Windows (Wine crashes in the container), code signing, then turn on the site's PC option + Windows download.
+- Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
+  unless asked.
+
 ## Desktop Sidekicks: how an order flows (all live)
 1. **Site** (`site/`, Cloudflare Pages project `desktopsidekicks`, root `site`, builds on every push to
    main; desktopsidekicks.com). Create-your-pet form → `functions/api/order.js` saves photos to the

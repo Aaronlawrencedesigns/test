@@ -23,3 +23,15 @@ the bucket → Upload). The site serves it at `desktopsidekicks.com/download`.
 
 Try it unsigned first: `npm start` (needs a delivered pet code), or `npm run dist`.
 Set `SIDEKICKS_SITE=http://localhost:8788` to point it at a local site.
+
+## Windows (testing)
+The same app runs on Windows. Differences in `main.js`: pets unzip with PowerShell's `Expand-Archive`, the tray uses
+the colour icon (`tray-win.png`; left-click opens the menu) and the "Add your pet" window hides its menu bar.
+
+- `npm run dist:win`: NSIS installer `dist/Desktop-Sidekicks-Setup.exe`. Build it on Windows (or a GitHub Actions
+  windows runner): on Linux electron-builder needs Wine, which crashes in the cloud container.
+- What the testers have now (built on Linux): the **portable** app, one unsigned .exe with no installer:
+  `npx electron-builder --win portable --x64 -c.win.signAndEditExecutable=false -c.portable.artifactName='Desktop-Sidekicks-Windows.${ext}'`
+  (run `npm run sync` first). It shows Electron's default icon on the .exe, and Windows SmartScreen asks
+  "More info -> Run anyway" because it isn't signed.
+- Hosted at `/download/windows` (R2 `Desktop-Sidekicks-Windows.exe`). It's not linked from the site yet.
