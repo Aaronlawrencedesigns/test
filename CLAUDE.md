@@ -120,8 +120,9 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
 
 ## Post-launch list (owner's, Nov 21)
 - Refunds: Stripe refunds aren't seen by the site yet (orders page keeps showing $20 paid, the pet code keeps working).
-  Handle `charge.refunded` in `site/functions/api/stripe-webhook.js` (mark refunded, $0 on /admin/orders, optionally
-  disable the code). Test it with a real refund after launch. ~1 h, no AI cost.
+  Handle `charge.refunded` in `site/functions/api/stripe-webhook.js` (mark refunded, $0 on /admin/orders). Keep the
+  pet code working (owner's call: it costs ~nothing, a pet.zip is ~12 MB in R2 at $0.015/GB-month and R2 downloads
+  are free). Test it with a real refund after launch. ~1 h, no AI cost.
 - Windows version (see the Friday checklist notes: Electron app, NSIS installer, Windows code signing). ~1-2 days.
 - Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
   unless asked.
