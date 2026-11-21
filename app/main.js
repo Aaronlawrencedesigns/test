@@ -86,7 +86,10 @@ async function addPet(code, progress = () => {}) {
     fs.rmSync(tmp, { recursive: true, force: true });
     fs.mkdirSync(tmp, { recursive: true });
     if (process.platform === 'darwin') execFileSync('ditto', ['-x', '-k', zip, tmp]);
-    else execFileSync('unzip', ['-q', '-o', zip, '-d', tmp]);
+    else if (process.platform === 'win32') {   // Windows 10+: PowerShell's built-in unzip
+      execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+        `Expand-Archive -LiteralPath '${zip.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force`], { windowsHide: true });
+    } else execFileSync('unzip', ['-q', '-o', zip, '-d', tmp]);
     fs.rmSync(zip, { force: true });
     if (!fs.existsSync(path.join(tmp, 'manifest.json'))) throw new Error('the download was incomplete');
     fs.rmSync(dest, { recursive: true, force: true });
@@ -240,7 +243,7 @@ function showAdd(code) {
   }
   addWin = new BrowserWindow({
     width: 440, height: 400, resizable: false, show: false, title: 'Add your pet',
-    titleBarStyle: 'hiddenInset', fullscreenable: false, minimizable: false,
+    titleBarStyle: 'hiddenInset', fullscreenable: false, minimizable: false, autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'add-preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   addWin.loadFile(path.join(__dirname, 'add.html'));
@@ -340,6 +343,14 @@ function trayMenu() {
 }
 
 function createTray() {
+  if (process.platform === 'win32') {
+    // Windows: the colour app icon (a black template paw would vanish on the dark taskbar); left-click opens the menu
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'tray-win.png')).resize({ width: 16, height: 16 }));
+    tray.setToolTip('Desktop Sidekicks');
+    tray.on('click', () => tray.popUpContextMenu());
+    refreshMenus();
+    return;
+  }
   const size = 18;
   const buf = Buffer.alloc(size * size * 4);
   const blobs = [[9, 12, 4.2], [4.2, 7.5, 2], [7.3, 4.6, 2], [10.7, 4.6, 2], [13.8, 7.5, 2]];
@@ -379,6 +390,7 @@ if (!app.requestSingleInstanceLock()) {
 
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
+  if (process.platform === 'win32') app.setAppUserModelId('com.desktopsidekicks.app');
   app.setAsDefaultProtocolClient('desktopsidekicks');
   settings = loadSettings();
   fs.mkdirSync(petsDir(), { recursive: true });
