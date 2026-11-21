@@ -14,6 +14,9 @@ FILES = {'index.html': 'site/index.html', 'pet.html': 'site/pet.html', 'legal.ht
          'favicon.svg': 'site/favicon.svg', 'favicon-32.png': 'site/favicon-32.png', 'favicon.ico': 'site/favicon.ico',
          'apple-touch-icon.png': 'site/apple-touch-icon.png', 'og.jpg': 'site/og.jpg', 'style.css': 'petgen/engine/style.css'}
 ASSET_DIRS = ['assets/look', 'assets/gaze', 'assets/stills', 'assets/clips']
+# Safari copies of Chunky's clips (stacked-alpha MP4, made by petgen/media.webm_to_stacked_mp4 from assets/clips;
+# kept in site/ so Chunky's own folders stay untouched): served as assets/clips/<name>.mp4
+SAFARI_CLIPS = 'site/safari-clips'
 
 
 def files():
@@ -22,6 +25,9 @@ def files():
         for f in sorted(os.listdir(os.path.join(ROOT, d))):
             if f.endswith(('.webp', '.webm')):
                 out[f'{d}/{f}'] = f'{d}/{f}'
+    for f in sorted(os.listdir(os.path.join(ROOT, SAFARI_CLIPS))):
+        if f.endswith('.mp4'):
+            out[f'assets/clips/{f}'] = f'{SAFARI_CLIPS}/{f}'
     return out
 
 

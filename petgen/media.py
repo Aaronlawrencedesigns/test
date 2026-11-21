@@ -812,3 +812,23 @@ def sheet(frames, path, n=8, size=150, bg=(226, 229, 236)):
         W.alpha_composite(Image.fromarray(frames[i]).resize((size, size), Image.LANCZOS), (k * size, 0))
     W.convert('RGB').save(path, quality=82)
     return path
+
+
+def webm_to_stacked_mp4(src, dst, crf=26):
+    """Safari (iPhone / iPad / Mac) can't play VP9 WebM with alpha: the green-screen-free clips show on a
+    black box. So the player gets a Safari copy: H.264 MP4 twice as tall, the colour on top and the alpha
+    as grey underneath ("stacked alpha"); petgen/engine/app.js puts them back together on a canvas."""
+    # The colour half is flattened onto mid-grey (128): the old screen colour would bleed into the edges through
+    # H.264's colour compression; grey is removed exactly by the player (c = (c' - (1 - a) * 128) / a).
+    info = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+                                               'stream=width,height,r_frame_rate', '-of', 'json', src]))['streams'][0]
+    w, h, rate = info['width'], info['height'], info.get('r_frame_rate', '24/1')
+    n = int(subprocess.check_output(['ffprobe', '-v', 'error', '-count_frames', '-select_streams', 'v:0',
+                                     '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', src]).decode().strip() or 0)
+    vf = (f'[0:v]format=rgba,split[c][a];[a]alphaextract,format=gray,format=yuv420p[al];'
+          f'color=c=0x808080:s={w}x{h}:r={rate}[bg];[bg][c]overlay=shortest=1:format=auto,format=yuv420p[co];'
+          f'[co][al]vstack=inputs=2,format=yuv420p[v]')
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-c:v', 'libvpx-vp9', '-i', src, '-filter_complex', vf, '-map', '[v]',
+                    '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', str(crf), '-preset', 'slow',
+                    '-movflags', '+faststart', '-an'] + (['-frames:v', str(n)] if n else []) + [dst], check=True)
+    return dst

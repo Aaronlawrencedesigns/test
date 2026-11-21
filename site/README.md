@@ -2,7 +2,8 @@
 
 A desktop-style landing page (desktopsidekicks.com). The menu bar, desktop icons and draggable
 windows are About, How it works, Pricing, FAQ, Create your pet and Welcome. Chunky sits in the
-bottom-right corner, follows the mouse, and has Sit / Sleep / Poop / Stand buttons.
+bottom-right corner, follows the mouse, and has trick buttons (Stand, Sit, Happy wiggle, Feed, Puppy eyes, Sleep). Safari copies of
+the demo clips (stacked-alpha MP4) live in `safari-clips/`.
 
 - `index.html`: the page. All CSS and JS is inline.
 - `pet.html`: the frame that runs the product player (`petgen/engine/app.js`) through a

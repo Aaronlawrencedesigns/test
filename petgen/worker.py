@@ -144,6 +144,7 @@ def make(oid):
     # every QA result of every try, kept per order so retry rates and costs can be tuned over time
     s3.put_object(Bucket=BUCKET, Key=f'orders/{oid}/qa.json', ContentType='application/json',
                   Body=json.dumps({'made_at': now(), 'species': o.get('species'), 'sex': o.get('sex'), 'cost': job.cost,
+                                   'spend': getattr(job, 'spend', {}),
                                    'qa': [{k: q.get(k) for k in ('item', 'attempt', 'problems')} for q in job.qa]}).encode())
 
     o = get_order(oid)
@@ -174,7 +175,7 @@ def make(oid):
 
 
 PREVIEW_TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-                 '.webp': 'image/webp', '.webm': 'video/webm', '.png': 'image/png'}
+                 '.webp': 'image/webp', '.webm': 'video/webm', '.mp4': 'video/mp4', '.png': 'image/png'}
 
 
 def upload_preview(oid, pv):

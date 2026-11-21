@@ -49,6 +49,7 @@ class Job:
         self._gaze_events, self._gaze_started = {}, set()
         self.rest_fix = {}    # female pets: rest pose -> (clean 640 still, mask) for belly patching
         self.qa = []          # {item, attempt, problems, metrics}
+        self.spend = {}       # item -> est. $ actually spent on it this run (retries included; cached = $0)
         self.hints = {}       # item -> problems of its last failed try (added to the next try's prompt)
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
@@ -98,12 +99,15 @@ class Job:
             return p
         self.log(f'image  {key} (try {attempt})')
         self.provider.image(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt), refs, p)
-        with self.lock: self.cost['images'] += 1
+        with self.lock:
+            self.cost['images'] += 1
+            self.spend[base] = round(self.spend.get(base, 0) + plan.PRICE_IMAGE, 4)
         return p
 
     def gen_video(self, key, prompt, first, last, seconds, attempt=1):
         # cache entry per prompt + keyframe contents (a clip from changed keyframes is a new clip)
         kfs = [f'{self.kfdir}/{kf}.png' for kf in (first, last) if kf]
+        base = key
         if attempt > 1:     # retries say what went wrong last time (cut off, zoom, wrong end pose, anatomy)
             prompt = prompt + plan.retry_hint(self.hints.get(key))
         hq = self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE
@@ -117,7 +121,10 @@ class Job:
         self.log(f'clip   {key} (try {attempt})')
         self.provider.video(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt, video=True, attempt=attempt), self.url(first),
                             self.url(last) if last else None, seconds, p, hq=hq)
-        with self.lock: self.cost['video_seconds_hq' if hq else 'video_seconds'] += seconds
+        with self.lock:
+            self.cost['video_seconds_hq' if hq else 'video_seconds'] += seconds
+            price = plan.PRICE_HQ_VIDEO_PER_SECOND if hq else plan.PRICE_VIDEO_PER_SECOND
+            self.spend[base] = round(self.spend.get(base, 0) + seconds * price, 4)
         return p
 
     def url(self, kfname):
@@ -724,6 +731,13 @@ class Job:
         if os.path.exists(f'{pv}/pet'):
             shutil.rmtree(f'{pv}/pet')
         shutil.copytree(self.pet, f'{pv}/pet')
+        # Safari copies of the clips for the Try-it page on iPhone / iPad (preview only: the Mac app plays WebM)
+        for f in sorted(os.listdir(f'{pv}/pet/clips')):
+            if f.endswith('.webm'):
+                try:
+                    media.webm_to_stacked_mp4(f'{pv}/pet/clips/{f}', f'{pv}/pet/clips/{f[:-5]}.mp4')
+                except Exception as e:   # never fail a pet over its preview
+                    self.log(f'  Safari copy of {f} failed: {e}')
         tpl = open(f'{HERE}/preview.html').read()
         open(f'{pv}/index.html', 'w').write(tpl.replace('__PET__', json.dumps(manifest)).replace('__NAME__', self.name))
         self.manifest = manifest

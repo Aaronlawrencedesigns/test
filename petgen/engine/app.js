@@ -77,6 +77,43 @@
   const look = Array.from({ length: LOOK.rows }, () => []);
   const stills = {};
   const videos = {};
+  // Safari (iPhone, iPad, Mac) can't play VP9 WebM with alpha: there each clip is a "stacked alpha" MP4 (colour on
+  // top flattened onto grey, alpha as grey underneath; petgen/media.webm_to_stacked_mp4) put back together on a
+  // canvas. Chrome, Firefox and the Mac app (Electron = Chromium) keep the WebM. window.CHUNKY_STACKED overrides.
+  const UA = navigator.userAgent || '';
+  const STACKED = typeof window.CHUNKY_STACKED === 'boolean' ? window.CHUNKY_STACKED
+    : /iPad|iPhone|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1)
+      || (/Safari\//.test(UA) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Electron|Android/.test(UA));
+  function unstack(v) {
+    // compose the current frame of a stacked MP4 into a transparent canvas (once per new frame)
+    const w = v.videoWidth, h = v.videoHeight >> 1;
+    if (!w || !h) return null;
+    const st = v._st || (v._st = { src: document.createElement('canvas'), out: document.createElement('canvas'), t: -1 });
+    if (st.out.width !== w || st.out.height !== h) {
+      st.src.width = w; st.src.height = h * 2; st.out.width = w; st.out.height = h;
+      st.sctx = st.src.getContext('2d', { willReadFrequently: true });
+      st.octx = st.out.getContext('2d');
+      st.img = st.octx.createImageData(w, h);
+      st.t = -1;
+    }
+    if (st.t === v.currentTime) return st.out;
+    st.t = v.currentTime;
+    st.sctx.drawImage(v, 0, 0);
+    const px = st.sctx.getImageData(0, 0, w, h * 2).data, o = st.img.data, n = w * h * 4;
+    for (let i = 0; i < n; i += 4) {
+      const a = px[n + i];                       // alpha from the lower half (grey: R = G = B)
+      if (a < 8) { o[i + 3] = 0; continue; }
+      o[i + 3] = a;
+      if (a > 247) { o[i] = px[i]; o[i + 1] = px[i + 1]; o[i + 2] = px[i + 2]; continue; }
+      const k = 255 / a, g = 128 * (255 - a) / 255;          // undo the flattening onto grey at soft edges
+      o[i] = Math.min(255, Math.max(0, (px[i] - g) * k));
+      o[i + 1] = Math.min(255, Math.max(0, (px[i + 1] - g) * k));
+      o[i + 2] = Math.min(255, Math.max(0, (px[i + 2] - g) * k));
+    }
+    st.octx.putImageData(st.img, 0, 0);
+    return st.out;
+  }
+  const clipLayer = (v) => (v._stacked ? unstack(v) : v);
 
   async function loadAssets() {
     const jobs = [];
@@ -92,12 +129,17 @@
     await Promise.all(jobs);
     for (const name of Object.keys(CLIPS)) {
       const v = document.createElement('video');
-      v.src = `${ASSETS}clips/${name}.webm`;
+      v.src = `${ASSETS}clips/${name}.${STACKED ? 'mp4' : 'webm'}`;
+      v._stacked = STACKED;
       v.muted = true;
       v.playsInline = true;
       v.preload = 'auto';
       v.loop = !!CLIPS[name].loop;
-      v.addEventListener('error', () => (CLIPS[name].missing = true));
+      v.addEventListener('error', () => {
+        // no Safari copy (e.g. a pet made before they existed): fall back to the WebM once
+        if (v._stacked) { v._stacked = false; v.src = `${ASSETS}clips/${name}.webm`; v.load(); return; }
+        CLIPS[name].missing = true;
+      });
       videos[name] = v;
     }
   }
@@ -584,8 +626,9 @@
     drawShadow(SHADOW_W[shadowState] || 0.3);
     const fade = Math.min(1, (performance.now() - fadeStart) / FADE_MS);
     if (fade < 1) ctx.globalAlpha = fade;
-    if (S.clip && videos[S.clip].readyState >= 2) {
-      dogLayer = videos[S.clip];
+    const clipFrame = S.clip && videos[S.clip].readyState >= 2 ? clipLayer(videos[S.clip]) : null;
+    if (clipFrame) {
+      dogLayer = clipFrame;
       ctx.drawImage(dogLayer, 0, 0, canvas.width, canvas.height);
     } else if (S.rest === 'sit') {
       drawGaze(t);
