@@ -215,7 +215,7 @@ def make(oid):
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
               workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
-              sex=o.get('sex') or 'male')
+              sex=o.get('sex') or 'male', redo=o.get('remake'))
     job.run()
     ok, failed, warn, cost = verdict(job)
 
@@ -239,6 +239,8 @@ def make(oid):
     o['ai_cost_total_usd'] = round(total + cost, 2)
     o.update(status='review', made_at=now(), ready=ok, needs_look=failed, photo_warnings=warn, ai_cost_usd=cost,
              error=job.error, pet_zip=f'orders/{oid}/pet.zip', report=f'orders/{oid}/report.html')
+    if o.get('remake'):            # the owner's send-back is done: keep it in the history, don't redo it next time
+        o.setdefault('remake_history', []).append({**o.pop('remake'), 'done_at': now(), 'cost': cost})
     put_order(o)
     move(oid, 'working', 'review')
     head = 'Ready to ship' if ok and not warn else ('Ready, with photo warnings' if ok else 'Needs a look')

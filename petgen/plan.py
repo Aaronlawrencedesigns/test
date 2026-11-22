@@ -236,6 +236,13 @@ MAX_BOTTOM = {'wake_up': 0.3}
 MAX_GROWTH = {'fall_asleep': 1.08, 'sleep_loop': 1.05, 'puppy': 1.12, 'bark': 1.12, 'eat': 1.12, 'wag': 1.2}
 # Poop removed Nov 20 (owner's call: cost, $0.64 boys / $1.60 girls, and not core). Its prompts stay in ACTIONS /
 # FEMALE_ACTIONS so it can be brought back by adding it here.
+# Approve page "Send back for a re-make": box -> generated items it makes again (prefix match on the item key).
+# The sitting pose is the start of everything, so redoing it remakes the whole pet.
+REDO_PARTS = {
+    'sit': ('green_sit', 'female_sit'), 'head': ('sweep_', 'gaze_'), 'lie': ('green_lie', 'female_lie', 'lie_down'),
+    'sleep': ('fall_asleep', 'sleep_loop', 'female_sleep', 'sleep_edit'), 'wake_up': ('wake_up',), 'get_up': ('get_up',),
+    'stand': ('stand',), 'wag': ('wag',), 'puppy': ('puppy',), 'eat': ('eat',), 'bark': ('bark',),
+}
 DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up']
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 10 animations (eat powers Feed mode)

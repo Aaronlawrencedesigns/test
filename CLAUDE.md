@@ -267,6 +267,11 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
   Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add Pet" (reads Add 2nd /
   3rd Pet… by how many pets are IN THE APP, which can differ from orders per email, so the email names no number), enter the code).
+- Send back for a re-make (Nov 22, owner's phone-friendly approve page): tick parts (`plan.REDO_PARTS`: sit = whole pet,
+  head, stand, lie, get_up, sleep, wake_up, wag, puppy, eat, bark) + notes -> order.json `remake` {items, notes, round},
+  queue/review -> queue/paid. The worker passes it to Job(redo=...): those items get a cache-key suffix `r<round>` (really
+  made again) and the notes appended to their prompt; everything else is reused. After the run it moves to
+  `remake_history` (shown on the approve page). The approve page also links Try it.
 - Girls' sitting pose (Nov 22): `female_rest_fix('sit')` makes the clean-belly edit of the SITTING still too (Baja's
   sit showed a faint spot). Only the still is patched (the keyframe isn't, so no video is remade); seated tricks and
   head-turn frames copy their belly from it. The play bow fallback prompt asks for the camera further back (Baja's ran
