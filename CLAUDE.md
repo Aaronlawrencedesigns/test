@@ -267,6 +267,11 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
   Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add Pet" (reads Add 2nd /
   3rd Pet… by how many pets are IN THE APP, which can differ from orders per email, so the email names no number), enter the code).
+- Girls' Stand fallback: if a female pet's hind-legs Stand still shows male anatomy after its tries (even Seedance 2.5:
+  Baja, a black Frenchie, Nov 22), `pipeline.action` makes a play bow instead (`plan.FEMALE_STAND_FALLBACK`) and the
+  menu label becomes "Play bow" (manifest labels). The sit anatomy check flags all-black dogs falsely (shadow between legs).
+- QA report shows the order form choices (Dog/Cat · Boy/Girl · tail) and the customer's photos as JPEG: the worker
+  uploads `orders/<id>/preview/photos/<view>.jpg` (iPhone HEIC only shows in Safari); the preview function prefers it.
 - Poop removed from the product Nov 20 (owner's call, cost): not in `plan.DEFAULT_ACTIONS` (10 tricks now; prompts kept),
   not in the app menu / Try-it / player idle tricks, site says 10 tricks. Older pets keep the clip, unused.
 - Safari (iPhone / iPad / Mac) can't play VP9 WebM with alpha (tricks showed a black/green box). Each clip also gets a

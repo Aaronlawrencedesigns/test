@@ -18,6 +18,7 @@ import datetime, json, os, secrets, shutil, subprocess, sys, time, traceback
 
 import boto3
 import requests
+from PIL import Image, ImageOps
 
 from . import plan
 from .pipeline import Job
@@ -129,6 +130,17 @@ def make(oid):
         if not os.path.exists(dest):
             s3.download_file(BUCKET, key, dest)
         photos.append(dest)
+        # a JPEG copy for the owner's QA report / Try-it page: iPhone HEIC photos only show in Safari
+        try:
+            jpg = dest + '.preview.jpg'
+            if not os.path.exists(jpg):
+                im = Image.open(dest)
+                im = ImageOps.exif_transpose(im).convert('RGB')
+                im.thumbnail((1200, 1200))
+                im.save(jpg, quality=85)
+                s3.upload_file(jpg, BUCKET, f'orders/{oid}/preview/photos/{v}.jpg', ExtraArgs={'ContentType': 'image/jpeg'})
+        except Exception as e:   # never block a pet over its preview photos
+            log(f'{oid}: preview photo {v} failed: {e}')
 
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),

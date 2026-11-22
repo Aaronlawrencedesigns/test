@@ -18,8 +18,9 @@ export async function onRequestGet({ request, env, params }) {
   // the customer's uploaded photos (photos/<view>), for comparing the pet with the real one
   const pm = /^photos\/([a-z]+)$/.exec(file);
   if (pm) {
+    // the worker's JPEG copy first (iPhone HEIC photos only show in Safari), else the original upload
     const key = (order.photos || {})[pm[1]];
-    const ph = key && await env.ORDERS.get(key);
+    const ph = (await env.ORDERS.get(`orders/${id}/preview/photos/${pm[1]}.jpg`)) || (key && await env.ORDERS.get(key));
     if (!ph) return new Response('not found', { status: 404 });
     return new Response(ph.body, { headers: { 'content-type': (ph.httpMetadata && ph.httpMetadata.contentType) || 'image/jpeg',
       'cache-control': 'private, max-age=600', 'x-robots-tag': 'noindex' } });
