@@ -13,10 +13,10 @@ export async function onRequestGet({ env, params }) {
   return page(`Add ${pet}`, `
     <h1>Add ${pet} to your desktop</h1>
     <ol>
-      <li><a href="/download">Download Desktop Sidekicks for Mac</a> and open it (skip if you have it).</li>
+      <li><a href="/download">Download Desktop Sidekicks</a> for your Mac or Windows PC and open it (skip if you have it).</li>
       <li>Click <b>Add ${pet}</b> below, or paste this code into the app:</li>
     </ol>
     <div class="code">${code}</div>
     <div class="row"><a class="btn" href="${deep}">Add ${pet}</a><a class="btn ghost" href="/download">Download the app</a></div>
-    <p class="muted">Works on macOS 12 or later. The code works on any of your Macs.</p>`);
+    <p class="muted">Works on macOS 12 or later and Windows 10 or 11. The code works on any of your computers.</p>`);
 }

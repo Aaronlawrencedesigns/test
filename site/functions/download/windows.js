@@ -1,6 +1,6 @@
 // /download/windows: the Desktop Sidekicks app for Windows (uploaded to the top of the R2 bucket as
-// Desktop-Sidekicks-Windows.exe). Not linked from the site yet: PC is "coming soon" until it has been tested.
-// For now it's the portable build (one .exe, no installer, unsigned: Windows SmartScreen asks "Run anyway").
+// Desktop-Sidekicks-Windows.exe). /download sends Windows visitors here. For now it's the portable build (one .exe,
+// no installer, unsigned: Windows SmartScreen asks "More info -> Run anyway").
 import { page } from '../../lib/orders.js';
 
 export async function onRequestGet({ env }) {

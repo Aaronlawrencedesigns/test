@@ -173,12 +173,18 @@ const ordinal = (k) => `${k}${(k % 100 >= 11 && k % 100 <= 13) ? 'th' : ({ 1: 's
 // reads the same ('Add 2nd Pet…', app/main.js addLabel).
 export function deliveryEmail(order, code, { petNumber = 0 } = {}) {
   const morePets = petNumber >= 2;
+  // the app for the computer chosen on the order form (the pet code works on both)
+  const win = order.platform === 'windows';
+  const appName = win ? 'Windows' : 'Mac';
+  const dl = `${SITE}/download?os=${win ? 'windows' : 'mac'}`;
+  const winTip = win ? '\n   (If Windows says "Windows protected your PC", click More info, then Run anyway.)' : '';
+  const winTipHtml = win ? ' <span style="color:#6a6170">If Windows says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>.</span>' : '';
   const addItem = `Add ${ordinal(petNumber)} Pet…`;
   const pet = order.pet_name || 'Your pet';
   const add = `${SITE}/add/${code}`;
   const text = `${pet} is ready!
 
-1. Download Desktop Sidekicks for Mac: ${SITE}/download
+1. Download Desktop Sidekicks for ${appName}: ${dl}${winTip}
 2. Open it, then click this link to add ${pet}: ${add}
    (or paste this code into the app: ${code})
 
@@ -193,7 +199,7 @@ Desktop Sidekicks · ${SITE}`;
   const html = `<div style="font:16px/1.55 -apple-system,system-ui,sans-serif;color:#221d27;max-width:520px">
 <h1 style="font-size:26px;margin:0 0 12px">${esc(pet)} is ready!</h1>
 <p>Two steps and ${esc(pet)} moves onto your desktop:</p>
-<p><b>1.</b> <a href="${SITE}/download" style="color:#2f45c4">Download Desktop Sidekicks for Mac</a> and open it.</p>
+<p><b>1.</b> <a href="${dl}" style="color:#2f45c4">Download Desktop Sidekicks for ${appName}</a> and open it.${winTipHtml}</p>
 <p><b>2.</b> Add ${esc(pet)}:</p>
 <p><a href="${add}" style="display:inline-block;background:#2f45c4;color:#fff;text-decoration:none;font-weight:600;padding:12px 18px;border-radius:8px">Add ${esc(pet)} to Desktop Sidekicks</a></p>
 <p style="color:#6a6170">Or paste this code into the app: <b style="font-family:ui-monospace,Menlo,monospace;color:#221d27;letter-spacing:.05em">${esc(code)}</b></p>

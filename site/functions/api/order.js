@@ -13,6 +13,7 @@ export async function onRequestPost({ request, env }) {
   const species = ['Dog', 'Cat', 'Other'].includes(form.get('species')) ? form.get('species') : 'Dog';
   const tail = ['yes', 'stub', 'none'].includes(form.get('tail')) ? form.get('tail') : 'yes';
   const sex = ['male', 'female'].includes(form.get('sex')) ? form.get('sex') : 'male';
+  const platform = ['mac', 'windows'].includes(form.get('platform')) ? form.get('platform') : 'mac';   // which app to link
   if (!validEmail(email)) return json({ error: 'Add a valid email so we can send your pet when it\'s ready.' }, 400);
 
   const photos = [];
@@ -32,7 +33,7 @@ export async function onRequestPost({ request, env }) {
   const origin = new URL(request.url).origin;
   const order = {
     id, status: 'awaiting_payment', created_at: new Date().toISOString(),
-    email, pet_name: name, species: species.toLowerCase(), tail, sex,
+    email, pet_name: name, species: species.toLowerCase(), tail, sex, platform,
     photos: Object.fromEntries(photos.map((p) => [p.view, `orders/${id}/photos/${p.view}.${p.ext}`])),
     price_cents: PRICE_CENTS,
   };
@@ -43,7 +44,7 @@ export async function onRequestPost({ request, env }) {
     'line_items[0][price_data][currency]': CURRENCY,
     'line_items[0][price_data][unit_amount]': PRICE_CENTS,
     'line_items[0][price_data][product_data][name]': order.pet_name ? `Desktop Sidekick: ${order.pet_name}` : 'Desktop Sidekick',
-    'line_items[0][price_data][product_data][description]': 'Your pet as a desk pet for your Mac: head tracking, 10 tricks and feed mode.',
+    'line_items[0][price_data][product_data][description]': 'Your pet as a desk pet for your Mac or PC: head tracking, 10 tricks and feed mode.',
     customer_email: email,
     allow_promotion_codes: 'true',   // e.g. a 100%-off team code for testing the live flow
     client_reference_id: id,
