@@ -95,6 +95,13 @@ class Job:
     def _gen_path(self, key, attempt, ext):
         return f'{self.gen}/{key}{"" if attempt == 1 else f"__{attempt}"}.{ext}'
 
+    def bowed_before(self):
+        """Did this pet's previous run fall back to the play bow? (its manifest from that run says so)"""
+        try:
+            return json.load(open(f'{self.pet}/manifest.json')).get('labels', {}).get('stand') == 'Play bow'
+        except Exception:  # noqa: BLE001 - first run: no manifest yet
+            return False
+
     def redo_part(self, base):
         """The approve-page group a generated item belongs to (see plan.REDO_PARTS), if the owner asked to redo it."""
         for part in self.redo_items:
@@ -264,7 +271,10 @@ class Job:
             self.best_attempt[key] = att
             self.kf['raw_' + key.split('_')[1]] = k
         sit, lie = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'])
-        if self.sex == 'female' and self.species != 'cat':
+        # a pet that already has videos (a re-make) keeps its sitting keyframe unless the owner sent the sitting pose
+        # back: changing it would make every video again (~$17 for Baja just to re-process a play bow)
+        remaking = any(f.endswith('.mp4') for f in os.listdir(self.gen)) and 'sit' not in self.redo_items
+        if self.sex == 'female' and self.species != 'cat' and not remaking:
             # the image model adds male anatomy low between the hind legs by default (Tess, Chewie, Baja): paint that
             # spot with the belly fur above it, without AI, BEFORE any video starts from this pose
             sit, belly = media.clean_female_belly(sit)
@@ -557,8 +567,14 @@ class Job:
                                      max_edge=plan.MAX_EDGE.get(key, 0.02),
                                      max_bottom=plan.MAX_BOTTOM.get(key, 0.05)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
-        src, fixed, pose_k = self.with_retries(key, attempt_fn, video=True)
-        if (key == 'stand' and self.sex == 'female' and self.species != 'cat'
+        if key == 'stand' and self.sex == 'female' and self.species != 'cat' and self.bowed_before():
+            # this girl already fell back to the play bow: a re-make goes straight to it (no paid Stand tries)
+            prompt = plan.FEMALE_STAND_FALLBACK
+            src, fixed, pose_k = self.with_retries('stand (play bow)', attempt_fn, video=True)
+            self.stand_bow = True
+        else:
+            src, fixed, pose_k = self.with_retries(key, attempt_fn, video=True)
+        if (not self.stand_bow and key == 'stand' and self.sex == 'female' and self.species != 'cat'
                 and any('male anatomy' in p for p in self.final_problems.get(key, []))):
             # Even Seedance 2.5 draws male parts on some girls standing on their hind legs (Baja, Nov 22: all 3 tries).
             # A play bow faces the camera chest-down, which hides the belly: make that instead, labelled "Play bow".

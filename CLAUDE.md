@@ -127,8 +127,11 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
   tray icon, hidden menu bar); an unsigned portable .exe built here (no Wine needed) is at `/download/windows` (R2
   `Desktop-Sidekicks-Windows.exe`, not linked on the site). Left: real-PC test, NSIS installer + exe icon built on
   Windows (Wine crashes in the container), code signing, then turn on the site's PC option + Windows download.
-  At Windows launch: drop the order form's Mac / PC choice (a pet is the same files and code on both), make /download
-  pick the right app from the visitor's browser, and give the "is ready" email one download button (~30 min).
+  Nov 22: site made Mac AND Windows inclusive (owner: friends test the PC app; revert the PR if not ready). The order
+  form KEEPS the "Your computer" choice (Mac / Windows PC, pre-selected from the browser; owner: a Windows user should be
+  able to pick Windows), saved as order.json `platform`; the "is ready" email links /download?os=<platform> (+ the
+  SmartScreen "More info -> Run anyway" tip for Windows); /download picks by user agent (?os= forces). Copy, FAQ,
+  pricing, legal and the add page say Mac or Windows (macOS 12+, Windows 10/11).
 - Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
   unless asked.
 
@@ -278,6 +281,9 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   gap between the legs is touched (columns whose fur stops above the floor), colour comes from the belly above (paws /
   floor shadow gave light dogs a dark smudge). Tested on Baja, Chewie and Chunky sits. If girls still fail, next lever:
   Seedance 2.5 for girls' head turns (~+$10/girl, owner OK to offset by dropping tricks).
+- Re-makes stay cheap: the girls' belly clean-up of the sitting keyframe is skipped when the pet already has videos
+  and the sitting pose wasn't sent back (changing the keyframe would remake every video); a girl whose last run fell
+  back to the play bow (previous manifest label) goes straight to the bow on a Stand re-make.
 - Wide clips (stand / play bow): `_keep_bottom_in_frame` shrinks frames slightly about the pet's top when the hold
   scaling would push paws / chin past the bottom (only if the pet is whole in the video). Workers check in every minute
   from a background thread (a pet takes > 1 h; the 10-min stale rule would otherwise let another server take it).
