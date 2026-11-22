@@ -184,7 +184,7 @@ export function deliveryEmail(order, code, { petNumber = 0 } = {}) {
 
 ${pet} will appear in the bottom-right corner of your screen, follow your mouse, nap when you step away and eat the treats you drag over. Right-click ${pet} for tricks, sizes and more.
 ${morePets ? `
-Adding to your pack? First download the latest app from the link above (it updates the one you have). Then click Menu on the pet you already have, choose "${addItem}" and enter the code above: ${pet} joins your other pets on the desktop.
+Adding to your pack? First download the latest app from the link above (it updates the one you have). Then click Menu on a pet you already have, choose "Add Pet" (it reads Add 2nd Pet…, Add 3rd Pet… depending on how many you have) and enter the code above: ${pet} joins your other pets on the desktop.
 ` : ''}
 Keep this email: the code works on any of your Macs.
 
@@ -198,7 +198,7 @@ Desktop Sidekicks · ${SITE}`;
 <p><a href="${add}" style="display:inline-block;background:#2f45c4;color:#fff;text-decoration:none;font-weight:600;padding:12px 18px;border-radius:8px">Add ${esc(pet)} to Desktop Sidekicks</a></p>
 <p style="color:#6a6170">Or paste this code into the app: <b style="font-family:ui-monospace,Menlo,monospace;color:#221d27;letter-spacing:.05em">${esc(code)}</b></p>
 <p>${esc(pet)} will sit in the bottom-right corner, follow your mouse, nap when you step away and eat the treats you drag over. Right-click for tricks, sizes and more.</p>
-${morePets ? `<p style="background:#f3f0f6;border-radius:8px;padding:12px 14px"><b>Adding to your pack?</b> First <a href="${SITE}/download" style="color:#2f45c4">download the latest app</a> (it updates the one you have). Then click <b>Menu</b> on the pet you already have, choose <b>${addItem}</b> and enter the code above: ${esc(pet)} joins your other pets on the desktop.</p>` : ''}
+${morePets ? `<p style="background:#f3f0f6;border-radius:8px;padding:12px 14px"><b>Adding to your pack?</b> First <a href="${SITE}/download" style="color:#2f45c4">download the latest app</a> (it updates the one you have). Then click <b>Menu</b> on a pet you already have, choose <b>Add Pet</b> (it reads Add 2nd Pet…, Add 3rd Pet… depending on how many you have) and enter the code above: ${esc(pet)} joins your other pets on the desktop.</p>` : ''}
 <p style="color:#6a6170;font-size:13px">Keep this email: the code works on any of your Macs. Questions? Just reply.<br>Desktop Sidekicks &middot; <a href="${SITE}" style="color:#2f45c4">desktopsidekicks.com</a></p>
 </div>`;
   return { subject: `${pet} is ready for your desktop`, text, html, tag: 'pet-delivery' };

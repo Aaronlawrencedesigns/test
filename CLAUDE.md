@@ -265,8 +265,8 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   and `petPrefs[code]` (scale, playful). A newly added code joins the pets already out. Right-click menu = that pet's
   items + "Pets on desktop" checkboxes (2+ pets) / Add a pet / login / Quit; the menu-bar icon has a submenu per pet.
   Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
-  Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add 2nd Pet…" (ordinal from
-  the count), enter the code).
+  Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add Pet" (reads Add 2nd /
+  3rd Pet… by how many pets are IN THE APP, which can differ from orders per email, so the email names no number), enter the code).
 - Poop removed from the product Nov 20 (owner's call, cost): not in `plan.DEFAULT_ACTIONS` (10 tricks now; prompts kept),
   not in the app menu / Try-it / player idle tricks, site says 10 tricks. Older pets keep the clip, unused.
 - Safari (iPhone / iPad / Mac) can't play VP9 WebM with alpha (tricks showed a black/green box). Each clip also gets a
