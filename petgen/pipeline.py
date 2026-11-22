@@ -264,6 +264,12 @@ class Job:
             self.best_attempt[key] = att
             self.kf['raw_' + key.split('_')[1]] = k
         sit, lie = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'])
+        if self.sex == 'female' and self.species != 'cat':
+            # the image model adds male anatomy low between the hind legs by default (Tess, Chewie, Baja): paint that
+            # spot with the belly fur above it, without AI, BEFORE any video starts from this pose
+            sit, belly = media.clean_female_belly(sit)
+            self.log('       sit: belly between the hind legs cleaned' if belly is not None else
+                     '       sit: no gap between the hind legs found, belly left as is')
         for n, k in (('sit', sit), ('lie', lie)):
             self.kf[n] = k
             media.save_green(k, f'{self.kfdir}/kf_{n}.png')
