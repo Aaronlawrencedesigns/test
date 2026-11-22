@@ -17,7 +17,7 @@ export async function onRequestGet({ request, env }) {
     + `<img src="${base}${v}" alt="${v}" style="height:160px;max-width:220px;object-fit:cover;border-radius:8px;display:block"><small>${v}</small></a>`).join('');
   // what the customer chose on the order form
   const TAIL = { yes: 'Has a tail', stub: 'Stub tail', none: 'No tail' };
-  const sexLabel = order.sex === 'female' ? 'Girl' : order.sex === 'male' ? 'Boy' : 'Boy / girl not given';
+  const sexLabel = order.sex === 'female' ? 'Female' : order.sex === 'male' ? 'Male' : 'Male / female not given';
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const chosen = [order.species === 'cat' ? 'Cat' : 'Dog', sexLabel, TAIL[order.tail] || 'Tail not given'];
   const details = `<p style="font:14px system-ui;margin:0 16px 10px"><b>Order form:</b> ${chosen.map(esc).join(' · ')}</p>`;

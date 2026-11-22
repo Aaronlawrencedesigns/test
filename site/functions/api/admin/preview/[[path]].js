@@ -45,5 +45,15 @@ export async function onRequestGet({ request, env, params }) {
   }
   const obj = await env.ORDERS.get(key);
   if (!obj) return new Response(file === 'index.html' ? 'no preview yet (made before previews existed: remake to get one)' : 'not found', { status: 404 });
+  if (file === 'index.html') {
+    // what the customer chose on the order form, added when served so it shows on every pet's Try-it page (old ones too)
+    const TAIL = { yes: 'Has a tail', stub: 'Stub tail', none: 'No tail' };
+    const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const chosen = [order.species === 'cat' ? 'Cat' : 'Dog',
+      order.sex === 'female' ? 'Female' : order.sex === 'male' ? 'Male' : 'Male / female not given', TAIL[order.tail] || 'Tail not given'];
+    const tag = `<p style="margin:10px 0 0;font-size:13px"><b>Order form:</b> ${chosen.map(esc).join(' · ')}</p>`;
+    const html = (await obj.text()).replace('<div id="photos"', `${tag}<div id="photos"`);
+    return new Response(html, { headers: { ...headers, 'content-type': TYPES.html } });
+  }
   return new Response(obj.body, { headers: { ...headers, 'content-length': String(obj.size) } });
 }

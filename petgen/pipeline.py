@@ -23,7 +23,7 @@ ROOT = os.path.dirname(HERE)
 
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
-                 max_retries=2, workers=6, log=print, tail='yes', sex='male'):
+                 max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None):
         self.name, self.species, self.photos_in = name, species, photos
         self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
         self.sex = sex if sex in plan.SEX_NOTE else 'male'
@@ -32,6 +32,12 @@ class Job:
         self.actions = actions or plan.DEFAULT_ACTIONS
         self.rows = rows or plan.ROWS
         self.max_retries, self.workers = max_retries, workers
+        # owner's "send back for a re-make" (approve page): which parts to make again, their notes, and which round
+        # this is. Those parts get a new cache key (so they really are made again) and the notes in their prompt.
+        redo = redo or {}
+        self.redo_items = set(redo.get('items') or [])
+        self.redo_notes = (redo.get('notes') or '').strip()[:500]
+        self.redo_round = int(redo.get('round') or 0)
         # videos cost ~5x an image: fewer retries, and a spending cap per pet (USD, estimated)
         self.video_retries = int(os.environ.get('PETGEN_VIDEO_RETRIES', '1'))
         self.budget = float(os.environ.get('PETGEN_BUDGET', '10'))
@@ -89,11 +95,26 @@ class Job:
     def _gen_path(self, key, attempt, ext):
         return f'{self.gen}/{key}{"" if attempt == 1 else f"__{attempt}"}.{ext}'
 
+    def redo_part(self, base):
+        """The approve-page group a generated item belongs to (see plan.REDO_PARTS), if the owner asked to redo it."""
+        for part in self.redo_items:
+            if any(base == p or base.startswith(p) for p in plan.REDO_PARTS.get(part, ())):
+                return part
+        return None
+
+    def _owner_redo(self, base, prompt):
+        """(prompt with the owner's notes, cache-key suffix) for an item the owner sent back."""
+        if not self.redo_part(base):
+            return prompt, ''
+        note = f' Notes from a careful review of the last version: {self.redo_notes}' if self.redo_notes else ''
+        return prompt + note, f'r{self.redo_round}'
+
     def gen_image(self, key, prompt, refs, attempt=1):
         base = key
         if attempt > 1:     # retries say what went wrong last time (turned to the side, glitch, ...)
             prompt = prompt + plan.retry_hint(self.hints.get(key))
-        key = f'{key}@{self._content_tag(self.fill(prompt), refs)}'
+        prompt, sfx = self._owner_redo(base, prompt)
+        key = f'{key}@{self._content_tag(self.fill(prompt), refs)}{sfx}'
         p = self._gen_path(key, attempt, 'png')
         self.image_path[(base, attempt)] = p
         if os.path.exists(p):
@@ -113,7 +134,8 @@ class Job:
         if attempt > 1:     # retries say what went wrong last time (cut off, zoom, wrong end pose, anatomy)
             prompt = prompt + plan.retry_hint(self.hints.get(key))
         hq = self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE
-        key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}' + ('hq' if hq else '')
+        prompt, sfx = self._owner_redo(base, prompt)
+        key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}' + ('hq' if hq else '') + sfx
         if first == 'kf_sleep_end':
             key += 'u2'   # (made before the stale-upload fix: those clips started from the wrong image)
         p = self._gen_path(key, attempt, 'mp4')
@@ -249,6 +271,10 @@ class Job:
         self.still['lie'] = self.to_still(lie)
         media.save_still(sit, f'{self.pet}/stills/sit.webp')
         media.save_still(lie, f'{self.pet}/stills/lie.webp')
+        # girls: a clean-belly edit of the SITTING still too (Baja, Nov 22: a light spot between the legs showed in
+        # the sitting pose). Only the still is patched, not the keyframe, so no video is made again; the seated tricks
+        # and head-turn frames copy their belly from this still (media.patch_groin), so they get the clean one.
+        self.female_rest_fix('sit', kf_key='sit', src=f'{self.kfdir}/kf_sit.png')
 
     def to_still(self, k1024):
         return np.asarray(Image.fromarray(k1024).crop(media.CROP_1024).resize(media.OUT_SIZE, Image.LANCZOS))
@@ -329,13 +355,13 @@ class Job:
             out.append('shows male anatomy (this pet is female)')
         return out
 
-    def female_rest_fix(self, name):
+    def female_rest_fix(self, name, kf_key=None, src=None):
         """Female pets: an image edit of the resting pose with a female belly; the changed area becomes
         a patch for this pose's still and for the frames of lying / sleeping clips."""
-        if self.sex != 'female' or name not in self.still:
+        if self.sex != 'female' or name not in self.still or self.species == 'cat':
             return
-        orig_k = self.kf[f'{name}_end']
-        src = f'{self.kfdir}/kf_{name}_end.png'
+        orig_k = self.kf[kf_key or f'{name}_end']
+        src = src or f'{self.kfdir}/kf_{name}_end.png'
 
         def attempt_fn(attempt):
             p = self.gen_image(f'female_{name}', plan.FEMALE_EDIT, [src], attempt)

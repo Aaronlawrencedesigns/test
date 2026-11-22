@@ -65,3 +65,17 @@ Test-mode (Stripe sandbox) orders are skipped unless `ALLOW_TEST_ORDERS=1`.
     sudo nano /etc/sidekicks.env && sudo systemctl restart sidekicks-worker
     journalctl -u sidekicks-worker -f
     sudo sidekicks-requeue <order id>     # retry a failed order / make a skipped test order
+
+## More orders: add worker servers
+One worker makes about 15-20 pets a day (one order at a time, ~1-1.5 h each). Any number of workers can share the
+queue: each order is claimed first (`claims/<id>` in the bucket), so two workers never make the same pet.
+
+To add one:
+1. In DigitalOcean, take a snapshot of `sidekicks-worker` and create a new droplet from it (same size or bigger).
+2. Give it its own name: in `/etc/sidekicks.env` add `WORKER_NAME=sidekicks-worker-2` (the default is the hostname,
+   which a copied droplet may share), then `sudo systemctl restart sidekicks-worker`.
+3. That's it: it picks up the next unclaimed order within a minute. Delete the droplet when the rush is over; its
+   claims are freed after 10 minutes of silence (`WORKER_STALE_SECONDS`) and any half-made pet is made again by
+   another worker.
+
+A bigger droplet also helps one worker: raise `PETGEN_WORKERS` (clips made at once; ~1 GB of memory each).

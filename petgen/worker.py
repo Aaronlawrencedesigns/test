@@ -14,9 +14,10 @@ Env (/etc/sidekicks.env): GPTPROTO_API_KEY, S3_ENDPOINT, S3_BUCKET, AWS_ACCESS_K
 AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK,
 PETGEN_WORKERS (clips made at once; default 3, each needs ~0.5-1 GB of memory).
 """
-import datetime, json, os, secrets, shutil, subprocess, sys, time, traceback
+import datetime, json, os, secrets, shutil, socket, subprocess, sys, time, traceback
 
 import boto3
+import botocore.exceptions
 import requests
 from PIL import Image, ImageOps
 
@@ -81,6 +82,75 @@ def queued(state):
     return keys
 
 
+# ------------------------------------------------------------------ several workers
+# Any number of worker servers can share the queue. An order is CLAIMED before it is made: claims/<id> is created with
+# a conditional write (If-None-Match: *), which the storage accepts exactly once, so two workers never make the same
+# pet. Each worker checks in at workers/<name> every loop; a claim whose worker has been silent for STALE_SECONDS is
+# freed (that server died). Orders go back to the worker that made them before (re-makes, outage retries): its cache
+# holds the finished clips, so nothing is paid for twice. WORKER_NAME (default: the server's hostname) names a worker.
+WORKER = os.environ.get('WORKER_NAME') or socket.gethostname()
+STALE_SECONDS = int(os.environ.get('WORKER_STALE_SECONDS', '600'))
+CLAIM_SETTLE = float(os.environ.get('CLAIM_SETTLE_SECONDS', '2'))
+
+
+def heartbeat():
+    s3.put_object(Bucket=BUCKET, Key=f'workers/{WORKER}', Body=now().encode())
+
+
+def alive(worker):
+    """Has this worker checked in within STALE_SECONDS?"""
+    try:
+        at = s3.get_object(Bucket=BUCKET, Key=f'workers/{worker}')['Body'].read().decode().strip()
+        age = datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(at)
+        return age.total_seconds() < STALE_SECONDS
+    except Exception:  # noqa: BLE001 - never checked in / unreadable: treat as gone
+        return False
+
+
+def claim_owner(oid):
+    try:
+        return json.loads(s3.get_object(Bucket=BUCKET, Key=f'claims/{oid}')['Body'].read()).get('worker')
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def claim(oid):
+    """True if this worker now owns the order (or already did). A claim held by a dead worker is taken over."""
+    body = json.dumps({'worker': WORKER, 'at': now()}).encode()
+    for _ in range(2):
+        owner = claim_owner(oid)
+        if owner == WORKER:
+            return True
+        if owner is None:
+            try:
+                s3.put_object(Bucket=BUCKET, Key=f'claims/{oid}', Body=body, IfNoneMatch='*')
+                # Belt and braces (the create-once write isn't honoured by every R2 API): read the claim back after
+                # a moment. R2 is strongly consistent, so two workers that wrote at the same time both see the same
+                # last writer and only that one goes ahead.
+                time.sleep(CLAIM_SETTLE)
+                return claim_owner(oid) == WORKER
+            except botocore.exceptions.ClientError as e:
+                code = str(e.response.get('Error', {}).get('Code', ''))
+                if code not in ('PreconditionFailed', '412'):
+                    raise
+                owner = claim_owner(oid)
+                if owner == WORKER:
+                    return True
+        if owner and alive(owner):
+            return False                      # another live worker has it
+        log(f'{oid}: freeing the claim of {owner or "an unknown worker"} (silent for over {STALE_SECONDS // 60} min)')
+        s3.delete_object(Bucket=BUCKET, Key=f'claims/{oid}')
+    return False
+
+
+def release(oid):
+    try:
+        if claim_owner(oid) == WORKER:
+            s3.delete_object(Bucket=BUCKET, Key=f'claims/{oid}')
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+
+
 def link(key, days=7):
     return s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET, 'Key': key}, ExpiresIn=days * 86400)
 
@@ -117,7 +187,7 @@ def make(oid):
     name = o.get('pet_name') or 'Your pet'
     log(f'{oid}: making {name} ({o.get("species")})')
     move(oid, 'paid', 'working')
-    o.update(status='making', started_at=now())
+    o.update(status='making', started_at=now(), worker=WORKER)
     put_order(o)
 
     d = os.path.join(WORK, oid)
@@ -145,7 +215,7 @@ def make(oid):
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
               workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
-              sex=o.get('sex') or 'male')
+              sex=o.get('sex') or 'male', redo=o.get('remake'))
     job.run()
     ok, failed, warn, cost = verdict(job)
 
@@ -169,6 +239,8 @@ def make(oid):
     o['ai_cost_total_usd'] = round(total + cost, 2)
     o.update(status='review', made_at=now(), ready=ok, needs_look=failed, photo_warnings=warn, ai_cost_usd=cost,
              error=job.error, pet_zip=f'orders/{oid}/pet.zip', report=f'orders/{oid}/report.html')
+    if o.get('remake'):            # the owner's send-back is done: keep it in the history, don't redo it next time
+        o.setdefault('remake_history', []).append({**o.pop('remake'), 'done_at': now(), 'cost': cost})
     put_order(o)
     move(oid, 'working', 'review')
     head = 'Ready to ship' if ok and not warn else ('Ready, with photo warnings' if ok else 'Needs a look')
@@ -229,15 +301,22 @@ def tick():
     global paused_until, outage_emailed
     if time.time() < paused_until:
         return
+    heartbeat()
     for oid in queued('paid'):
         try:
             o = get_order(oid)
         except Exception as e:  # noqa: BLE001
             log(f'{oid}: cannot read order: {e}')
             continue
+        # a pet started by another worker that is still running goes back to that worker (its cache has the clips)
+        if o.get('worker') and o['worker'] != WORKER and alive(o['worker']):
+            continue
+        if not claim(oid):
+            continue
         if not o.get('livemode') and not ALLOW_TEST:
             log(f'{oid}: test-mode order, skipped (set ALLOW_TEST_ORDERS=1 to make it)')
             move(oid, 'paid', 'test')
+            release(oid)
             continue
         try:
             notify_new_order(o)
@@ -245,6 +324,7 @@ def tick():
             traceback.print_exc()
         try:
             make(oid)
+            release(oid)
             outage_emailed = False
         except ProviderUnavailable as e:
             o = get_order(oid)
@@ -254,6 +334,7 @@ def tick():
                 o.update(status='waiting', waiting_reason=str(e)[:300], waiting_since=o.get('waiting_since') or now())
                 put_order(o)
                 move(oid, 'working', 'paid')
+                release(oid)
                 paused_until = time.time() + WAIT_SECONDS
                 if not outage_emailed:
                     waiting = len(queued('paid'))
@@ -281,6 +362,7 @@ def _failed(oid, e):
         move(oid, 'working', 'failed')
     except Exception:  # noqa: BLE001
         traceback.print_exc()
+    release(oid)
     email_owner(f'Failed: order {oid[:8]}', f'Making order {oid} failed:\n{e}\n\nCheck the server log: journalctl -u sidekicks-worker')
 
 
@@ -328,8 +410,12 @@ def main():
         opt = lambda k: next((a.split('=', 1)[1] for a in sys.argv[3:] if a.startswith(k + '=')), None)
         return requeue(sys.argv[2], opt('tail'), opt('sex'))
     os.makedirs(WORK, exist_ok=True)
-    log(f'worker up: bucket {BUCKET}, test orders {"ON" if ALLOW_TEST else "off"}, owner email {"set" if OWNER else "NOT set"}')
+    log(f'worker {WORKER} up: bucket {BUCKET}, test orders {"ON" if ALLOW_TEST else "off"}, owner email {"set" if OWNER else "NOT set"}')
+    heartbeat()
     for oid in queued('working'):           # interrupted by a restart: resume (finished steps are cached)
+        owner = claim_owner(oid)
+        if owner and owner != WORKER and alive(owner):
+            continue                        # another worker is making it right now
         log(f'{oid}: resuming')
         move(oid, 'working', 'paid')
     while True:
