@@ -272,6 +272,15 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   queue/review -> queue/paid. The worker passes it to Job(redo=...): those items get a cache-key suffix `r<round>` (really
   made again) and the notes appended to their prompt; everything else is reused. After the run it moves to
   `remake_history` (shown on the approve page). The approve page also links Try it.
+- Girls' belly, no AI (Nov 22, after Tess / Chewie / Baja all needed re-makes): `media.clean_female_belly` paints the
+  spot low between the hind legs of the SITTING keyframe with the belly fur above it, right after normalise_keyframes and
+  BEFORE any video starts from it (videos keep what they start with; patch_groin then copies a clean belly too). Only the
+  gap between the legs is touched (columns whose fur stops above the floor), colour comes from the belly above (paws /
+  floor shadow gave light dogs a dark smudge). Tested on Baja, Chewie and Chunky sits. If girls still fail, next lever:
+  Seedance 2.5 for girls' head turns (~+$10/girl, owner OK to offset by dropping tricks).
+- Wide clips (stand / play bow): `_keep_bottom_in_frame` shrinks frames slightly about the pet's top when the hold
+  scaling would push paws / chin past the bottom (only if the pet is whole in the video). Workers check in every minute
+  from a background thread (a pet takes > 1 h; the 10-min stale rule would otherwise let another server take it).
 - Girls' sitting pose (Nov 22): `female_rest_fix('sit')` makes the clean-belly edit of the SITTING still too (Baja's
   sit showed a faint spot). Only the still is patched (the keyframe isn't, so no video is remade); seated tricks and
   head-turn frames copy their belly from it. The play bow fallback prompt asks for the camera further back (Baja's ran

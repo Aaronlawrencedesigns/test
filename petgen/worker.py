@@ -14,7 +14,7 @@ Env (/etc/sidekicks.env): GPTPROTO_API_KEY, S3_ENDPOINT, S3_BUCKET, AWS_ACCESS_K
 AWS_SECRET_ACCESS_KEY, POSTMARK_TOKEN, OWNER_EMAIL, ALLOW_TEST_ORDERS, SIDEKICKS_WORK,
 PETGEN_WORKERS (clips made at once; default 3, each needs ~0.5-1 GB of memory).
 """
-import datetime, json, os, secrets, shutil, socket, subprocess, sys, time, traceback
+import datetime, json, os, secrets, shutil, socket, subprocess, sys, threading, time, traceback
 
 import boto3
 import botocore.exceptions
@@ -95,6 +95,17 @@ CLAIM_SETTLE = float(os.environ.get('CLAIM_SETTLE_SECONDS', '2'))
 
 def heartbeat():
     s3.put_object(Bucket=BUCKET, Key=f'workers/{WORKER}', Body=now().encode())
+
+
+def _heartbeat_forever():
+    # check in every minute even while a pet is being made (a pet takes over an hour; without this another
+    # server would think this one had died after 10 minutes and take its order)
+    while True:
+        try:
+            heartbeat()
+        except Exception:  # noqa: BLE001 - a missed check-in is retried next minute
+            pass
+        time.sleep(60)
 
 
 def alive(worker):
@@ -412,6 +423,7 @@ def main():
     os.makedirs(WORK, exist_ok=True)
     log(f'worker {WORKER} up: bucket {BUCKET}, test orders {"ON" if ALLOW_TEST else "off"}, owner email {"set" if OWNER else "NOT set"}')
     heartbeat()
+    threading.Thread(target=_heartbeat_forever, daemon=True).start()
     for oid in queued('working'):           # interrupted by a restart: resume (finished steps are cached)
         owner = claim_owner(oid)
         if owner and owner != WORKER and alive(owner):

@@ -348,12 +348,47 @@ def correct_clip(frames, start_still=None, end_still=None, spread=False, ramp=1.
             ws = sm(max(0.0, 1 - i / r)) if start_still is not None else 0.0
             we = sm(max(0.0, (i - (n - r) + 1) / r)) if end_still is not None else 0.0
             weights.append((ws, we))
-    for i, (ws, we) in enumerate(weights):
-        sc = 1 + (s0 - 1) * ws + (s1 - 1) * we
-        o = o0 * ws + o1 * we
+    tf = [(1 + (s0 - 1) * ws + (s1 - 1) * we, o0 * ws + o1 * we) for ws, we in weights]
+    if hold:
+        tf = _keep_bottom_in_frame(frames, tf)
+    for i, (sc, o) in enumerate(tf):
         if abs(sc - 1) > 1e-3 or abs(o).max() > 0.25:
             out[i] = affine(frames[i], sc, o)
     return out, {'scale_start': float(s0), 'scale_end': float(s1)}
+
+
+def _keep_bottom_in_frame(frames, tf, margin=6):
+    """Wide (whole-video) clips are scaled up onto the sitting pose; when the pet comes low and forward (a girl's play
+    bow: Baja's ran off the bottom in 58-69% of frames) that pushed its paws and chin past the bottom edge. Where the
+    pet is whole in the video, shrink those frames a little about the top of the pet, smoothly over time, so it stays
+    inside the frame. (A pet already cut off in the video itself is left alone: shrinking would show the cut.)"""
+    from scipy import ndimage
+    limit = OH - margin
+    ks = np.ones(len(frames))
+    anchors = []
+    for i, f in enumerate(frames):
+        sc, o = tf[i]
+        if not (f[..., 3] > 128).any():
+            anchors.append(None)
+            continue
+        x0, y0, x1, y1 = bbox(f)
+        anchors.append(np.array([sc * (x0 + x1) / 2 + o[0], sc * y0 + o[1]], np.float32))
+        bottom = sc * y1 + o[1]
+        if y1 < OH - 2 and bottom > limit:
+            top = sc * y0 + o[1]
+            ks[i] = max(0.7, (limit - top) / max(1.0, bottom - top))
+    if ks.min() >= 0.999:
+        return tf
+    ks = ndimage.minimum_filter1d(ks, 9)
+    ks = ndimage.gaussian_filter1d(ks, 4)
+    out = []
+    for i, (sc, o) in enumerate(tf):
+        k, a = ks[i], anchors[i]
+        if a is None or k >= 0.999:
+            out.append((sc, o))
+        else:
+            out.append((sc * k, k * np.asarray(o, np.float32) + (1 - k) * a))
+    return out
 
 
 def encode_webm(frames, dst, fps=24):
@@ -832,3 +867,71 @@ def webm_to_stacked_mp4(src, dst, crf=26):
                     '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', str(crf), '-preset', 'slow',
                     '-movflags', '+faststart', '-an'] + (['-frames:v', str(n)] if n else []) + [dst], check=True)
     return dst
+
+
+def clean_female_belly(rgba, strength=1.0):
+    """Female pets: paint the small area low between the hind legs of a FRONT-ON sitting pose with the surrounding
+    fur, without any AI (the image model kept adding male anatomy there by default: Tess, Chewie, Baja). Works on a
+    keyed RGBA frame; returns (rgba, mask). The fill = OpenCV inpainting from the fur around it (background pixels are
+    first replaced by nearby fur so no screen colour leaks in) plus a little of the original's fine texture so it
+    doesn't look smeared."""
+    import cv2
+    from scipy import ndimage
+    a = rgba[..., 3]
+    solid = a > 200
+    if not solid.any():
+        return rgba, None
+    x0, y0, x1, y1 = bbox(rgba)
+    w, h = x1 - x0, y1 - y0
+    # Only the GAP between the legs: columns whose lowest fur pixel stops clearly above the floor (the legs and paws
+    # reach the floor; the belly between them doesn't). Never touches a leg, even on an angled pose.
+    xs = np.arange(rgba.shape[1])
+    bottoms = np.full(rgba.shape[1], -1)
+    colany = solid.any(0)
+    bottoms[colany] = rgba.shape[0] - 1 - np.argmax(solid[::-1, colany], axis=0)
+    gap = colany & (bottoms < y1 - 0.035 * h) & (np.abs(xs - (x0 + x1) / 2) < 0.28 * w)
+    # the longest run of gap columns near the middle = the space between the hind legs
+    best, run = None, None
+    for x in range(x0, x1 + 1):
+        if gap[x]:
+            run = (run[0], x) if run else (x, x)
+        elif run:
+            if best is None or run[1] - run[0] > best[1] - best[0]:
+                best = run
+            run = None
+    if run and (best is None or run[1] - run[0] > best[1] - best[0]):
+        best = run
+    if best is None or best[1] - best[0] < 0.04 * w:
+        return rgba, None
+    gx0, gx1 = best
+    cx = (gx0 + gx1) / 2
+    belly = float(np.median(bottoms[gx0:gx1 + 1]))        # where the belly stops between the legs
+    cy = belly - 0.06 * h
+    rx, ry = max(0.5 * (gx1 - gx0), 0.05 * w) * strength, 0.08 * h * strength
+    yy, xx = np.mgrid[0:rgba.shape[0], 0:rgba.shape[1]]
+    ell = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+    mask = (ell <= 1.0) & solid & gap[None, :]
+    if mask.sum() < 30:
+        return rgba, None
+    rgb = rgba[..., :3].astype(np.float32)
+    # The fill takes its colour from the belly fur just ABOVE the spot, column by column (smoothed sideways): the
+    # paws and the floor shadow below are darker and gave light dogs a dark smudge.
+    top = int(max(y0, cy - 2.4 * ry)); bot = int(max(top + 2, cy - 1.05 * ry))
+    strip, sok = rgb[top:bot], solid[top:bot].astype(np.float32)
+    cnt = sok.sum(0)
+    colour = (strip * sok[..., None]).sum(0) / np.maximum(cnt, 1)[..., None]          # per column
+    have = cnt > 0
+    if not have[int(gx0):int(gx1) + 1].any():
+        return rgba, None
+    idx = np.arange(len(colour))
+    for c in range(3):                                                                 # fill columns without belly fur
+        colour[:, c] = np.interp(idx, idx[have], colour[have, c])
+    colour = ndimage.gaussian_filter1d(colour, max(2.0, 0.03 * w), axis=0)
+    filled = np.broadcast_to(colour[None], rgb.shape).astype(np.float32)
+    # keep a little fine fur texture (high-pass of the original, damped) and feather the edge of the patch
+    hp = rgb - cv2.GaussianBlur(rgb, (0, 0), 2.0)
+    soft = (ndimage.gaussian_filter(np.clip(1.0 - ell, 0, 1) * 1.6, 1.5).clip(0, 1) * gap[None, :])[..., None] * solid[..., None]
+    out_rgb = rgb * (1 - soft) + (filled + 0.35 * hp) * soft
+    out = rgba.copy()
+    out[..., :3] = out_rgb.clip(0, 255).astype(np.uint8)
+    return out, soft[..., 0]
