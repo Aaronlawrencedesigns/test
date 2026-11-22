@@ -270,7 +270,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Girls' Stand fallback: if a female pet's hind-legs Stand still shows male anatomy after its tries (even Seedance 2.5:
   Baja, a black Frenchie, Nov 22), `pipeline.action` makes a play bow instead (`plan.FEMALE_STAND_FALLBACK`) and the
   menu label becomes "Play bow" (manifest labels). The sit anatomy check flags all-black dogs falsely (shadow between legs).
-- QA report shows the order form choices (Dog/Cat · Boy/Girl · tail) and the customer's photos as JPEG: the worker
+- QA report AND Try-it page show the order form choices (Dog/Cat · Male/Female · tail; Try-it adds it when served, so every pet has it) and the customer's photos as JPEG: the worker
   uploads `orders/<id>/preview/photos/<view>.jpg` (iPhone HEIC only shows in Safari); the preview function prefers it.
 - Several workers can share the queue (Nov 22): an order is claimed first (`claims/<id>`, created with If-None-Match: *
   AND read back after `CLAIM_SETTLE_SECONDS` (2 s), because R2's REST API ignored the create-once header in a test; the
