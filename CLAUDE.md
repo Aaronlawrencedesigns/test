@@ -272,6 +272,13 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   menu label becomes "Play bow" (manifest labels). The sit anatomy check flags all-black dogs falsely (shadow between legs).
 - QA report shows the order form choices (Dog/Cat · Boy/Girl · tail) and the customer's photos as JPEG: the worker
   uploads `orders/<id>/preview/photos/<view>.jpg` (iPhone HEIC only shows in Safari); the preview function prefers it.
+- Several workers can share the queue (Nov 22): an order is claimed first (`claims/<id>`, created with If-None-Match: *
+  AND read back after `CLAIM_SETTLE_SECONDS` (2 s), because R2's REST API ignored the create-once header in a test; the
+  last writer wins and only it proceeds). Workers check in at `workers/<name>` every loop; a claim whose worker is silent
+  for `WORKER_STALE_SECONDS` (600) is freed. Orders go back to the worker named in order.json `worker` while it's alive
+  (its local cache has the clips: re-makes / outage retries aren't paid twice). On restart a worker only resumes its
+  own interrupted orders. Each server needs a unique `WORKER_NAME` (default: hostname). Tested with fake storage: 60
+  simultaneous races, 0 double claims, with and without create-once support.
 - Poop removed from the product Nov 20 (owner's call, cost): not in `plan.DEFAULT_ACTIONS` (10 tricks now; prompts kept),
   not in the app menu / Try-it / player idle tricks, site says 10 tricks. Older pets keep the clip, unused.
 - Safari (iPhone / iPad / Mac) can't play VP9 WebM with alpha (tricks showed a black/green box). Each clip also gets a
