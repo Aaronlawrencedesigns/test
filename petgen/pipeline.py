@@ -23,7 +23,7 @@ ROOT = os.path.dirname(HERE)
 
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
-                 max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None):
+                 max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None, redo_history=None):
         self.name, self.species, self.photos_in = name, species, photos
         self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
         self.sex = sex if sex in plan.SEX_NOTE else 'male'
@@ -38,6 +38,15 @@ class Job:
         self.redo_items = set(redo.get('items') or [])
         self.redo_notes = (redo.get('notes') or '').strip()[:500]
         self.redo_round = int(redo.get('round') or 0)
+        # Send-backs stick: a part keeps the version from the LAST round it was sent back in, also in later rounds
+        # where it isn't ticked (Baja, Nov 22: round 3 redid only the wiggle and silently went back to her old sitting
+        # pose from before round 2's fix). part -> (round, notes)
+        self.redo_latest = {}
+        for r in list(redo_history or []) + ([redo] if redo else []):
+            for part in r.get('items') or []:
+                rnd = int(r.get('round') or 0)
+                if rnd >= self.redo_latest.get(part, (0, ''))[0]:
+                    self.redo_latest[part] = (rnd, (r.get('notes') or '').strip()[:500])
         # videos cost ~5x an image: fewer retries, and a spending cap per pet (USD, estimated)
         self.video_retries = int(os.environ.get('PETGEN_VIDEO_RETRIES', '1'))
         self.budget = float(os.environ.get('PETGEN_BUDGET', '10'))
@@ -95,6 +104,18 @@ class Job:
     def _gen_path(self, key, attempt, ext):
         return f'{self.gen}/{key}{"" if attempt == 1 else f"__{attempt}"}.{ext}'
 
+    def _picks(self):
+        try:
+            return json.load(open(f'{self.work}/picks.json'))
+        except Exception:  # noqa: BLE001 - first run
+            return {}
+
+    def _remember_pick(self, key, attempt):
+        with self.lock:
+            picks = self._picks()
+            picks[key] = attempt
+            json.dump(picks, open(f'{self.work}/picks.json', 'w'), indent=1)
+
     def bowed_before(self):
         """Did this pet's previous run fall back to the play bow? (its manifest from that run says so)"""
         try:
@@ -103,18 +124,20 @@ class Job:
             return False
 
     def redo_part(self, base):
-        """The approve-page group a generated item belongs to (see plan.REDO_PARTS), if the owner asked to redo it."""
-        for part in self.redo_items:
+        """The approve-page group a generated item belongs to (see plan.REDO_PARTS), if the owner ever sent it back."""
+        for part in self.redo_latest:
             if any(base == p or base.startswith(p) for p in plan.REDO_PARTS.get(part, ())):
                 return part
         return None
 
     def _owner_redo(self, base, prompt):
         """(prompt with the owner's notes, cache-key suffix) for an item the owner sent back."""
-        if not self.redo_part(base):
+        part = self.redo_part(base)
+        if not part:
             return prompt, ''
-        note = f' Notes from a careful review of the last version: {self.redo_notes}' if self.redo_notes else ''
-        return prompt + note, f'r{self.redo_round}'
+        rnd, notes = self.redo_latest[part]
+        note = f' Notes from a careful review of the last version: {notes}' if notes else ''
+        return prompt + note, f'r{rnd}'
 
     def gen_image(self, key, prompt, refs, attempt=1):
         base = key
@@ -178,7 +201,22 @@ class Job:
     def with_retries(self, item, fn, video=False):
         """fn(attempt) -> (result, problems). Retries while problems, up to max_retries extra tries
         (plus plan.SEX_EXTRA_TRIES when the only problem left is female anatomy).
-        If every try fails, keeps the try with the fewest problems."""
+        If every try fails, keeps the try with the fewest problems.
+        The try that was kept is remembered (work/picks.json), so a later run of the same pet (a re-make) keeps it
+        instead of re-judging: the vision checks don't always agree with themselves, and Baja's re-make swapped her
+        sitting pose for a different try."""
+        pick_key = f'{item}|{self._owner_redo(item.split(" (")[0], "")[1]}'
+        picked = self._picks().get(pick_key)
+        if picked:
+            try:
+                res, problems, metrics = fn(picked)
+                self.record(item, picked, problems, {**(metrics or {}), 'kept_from_last_run': True})
+                self.final_problems[item] = problems
+                return res
+            except ProviderUnavailable:
+                raise
+            except Exception as e:  # noqa: BLE001 - the remembered try is gone: judge again
+                self.log(f'       {item}: remembered try {picked} unusable ({e}), choosing again')
         best = None
         tries = (min(self.max_retries, self.video_retries) if video else self.max_retries) + 1
         attempt, last = 0, tries
@@ -201,7 +239,7 @@ class Job:
             if problems:
                 self.hints[item] = problems       # the next try is told what went wrong (plan.retry_hint)
             if best is None or len(problems) < len(best[1]):
-                best = (res, problems)
+                best = (res, problems, attempt)
             if not problems:
                 break
             if (attempt == last and last == tries and plan.SEX_EXTRA_TRIES
@@ -210,6 +248,7 @@ class Job:
         if best is None:
             raise RuntimeError(f'{item}: nothing generated')
         self.final_problems[item] = best[1]
+        self._remember_pick(pick_key, best[2])
         return best[0]
 
     # ------------------------------------------------------------ steps
