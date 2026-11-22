@@ -50,6 +50,8 @@ class Job:
         self.rest_fix = {}    # female pets: rest pose -> (clean 640 still, mask) for belly patching
         self.qa = []          # {item, attempt, problems, metrics}
         self.spend = {}       # item -> est. $ actually spent on it this run (retries included; cached = $0)
+        self.final_problems = {}   # item -> problems of the try that was kept
+        self.stand_bow = False     # a girl whose Stand kept showing male anatomy gets a play bow instead
         self.hints = {}       # item -> problems of its last failed try (added to the next try's prompt)
         self.kf = {}          # keyframe name -> keyed 1024 RGBA
         self.urls = {}
@@ -178,6 +180,7 @@ class Job:
                 last += plan.SEX_EXTRA_TRIES
         if best is None:
             raise RuntimeError(f'{item}: nothing generated')
+        self.final_problems[item] = best[1]
         return best[0]
 
     # ------------------------------------------------------------ steps
@@ -523,6 +526,14 @@ class Job:
                                      max_bottom=plan.MAX_BOTTOM.get(key, 0.05)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
         src, fixed, pose_k = self.with_retries(key, attempt_fn, video=True)
+        if (key == 'stand' and self.sex == 'female' and self.species != 'cat'
+                and any('male anatomy' in p for p in self.final_problems.get(key, []))):
+            # Even Seedance 2.5 draws male parts on some girls standing on their hind legs (Baja, Nov 22: all 3 tries).
+            # A play bow faces the camera chest-down, which hides the belly: make that instead, labelled "Play bow".
+            self.log('       stand: male anatomy on every try -> play bow instead')
+            prompt = plan.FEMALE_STAND_FALLBACK
+            src, fixed, pose_k = self.with_retries('stand (play bow)', attempt_fn, video=True)
+            self.stand_bow = True
         if derive:     # the chosen clip defines the resting pose the next clips start from
             self.kf[f'{derive}_end'] = pose_k
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')
@@ -709,6 +720,8 @@ class Job:
         }
         manifest['features'] = plan.FEATURES
         labels = dict(plan.FEMALE_LABELS) if self.sex == 'female' else {}
+        if self.stand_bow:
+            labels['stand'] = 'Play bow'
         if self.species == 'cat':
             labels.update(plan.CAT_LABELS)                    # Meow / Happy purr / Kitten eyes
         if labels:

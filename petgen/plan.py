@@ -136,6 +136,12 @@ CAT_ACTIONS = {
 CAT_LABELS = {'bark': 'Meow', 'wag': 'Happy purr', 'puppy': 'Kitten eyes'}
 
 # menu names that differ from the default for female pets (the app and preview read manifest['labels'])
+# Fallback for girls whose hind-legs Stand still shows male anatomy after its tries (pipeline.action): a play bow
+# facing the camera hides the belly. The menu then says "Play bow".
+FEMALE_STAND_FALLBACK = ("The {species} gets up from sitting and does a big happy play bow facing the camera: it lowers its chest "
+                         "and front legs to the floor with its rear end raised behind it, stretching and looking playfully at the "
+                         "camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, "
+                         "looking at the camera.")
 FEMALE_LABELS = {}   # (was {'stand': 'Bow'} while girls did a play bow; Seedance 2.5 stands them up properly)
 
 FEMALE_ACTIONS = {
