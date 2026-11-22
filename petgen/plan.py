@@ -141,7 +141,9 @@ CAT_LABELS = {'bark': 'Meow', 'wag': 'Happy purr', 'puppy': 'Kitten eyes'}
 FEMALE_STAND_FALLBACK = ("The {species} gets up from sitting and does a big happy play bow facing the camera: it lowers its chest "
                          "and front legs to the floor with its rear end raised behind it, stretching and looking playfully at the "
                          "camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, "
-                         "looking at the camera.")
+                         "looking at the camera. The camera is further back and stays still: the whole {species}, from its ears to "
+                         "its front paws and chin, stays well inside the frame with empty space below it, even at the lowest "
+                         "point of the bow.")   # (Baja's first bows ran off the bottom in 56-69% of frames)
 FEMALE_LABELS = {}   # (was {'stand': 'Bow'} while girls did a play bow; Seedance 2.5 stands them up properly)
 
 FEMALE_ACTIONS = {

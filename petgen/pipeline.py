@@ -249,6 +249,10 @@ class Job:
         self.still['lie'] = self.to_still(lie)
         media.save_still(sit, f'{self.pet}/stills/sit.webp')
         media.save_still(lie, f'{self.pet}/stills/lie.webp')
+        # girls: a clean-belly edit of the SITTING still too (Baja, Nov 22: a light spot between the legs showed in
+        # the sitting pose). Only the still is patched, not the keyframe, so no video is made again; the seated tricks
+        # and head-turn frames copy their belly from this still (media.patch_groin), so they get the clean one.
+        self.female_rest_fix('sit', kf_key='sit', src=f'{self.kfdir}/kf_sit.png')
 
     def to_still(self, k1024):
         return np.asarray(Image.fromarray(k1024).crop(media.CROP_1024).resize(media.OUT_SIZE, Image.LANCZOS))
@@ -329,13 +333,13 @@ class Job:
             out.append('shows male anatomy (this pet is female)')
         return out
 
-    def female_rest_fix(self, name):
+    def female_rest_fix(self, name, kf_key=None, src=None):
         """Female pets: an image edit of the resting pose with a female belly; the changed area becomes
         a patch for this pose's still and for the frames of lying / sleeping clips."""
-        if self.sex != 'female' or name not in self.still:
+        if self.sex != 'female' or name not in self.still or self.species == 'cat':
             return
-        orig_k = self.kf[f'{name}_end']
-        src = f'{self.kfdir}/kf_{name}_end.png'
+        orig_k = self.kf[kf_key or f'{name}_end']
+        src = src or f'{self.kfdir}/kf_{name}_end.png'
 
         def attempt_fn(attempt):
             p = self.gen_image(f'female_{name}', plan.FEMALE_EDIT, [src], attempt)

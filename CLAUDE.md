@@ -267,6 +267,10 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   Second-pet email: approve looks up `customers/<sha256(email)>` (delivered order ids, written on approve; backfilled
   Nov 20) and only then adds the "Adding to your pack?" paragraph (update the app, Menu > "Add Pet" (reads Add 2nd /
   3rd Pet… by how many pets are IN THE APP, which can differ from orders per email, so the email names no number), enter the code).
+- Girls' sitting pose (Nov 22): `female_rest_fix('sit')` makes the clean-belly edit of the SITTING still too (Baja's
+  sit showed a faint spot). Only the still is patched (the keyframe isn't, so no video is remade); seated tricks and
+  head-turn frames copy their belly from it. The play bow fallback prompt asks for the camera further back (Baja's ran
+  off the bottom). With this every pose of a girl has a belly safeguard.
 - Girls' Stand fallback: if a female pet's hind-legs Stand still shows male anatomy after its tries (even Seedance 2.5:
   Baja, a black Frenchie, Nov 22), `pipeline.action` makes a play bow instead (`plan.FEMALE_STAND_FALLBACK`) and the
   menu label becomes "Play bow" (manifest labels). The sit anatomy check flags all-black dogs falsely (shadow between legs).
