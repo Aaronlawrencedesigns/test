@@ -226,7 +226,10 @@ def make(oid):
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
               workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
-              sex=o.get('sex') or 'male', redo=o.get('remake'), redo_history=o.get('remake_history'))
+              sex=o.get('sex') or 'male', redo=o.get('remake'), redo_history=o.get('remake_history'),
+              # owner's test runs (not customer orders): order.json experiment = {sit: 'angled', actions: [...]}
+              sit_style=(o.get('experiment') or {}).get('sit', 'front'),
+              actions=(o.get('experiment') or {}).get('actions'))
     job.run()
     ok, failed, warn, cost = verdict(job)
 
