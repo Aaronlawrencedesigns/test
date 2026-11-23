@@ -133,7 +133,9 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
   SmartScreen "More info -> Run anyway" tip for Windows); /download picks by user agent (?os= forces). Copy, FAQ,
   pricing, legal and the add page say Mac or Windows (macOS 12+, Windows 10/11).
 - Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
-  unless asked.
+  unless asked. PRE-LAUNCH REMINDER (owner, Nov 23): before launch, remind the owner to try a cheaper head-tracking
+  version side by side (head tracking is ~$8 of a ~$13-15 pet: 17 head-turn videos at $0.40 + gaze images; e.g. fewer
+  tilted-row clips could save ~$4/pet). Test first (on Chunky's or Charlie's assets), compare, owner decides.
 
 ## Desktop Sidekicks: how an order flows (all live)
 1. **Site** (`site/`, Cloudflare Pages project `desktopsidekicks`, root `site`, builds on every push to
