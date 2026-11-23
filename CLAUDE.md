@@ -140,7 +140,7 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
 ## Desktop Sidekicks: how an order flows (all live)
 1. **Site** (`site/`, Cloudflare Pages project `desktopsidekicks`, root `site`, builds on every push to
    main; desktopsidekicks.com). Create-your-pet form → `functions/api/order.js` saves photos to the
-   private R2 bucket `desktopsidekicks-orders` and opens Stripe Checkout ($20) → Stripe webhook
+   private R2 bucket `desktopsidekicks-orders` and opens Stripe Checkout ($25) → Stripe webhook
    (`functions/api/stripe-webhook.js`) marks it paid, writes `queue/paid/<id>`, emails a confirmation
    (Postmark, from hello@desktopsidekicks.com). Stripe is still in TEST mode (sandbox key).
 2. **Worker** (`petgen/worker.py`, DigitalOcean droplet `sidekicks-worker` 64.225.116.98, systemd
@@ -200,7 +200,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Retry cost: videos get 2 tries (`PETGEN_VIDEO_RETRIES`=1), images 3; a clip failing only the
   female-anatomy check gets one extra try with positive wording (`SEX_NOTE_STRONG`, attempt >= 3).
   Spending cap per pet run `PETGEN_BUDGET` (default $10, est.; the owner's 'Needs a look' threshold): over it, no more retries; best try kept
-  and the pet goes to the owner as Needs a look. Price stays $20 for launch.
+  and the pet goes to the owner as Needs a look. Price: $25 (owner, Nov 23; was $20: ~$14 average AI cost left ~$5/pet).
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - Female pets: Stand, Poop, Lie down and Get up are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
   `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind
