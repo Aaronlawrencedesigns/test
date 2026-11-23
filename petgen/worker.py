@@ -199,6 +199,13 @@ def make(oid):
     log(f'{oid}: making {name} ({o.get("species")})')
     move(oid, 'paid', 'working')
     o.update(status='making', started_at=now(), worker=WORKER)
+    if not o.get('sit_style'):
+        # girl dogs sit at a gentle angle so a front leg hides the belly (owner, Nov 23, after Charlie's and Baja's
+        # tests). Saved on the order so re-makes keep it; pets made before (no sit_style, already have videos) stay
+        # front-on, otherwise a re-make would remake every video.
+        exp = (o.get('experiment') or {}).get('sit')
+        new_girl = o.get('sex') == 'female' and (o.get('species') or 'dog') != 'cat' and not (o.get('remake') or o.get('remake_history') or o.get('made_at'))
+        o['sit_style'] = exp or ('angled' if new_girl else 'front')
     put_order(o)
 
     d = os.path.join(WORK, oid)
@@ -234,7 +241,7 @@ def make(oid):
               workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
               sex=o.get('sex') or 'male', redo=o.get('remake'), redo_history=o.get('remake_history'),
               # owner's test runs (not customer orders): order.json experiment = {sit: 'angled', actions: [...]}
-              sit_style=(o.get('experiment') or {}).get('sit', 'front'),
+              sit_style=o['sit_style'],
               actions=(o.get('experiment') or {}).get('actions'), sit_image=sit_image)
     job.run()
     ok, failed, warn, cost = verdict(job)
