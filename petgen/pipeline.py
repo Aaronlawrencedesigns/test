@@ -24,7 +24,7 @@ ROOT = os.path.dirname(HERE)
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
                  max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None, redo_history=None,
-                 sit_style='front'):
+                 sit_style='front', sit_image=None):
         self.name, self.species, self.photos_in = name, species, photos
         self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
         self.sex = sex if sex in plan.SEX_NOTE else 'male'
@@ -33,6 +33,7 @@ class Job:
         self.actions = plan.DEFAULT_ACTIONS if actions is None else actions   # [] = head tracking only (test runs)
         # 'angled': sitting at a slight angle (experiment for girls: the near legs hide the belly)
         self.sit_style = 'angled' if sit_style == 'angled' else 'front'
+        self.sit_image = sit_image   # test runs: the owner's picked sitting image is used as try 1 (no image made)
         self.rows = rows or plan.ROWS
         self.max_retries, self.workers = max_retries, workers
         # owner's "send back for a re-make" (approve page): which parts to make again, their notes, and which round
@@ -152,6 +153,10 @@ class Job:
         self.image_path[(base, attempt)] = p
         if os.path.exists(p):
             with self.lock: self.cost['cached'] += 1
+            return p
+        if base == 'green_sit' and attempt == 1 and self.sit_image:
+            shutil.copyfile(self.sit_image, p)
+            self.log(f'image  {key}: using the picked sitting image')
             return p
         self.log(f'image  {key} (try {attempt})')
         self.provider.image(key if attempt == 1 else f'{key}__{attempt}', self.fill(prompt), refs, p)

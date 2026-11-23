@@ -223,13 +223,19 @@ def make(oid):
         except Exception as e:   # never block a pet over its preview photos
             log(f'{oid}: preview photo {v} failed: {e}')
 
+    # owner's test runs can pin the sitting image (order.json experiment.sit_image = an R2 key)
+    sit_image = None
+    if (o.get('experiment') or {}).get('sit_image'):
+        sit_image = os.path.join(d, 'sit_pick' + os.path.splitext(o['experiment']['sit_image'])[1])
+        s3.download_file(BUCKET, o['experiment']['sit_image'], sit_image)
+
     job = Job(name, photos, os.path.join(d, 'out'), GPTProtoProvider(log=lambda m: log(f'{oid}: {m}')),
               S3Uploader(prefix=f'orders/{oid}/kf'), species=o.get('species') or 'dog', log=lambda m: log(f'{oid}: {m}'),
               workers=int(os.environ.get('PETGEN_WORKERS', '3')), tail=o.get('tail') or 'yes',
               sex=o.get('sex') or 'male', redo=o.get('remake'), redo_history=o.get('remake_history'),
               # owner's test runs (not customer orders): order.json experiment = {sit: 'angled', actions: [...]}
               sit_style=(o.get('experiment') or {}).get('sit', 'front'),
-              actions=(o.get('experiment') or {}).get('actions'))
+              actions=(o.get('experiment') or {}).get('actions'), sit_image=sit_image)
     job.run()
     ok, failed, warn, cost = verdict(job)
 
