@@ -311,8 +311,10 @@ class Job:
             self.kf['raw_' + key.split('_')[1]] = k
         sit, lie = media.normalise_keyframes(self.kf['raw_sit'], self.kf['raw_lie'])
         # a pet that already has videos (a re-make) keeps its sitting keyframe unless the owner sent the sitting pose
-        # back: changing it would make every video again (~$17 for Baja just to re-process a play bow)
-        remaking = any(f.endswith('.mp4') for f in os.listdir(self.gen)) and 'sit' not in self.redo_items
+        # back: changing it would make every video again (~$17 for Baja just to re-process a play bow). A sitting pose
+        # sent back in ANY round (redo_latest, not just this round's ticks) was cleaned when it was made, and its videos
+        # started from the cleaned keyframe, so it's cleaned again here (Baja round 5 skipped it and remade everything)
+        remaking = any(f.endswith('.mp4') for f in os.listdir(self.gen)) and 'sit' not in self.redo_latest
         if self.sex == 'female' and self.species != 'cat' and not remaking:
             # the image model adds male anatomy low between the hind legs by default (Tess, Chewie, Baja): paint that
             # spot with the belly fur above it, without AI, BEFORE any video starts from this pose
