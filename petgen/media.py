@@ -196,6 +196,26 @@ def key_file(path, size=S):
     return key_rgb(np.asarray(im))
 
 
+def sit_turn(rgba):
+    """How far a sitting pet's body is turned, from its silhouette: sideways offset between the head (top 30%) and
+    the body (bottom 45%), over the pet's height, after an opening that drops the tail and thin legs. Measured Nov 23:
+    front-on sits 0.01-0.02, Charlie's good angled sit 0.17, Baja's almost side-on one 0.30."""
+    from PIL import ImageFilter
+    a = Image.fromarray(((np.asarray(rgba)[..., 3] > 128) * 255).astype(np.uint8))
+    ys = np.nonzero(np.asarray(a))[0]
+    if not len(ys):
+        return 0.0
+    y0, h = ys.min(), max(1, ys.max() - ys.min())
+    k = int(h * 0.12) | 1
+    m = np.asarray(a.filter(ImageFilter.MinFilter(k)).filter(ImageFilter.MaxFilter(k))) > 0
+
+    def cx(f0, f1):
+        xs = np.nonzero(m[int(y0 + f0 * h):int(y0 + f1 * h)])[1]
+        return xs.mean() if len(xs) else None
+    hx, bx = cx(0, 0.3), cx(0.55, 1.0)
+    return 0.0 if hx is None or bx is None else float(abs(bx - hx) / h)
+
+
 def keyframe_ok(st):
     problems = []
     if not 0.03 <= st['area'] <= 0.65:

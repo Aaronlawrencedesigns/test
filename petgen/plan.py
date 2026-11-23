@@ -32,15 +32,22 @@ GREEN_SIT = ("Recreate the first image: the same {species}, sitting perfectly st
 # EXPERIMENT (owner, Nov 23): girls sitting at a slight angle, so the near legs hide the belly (the owner's Chewie,
 # sitting angled, never showed male anatomy). Tested on Charlie's photos: body turned, head to the camera, belly hidden.
 # Used only by test orders with order.json experiment.sit = 'angled' until head tracking from it has been judged.
-GREEN_SIT_ANGLED = ("Recreate the first image: the same {species}, sitting calmly and upright, with its body turned about "
-                    "20 degrees to its right (a slight three-quarter view), while its head turns back to face the camera "
-                    "and it looks straight into the lens. Its near front leg stands straight in front of its chest and "
-                    "belly, and its hind legs are tucked neatly beside its body, like a dog sitting for a portrait at a "
-                    "slight angle. Same size and position in the frame, same lighting. Only change the background: replace "
-                    "the entire background and floor with a perfectly flat, uniform chroma-key green screen (pure green "
-                    "#00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep the {species} "
-                    "photorealistic with natural colours (no green tint). Use the other reference photos only to keep the "
-                    "markings accurate. No text, no props. Square image.")
+GREEN_SIT_ANGLED = ("Recreate the first image: the same {species}, sitting calmly and upright in a gentle three-quarter "
+                    "front view: its body is turned only about 20 degrees to its right, so its chest still faces mostly "
+                    "toward the camera, both shoulders and both front legs are clearly visible, and only a little of one "
+                    "side of its body shows. It is much closer to facing the camera than to a side profile. Its head faces "
+                    "the camera and it looks straight into the lens. Its near front leg stands straight in front of its "
+                    "chest and belly, and its hind legs are tucked neatly beside its body, like a dog sitting for a "
+                    "portrait at a slight angle. Same size and position in the frame, same lighting. Only change the "
+                    "background: replace the entire background and floor with a perfectly flat, uniform chroma-key green "
+                    "screen (pure green #00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. "
+                    "Keep the {species} photorealistic with natural colours (no green tint). Use the other reference "
+                    "photos only to keep the markings accurate. No text, no props. Square image.")
+
+# Angled sits must stay a gentle three-quarter view like Charlie's (Nov 23): Baja's came out almost side-on and then her
+# head could only turn one way. media.sit_turn measures it (the vision model called both 45 degrees): Charlie 0.17,
+# Baja 0.30, front-on 0.02.
+SIT_TURN_RANGE = (0.08, 0.23)
 
 GREEN_LIE = ("Same {species} as in the first image, photorealistic, same camera position, same distance and framing, "
              "same lighting. It is now lying down on its belly in a relaxed sphinx pose, front legs stretched forward, "
@@ -116,6 +123,10 @@ SIT_CHECK = ('Look at this photo of a {species} on a green background. Answer on
 
 # Retries learn from the failed try: each problem the QA found adds a fix to the next try's prompt.
 RETRY_HINTS = [
+    (('side profile',),
+     " The body is turned only slightly, a gentle three-quarter front view: the chest faces the camera and both front legs are fully visible, far less side-on than a profile."),
+    (('not turned at an angle',),
+     " The body is clearly turned about 20 degrees to its right, so one front leg stands slightly in front of the chest and belly."),
     (('cut off', 'frame edge', 'paws cut off'),
      " The camera is further back: the whole {species}, from the tips of its ears to its paws, stays well inside the frame with empty space on every side, even at its tallest or most stretched moment."),
     (('pushes in', 'zoom', 'grows'),
