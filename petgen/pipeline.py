@@ -308,6 +308,14 @@ class Job:
                     ans = self.provider.ask_image(p, plan.SIT_CHECK.replace('{species}', self.species)) or {}
                     if ans.get('front_on') is False and self.sit_style == 'front':
                         problems.append('not sitting straight facing the camera (turned to one side)')
+                    if self.sit_style == 'angled':   # a gentle three-quarter view, never side-on (Baja's test)
+                        turn = media.sit_turn(k)
+                        lo, hi = plan.SIT_TURN_RANGE
+                        self.log(f'       {key} {attempt}: body turn {turn:.2f} (want {lo}-{hi})')
+                        if turn > hi:
+                            problems.append(f'turned too far: close to a side profile ({turn:.2f})')
+                        elif turn < lo:
+                            problems.append(f'not turned at an angle (facing the camera squarely, {turn:.2f})')
                     if ans.get('artifacts') is True:
                         problems.append('image glitch: dark patch or smudge on the pet')
                 return (p, k, attempt), problems, st
