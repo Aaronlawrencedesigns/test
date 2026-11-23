@@ -29,6 +29,19 @@ GREEN_SIT = ("Recreate the first image: the same {species}, sitting perfectly st
              "the {species} photorealistic with natural colours (no green tint). Use the other reference photos only to "
              "keep the markings accurate. No text, no props. Square image.")
 
+# EXPERIMENT (owner, Nov 23): girls sitting at a slight angle, so the near legs hide the belly (the owner's Chewie,
+# sitting angled, never showed male anatomy). Tested on Charlie's photos: body turned, head to the camera, belly hidden.
+# Used only by test orders with order.json experiment.sit = 'angled' until head tracking from it has been judged.
+GREEN_SIT_ANGLED = ("Recreate the first image: the same {species}, sitting calmly and upright, with its body turned about "
+                    "20 degrees to its right (a slight three-quarter view), while its head turns back to face the camera "
+                    "and it looks straight into the lens. Its near front leg stands straight in front of its chest and "
+                    "belly, and its hind legs are tucked neatly beside its body, like a dog sitting for a portrait at a "
+                    "slight angle. Same size and position in the frame, same lighting. Only change the background: replace "
+                    "the entire background and floor with a perfectly flat, uniform chroma-key green screen (pure green "
+                    "#00B140), evenly lit, with no gradient, no texture, no floor line and no shadow. Keep the {species} "
+                    "photorealistic with natural colours (no green tint). Use the other reference photos only to keep the "
+                    "markings accurate. No text, no props. Square image.")
+
 GREEN_LIE = ("Same {species} as in the first image, photorealistic, same camera position, same distance and framing, "
              "same lighting. It is now lying down on its belly in a relaxed sphinx pose, front legs stretched forward, "
              "head up, awake, looking straight into the camera, mouth closed, whole body inside the frame, centred. " + GREEN_BG)

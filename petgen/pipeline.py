@@ -23,13 +23,16 @@ ROOT = os.path.dirname(HERE)
 
 class Job:
     def __init__(self, name, photos, out, provider, uploader, species='dog', actions=None, rows=None,
-                 max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None, redo_history=None):
+                 max_retries=2, workers=6, log=print, tail='yes', sex='male', redo=None, redo_history=None,
+                 sit_style='front'):
         self.name, self.species, self.photos_in = name, species, photos
         self.tail = plan.TAILS.get(tail, plan.TAILS['yes'])
         self.sex = sex if sex in plan.SEX_NOTE else 'male'
         self.out = os.path.abspath(out)
         self.provider, self.uploader = provider, uploader
-        self.actions = actions or plan.DEFAULT_ACTIONS
+        self.actions = plan.DEFAULT_ACTIONS if actions is None else actions   # [] = head tracking only (test runs)
+        # 'angled': sitting at a slight angle (experiment for girls: the near legs hide the belly)
+        self.sit_style = 'angled' if sit_style == 'angled' else 'front'
         self.rows = rows or plan.ROWS
         self.max_retries, self.workers = max_retries, workers
         # owner's "send back for a re-make" (approve page): which parts to make again, their notes, and which round
@@ -283,6 +286,8 @@ class Job:
     def images(self):
         refs = {'photos': None}
         for key, ref_names, prompt in plan.image_items():
+            if key == 'green_sit' and self.sit_style == 'angled':
+                prompt = plan.GREEN_SIT_ANGLED
             def ref_paths():
                 ps = []
                 for r in ref_names:
@@ -301,7 +306,7 @@ class Job:
                     problems += self.anatomy_problems([k], f'{key}_{attempt}', picks=(0,))
                 if not problems and key == 'green_sit':   # straight-on like Chunky, no image glitches
                     ans = self.provider.ask_image(p, plan.SIT_CHECK.replace('{species}', self.species)) or {}
-                    if ans.get('front_on') is False:
+                    if ans.get('front_on') is False and self.sit_style == 'front':
                         problems.append('not sitting straight facing the camera (turned to one side)')
                     if ans.get('artifacts') is True:
                         problems.append('image glitch: dark patch or smudge on the pet')
@@ -315,7 +320,7 @@ class Job:
         # sent back in ANY round (redo_latest, not just this round's ticks) was cleaned when it was made, and its videos
         # started from the cleaned keyframe, so it's cleaned again here (Baja round 5 skipped it and remade everything)
         remaking = any(f.endswith('.mp4') for f in os.listdir(self.gen)) and 'sit' not in self.redo_latest
-        if self.sex == 'female' and self.species != 'cat' and not remaking:
+        if self.sex == 'female' and self.species != 'cat' and not remaking and self.sit_style == 'front':
             # the image model adds male anatomy low between the hind legs by default (Tess, Chewie, Baja): paint that
             # spot with the belly fur above it, without AI, BEFORE any video starts from this pose
             sit, belly = media.clean_female_belly(sit)
