@@ -181,7 +181,11 @@ FEMALE_ACTIONS = {
 ANGLED_SIT_END = (" It ends in exactly the sitting pose of the last image: sitting upright with its body turned slightly "
                   "to its right, a gentle three-quarter view with its near front leg in front of its chest and belly, "
                   "head facing the camera.")
-ANGLED_ENDS = {'wake_up': ANGLED_SIT_END, 'get_up': ANGLED_SIT_END}
+# Seedance 2.5's wake_up stretched Baja's back legs past the frame edge (Nov 24, both tries): a small stretch, camera back.
+ANGLED_WAKE_STRETCH = (" Its stretch is small and compact: it pushes its front paws forward a little while its back legs stay "
+                       "tucked under its body. The camera is further back and stays still, so the whole {species}, from its "
+                       "ears to the tips of its paws, stays well inside the frame with empty space on every side the whole time.")
+ANGLED_ENDS = {'wake_up': ANGLED_WAKE_STRETCH + ANGLED_SIT_END, 'get_up': ANGLED_SIT_END}
 REST_CLIPS = {'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up'}
 FEMALE_EDIT = ("Edit this photo. Keep EVERYTHING identical: the same {species}, same pose, same position, same size "
                "and scale, same lighting, same flat chroma-key green background. Change only one small detail: "
