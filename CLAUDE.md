@@ -329,6 +329,6 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   judge the angle. The worker saves order.json `sit_style` on first make (girls made before stay 'front' so re-makes
   don't remake every video). Angled girls skip the belly clean-up of the sitting keyframe; head turns work both ways
   from the gentle angle (a side-on sit only turned one way). wake_up / get_up prompts end in the angled sit
-  (`plan.ANGLED_ENDS`; Baja's wake_up ended front-on, even told to end angled, so angled girls' wake_up is made with Seedance 2.5, `plan.HQ_CLIPS_ANGLED`, ~+$0.40/girl). Girls' Stand is always the play bow now (the hind-legs Stand
+  (`plan.ANGLED_ENDS`; Baja's wake_up ended front-on, even told to end angled, so angled girls' wake_up is made with Seedance 2.5, `plan.HQ_CLIPS_ANGLED`, ~+$0.60/girl, $1.00/try; its stretch ran off the frame on Baja, so the prompt asks for a small stretch, `plan.ANGLED_WAKE_STRETCH`). Girls' Stand is always the play bow now (the hind-legs Stand
   showed male anatomy on most girls even with Seedance 2.5). Test runs: order.json `experiment` = {sit, actions: [] for
   head tracking only, sit_image: R2 key of a picked sitting image}. Baja's full angled test: tricks $11.84 + head $8.01.
