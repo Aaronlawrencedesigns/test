@@ -571,6 +571,8 @@ class Job:
             prompt = plan.CAT_ACTIONS[key]
         elif self.sex == 'female' and key in plan.FEMALE_ACTIONS:
             prompt = plan.FEMALE_ACTIONS[key]
+        if self.sit_style == 'angled' and key in plan.ANGLED_ENDS:   # end in the angled sit, not front-on
+            prompt = prompt + plan.ANGLED_ENDS[key]
         end_name = plan.ACTION_END_STILL.get(key, 'sit')
         derive = opts.get('derive')
         if opts.get('sleep_edit'):
@@ -626,21 +628,15 @@ class Job:
                                      max_edge=plan.MAX_EDGE.get(key, 0.02),
                                      max_bottom=plan.MAX_BOTTOM.get(key, 0.05)) + problems_extra
             return (src, fixed, pose_k), problems, metrics
-        if key == 'stand' and self.sex == 'female' and self.species != 'cat' and self.bowed_before():
-            # this girl already fell back to the play bow: a re-make goes straight to it (no paid Stand tries)
+        if key == 'stand' and self.sex == 'female' and self.species != 'cat':
+            # girls do a play bow (facing the camera, chest down: the belly stays hidden). The hind-legs Stand showed
+            # male anatomy on most girls even with Seedance 2.5 (Baja, Nov 22 and 23: front-on AND angled sit), and
+            # each failed try cost ~$1 before the fallback to the bow anyway (owner, Nov 23).
             prompt = plan.FEMALE_STAND_FALLBACK
             src, fixed, pose_k = self.with_retries('stand (play bow)', attempt_fn, video=True)
             self.stand_bow = True
         else:
             src, fixed, pose_k = self.with_retries(key, attempt_fn, video=True)
-        if (not self.stand_bow and key == 'stand' and self.sex == 'female' and self.species != 'cat'
-                and any('male anatomy' in p for p in self.final_problems.get(key, []))):
-            # Even Seedance 2.5 draws male parts on some girls standing on their hind legs (Baja, Nov 22: all 3 tries).
-            # A play bow faces the camera chest-down, which hides the belly: make that instead, labelled "Play bow".
-            self.log('       stand: male anatomy on every try -> play bow instead')
-            prompt = plan.FEMALE_STAND_FALLBACK
-            src, fixed, pose_k = self.with_retries('stand (play bow)', attempt_fn, video=True)
-            self.stand_bow = True
         if derive:     # the chosen clip defines the resting pose the next clips start from
             self.kf[f'{derive}_end'] = pose_k
             media.save_green(pose_k, f'{self.kfdir}/kf_{derive}_end.png')

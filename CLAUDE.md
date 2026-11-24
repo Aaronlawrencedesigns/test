@@ -322,3 +322,13 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
   % of pets needing a retry, extra tries per pet. qa.json now has `spend` (item -> $ actually spent this run, from
   pipeline `self.spend`); older pets are estimated from their tries at list prices (marked *).
 - App: hovering the pet shows a "Menu" pill centred on its body (engine option `dogApi.menuButton`); the menu starts with "✕ Close menu".
+- Girls sit at an angle (owner, Nov 23, after test runs on Charlie and Baja): new girl dogs get `plan.GREEN_SIT_ANGLED`, a
+  gentle three-quarter sit (body ~20 degrees to its right, head to the camera, near front leg hiding the belly; Chewie's
+  own photo gave the idea). `media.sit_turn` (head-to-body offset of the silhouette: front 0.02, Charlie 0.17, Baja's
+  too-side-on try 0.30) must be in `plan.SIT_TURN_RANGE` (0.08-0.23) or the sit is remade; the vision model couldn't
+  judge the angle. The worker saves order.json `sit_style` on first make (girls made before stay 'front' so re-makes
+  don't remake every video). Angled girls skip the belly clean-up of the sitting keyframe; head turns work both ways
+  from the gentle angle (a side-on sit only turned one way). wake_up / get_up prompts end in the angled sit
+  (`plan.ANGLED_ENDS`; Baja's wake_up ended front-on). Girls' Stand is always the play bow now (the hind-legs Stand
+  showed male anatomy on most girls even with Seedance 2.5). Test runs: order.json `experiment` = {sit, actions: [] for
+  head tracking only, sit_image: R2 key of a picked sitting image}. Baja's full angled test: tricks $11.84 + head $8.01.

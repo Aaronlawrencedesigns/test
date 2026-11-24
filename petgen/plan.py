@@ -160,8 +160,8 @@ CAT_ACTIONS = {
 CAT_LABELS = {'bark': 'Meow', 'wag': 'Happy purr', 'puppy': 'Kitten eyes'}
 
 # menu names that differ from the default for female pets (the app and preview read manifest['labels'])
-# Fallback for girls whose hind-legs Stand still shows male anatomy after its tries (pipeline.action): a play bow
-# facing the camera hides the belly. The menu then says "Play bow".
+# Girls' Stand (pipeline.action, since Nov 23 for every girl dog): a play bow facing the camera hides the belly. The
+# menu then says "Play bow". (It was the fallback after the hind-legs Stand showed male anatomy on every try.)
 FEMALE_STAND_FALLBACK = ("The {species} gets up from sitting and does a big happy play bow facing the camera: it lowers its chest "
                          "and front legs to the floor with its rear end raised behind it, stretching and looking playfully at the "
                          "camera, then straightens up and sits back down in exactly the same calm sitting pose as the start, "
@@ -176,6 +176,12 @@ FEMALE_ACTIONS = {
     'get_up': "The {species} gets up from lying down by turning toward the camera as it rises, ending sitting upright and facing the camera, looking straight at the camera.",
     'wag': "The {species} gets excited and happy while staying firmly seated on its bottom the whole time (it never stands up): it wiggles its shoulders and whole body side to side, opens its mouth into a happy pant with its tongue out, ears perk, then closes its mouth and settles back into exactly the same calm sitting pose as the start, looking at the camera.",
 }
+# Girls sit at a gentle angle (owner, Nov 23). Clips that end sitting must end in THAT pose: Baja's wake_up ended
+# front-on (and the video model ignores last_image for subtle pose differences), a visible jump back to her angled sit.
+ANGLED_SIT_END = (" It ends in exactly the sitting pose of the last image: sitting upright with its body turned slightly "
+                  "to its right, a gentle three-quarter view with its near front leg in front of its chest and belly, "
+                  "head facing the camera.")
+ANGLED_ENDS = {'wake_up': ANGLED_SIT_END, 'get_up': ANGLED_SIT_END}
 REST_CLIPS = {'lie_down', 'get_up', 'fall_asleep', 'sleep_loop', 'wake_up'}
 FEMALE_EDIT = ("Edit this photo. Keep EVERYTHING identical: the same {species}, same pose, same position, same size "
                "and scale, same lighting, same flat chroma-key green background. Change only one small detail: "
