@@ -273,7 +273,6 @@
   .trick.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .trick svg { width: 14px; height: 14px; }
   /* arranged in an arc around his head, left side (he lives in the corner) */
-  .trick[data-act="stand"] { left: 54%; top: 4%; }
   .trick[data-act="sit"]   { left: 30%; top: 10%; }
   .trick[data-act="wag"]   { left: 12%; top: 21%; }
   .trick[data-act="feed"]  { left: 1%;  top: 34%; }
@@ -386,7 +385,6 @@
     <iframe id="pet-frame" src="pet.html" title="Chunky, a demo Desktop Sidekick" tabindex="-1"></iframe>
     <div class="hello"><b>Hi, I'm Chunky.</b>I'll follow your mouse. Try a trick or feed me a treat.<svg viewBox="0 0 60 24" aria-hidden="true"><path d="M2 4c18 0 34 4 50 15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M45 20l8 0-3-7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div class="tricks" role="group" aria-label="Tricks for Chunky">
-      <button type="button" class="trick" data-act="stand">Stand</button>
       <button type="button" class="trick" data-act="sit">Sit</button>
       <button type="button" class="trick" data-act="wag">Happy wiggle</button>
     <button type="button" class="trick" data-act="feed">Feed</button>
@@ -405,7 +403,7 @@
       <p class="muted">Your pet isn't a cartoon or a 3D model. Every frame is photo-real footage generated from your photos, then checked by a quality pipeline before it's sent to you.</p>
       <div class="files">
         <div class="file"><span class="n">head_tracking/</span><h3>Follows your mouse</h3><p class="muted">5 head heights &times; 33 positions, one real frame at a time, so it never looks blurry.</p></div>
-        <div class="file"><span class="n">tricks/</span><h3>10 animations</h3><p class="muted">Sit, lie down, sleep, stand, wiggle, puppy eyes, bark and more.</p></div>
+        <div class="file"><span class="n">tricks/</span><h3>10 animations</h3><p class="muted">Sit, lie down, sleep, wiggle, puppy eyes, bark and more.</p></div>
         <div class="file"><span class="n">feed_mode/</span><h3>Treat tray</h3><p class="muted">Drag a treat onto your pet: three bites, a lick of the lips, a happy wiggle.</p></div>
         <div class="file"><span class="n">naps/</span><h3>Naps when you do</h3><p class="muted">Leave the mouse alone for 30 seconds and it curls up to sleep until you're back.</p></div>
       </div>
