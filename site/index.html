@@ -279,6 +279,7 @@
   .trick[data-act="feed"]  { left: 1%;  top: 34%; }
   .trick[data-act="puppy"] { left: -4%; top: 48%; }
   .trick[data-act="sleep"] { left: -1%; top: 62%; }
+  .trick[data-act="bark"]  { left: 6%;  top: 76%; }
   .hello {
     position: absolute; right: 100%; bottom: 44%; margin-right: 96px; width: 180px; pointer-events: none;
     font: 500 12.5px/1.35 var(--body); color: var(--muted); text-align: right;
@@ -391,6 +392,7 @@
     <button type="button" class="trick" data-act="feed">Feed</button>
     <button type="button" class="trick" data-act="puppy">Puppy eyes</button>
     <button type="button" class="trick" data-act="sleep">Sleep</button>
+    <button type="button" class="trick" data-act="bark">Bark</button>
     </div>
   </div>
 
@@ -611,7 +613,7 @@
     if (m.type === 'extend') { extra = Math.max(0, Math.min(800, +m.px || 0)); frame.style.height = `calc(100% + ${extra}px)`; send({ type: 'bounds' }); }
     if (m.type === 'menu') document.querySelector('.trick').focus();
   });
-  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing', feed: 'hungry', wag: 'wiggling', puppy: 'pleading' };
+  const LABEL = { sit: 'sitting', sleep: 'asleep', poop: 'busy', stand: 'standing', feed: 'hungry', wag: 'wiggling', puppy: 'pleading', bark: 'barking' };
   let statusTimer;
   document.querySelectorAll('.trick').forEach((b) => b.addEventListener('click', () => {
     send({ type: 'action', name: b.dataset.act });

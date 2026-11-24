@@ -290,6 +290,9 @@ PRICE_VIDEO_PER_SECOND = 0.08
 # lie_down + get_up added Nov 19: 2.0 Mini drew male parts on Chewie lying down (her lie pose is lie_down's
 # last frame) and standing side-on while getting up; patches can't follow that much movement (~+$1.25 per girl)
 HQ_CLIPS_FEMALE = {'stand', 'lie_down', 'get_up'}   # (+ 'poop' while it was made)
+# angled girls: 2.0 Mini ignored the angled end pose for wake_up (Baja, Nov 24: 2 tries, both ended front-on with an
+# invented white chest patch); 2.5 landed get_up in it. ~$0.80/try vs $0.40.
+HQ_CLIPS_ANGLED = {'wake_up'}
 PRICE_HQ_VIDEO_PER_SECOND = 0.2    # estimate (720p 1:1; GPTProto lists 480p at ~$0.10/s)
 
 

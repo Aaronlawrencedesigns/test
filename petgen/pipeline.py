@@ -120,6 +120,11 @@ class Job:
             picks[key] = attempt
             json.dump(picks, open(f'{self.work}/picks.json', 'w'), indent=1)
 
+    def hq(self, key):
+        """Is this clip made with Seedance 2.5 (girls' belly-sensitive clips; angled girls' wake_up too)?"""
+        return self.sex == 'female' and (key in plan.HQ_CLIPS_FEMALE or
+                                         (self.sit_style == 'angled' and key in plan.HQ_CLIPS_ANGLED))
+
     def bowed_before(self):
         """Did this pet's previous run fall back to the play bow? (its manifest from that run says so)"""
         try:
@@ -171,7 +176,7 @@ class Job:
         base = key
         if attempt > 1:     # retries say what went wrong last time (cut off, zoom, wrong end pose, anatomy)
             prompt = prompt + plan.retry_hint(self.hints.get(key))
-        hq = self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE
+        hq = self.hq(key)
         prompt, sfx = self._owner_redo(base, prompt)
         key = f'{key}@{self._content_tag(self.fill(prompt, video=True, attempt=attempt), kfs)}' + ('hq' if hq else '') + sfx
         if first == 'kf_sleep_end':
@@ -582,7 +587,7 @@ class Job:
             src = self.gen_video(key, prompt, first, last, seconds, attempt)
             frames, stats = media.decode_keyed(src, low=opts.get('low', False), wide=opts.get('wide', False))
             tinted = 0
-            if self.sex == 'female' and key in plan.HQ_CLIPS_FEMALE and 'sit' in self.still:
+            if self.hq(key) and 'sit' in self.still:
                 # Seedance 2.5's green cast, removed BEFORE a resting pose is taken from the clip (Tess, Nov 20:
                 # her lying pose came from the untinted last frame, so lying / sleeping / getting up looked green)
                 frames, tinted = media.match_tint(frames, self.still['sit'])
