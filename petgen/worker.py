@@ -242,7 +242,9 @@ def make(oid):
               sex=o.get('sex') or 'male', redo=o.get('remake'), redo_history=o.get('remake_history'),
               # owner's test runs (not customer orders): order.json experiment = {sit: 'angled', actions: [...]}
               sit_style=o['sit_style'],
-              actions=(o.get('experiment') or {}).get('actions'), sit_image=sit_image)
+              actions=(o.get('experiment') or {}).get('actions'), sit_image=sit_image,
+              # test runs: experiment.rows = 'lite' -> 3 head heights (up, level, down: 9 head-turn videos, not 17)
+              rows=plan.ROWS_LITE if (o.get('experiment') or {}).get('rows') == 'lite' else None)
     job.run()
     ok, failed, warn, cost = verdict(job)
 
