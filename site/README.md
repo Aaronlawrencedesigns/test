@@ -17,7 +17,7 @@ python3 site/build.py && python3 -m http.server -d site/dist 8000   # page only;
 
 ## Checkout (Cloudflare Pages Functions)
 - `functions/api/order.js` (POST): saves the 4 photos to the private R2 bucket `desktopsidekicks-orders`
-  (binding `ORDERS`), then returns a $25 Stripe Checkout URL.
+  (binding `ORDERS`), then returns a $22 Stripe Checkout URL.
 - `functions/api/stripe-webhook.js` (POST): verifies Stripe's signature, marks the order paid, writes
   `queue/paid/<id>` for the pet-making worker, and emails a confirmation through Postmark.
 - `functions/api/order-status.js` (GET): status for the thank-you window.
@@ -25,4 +25,4 @@ python3 site/build.py && python3 -m http.server -d site/dist 8000   # page only;
 
 Cloudflare Pages project `desktopsidekicks`: root `site`, build `python3 build.py`, output `dist`.
 Secrets (Pages > Settings > Variables and secrets): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-(set from the Stripe webhook endpoint), `POSTMARK_TOKEN`. Price: $25 (`PRICE_CENTS`).
+(set from the Stripe webhook endpoint), `POSTMARK_TOKEN`. Price: $22 (`PRICE_CENTS`).

@@ -132,15 +132,17 @@ The `stand` clip is him standing on his hind legs (the model's reading of "stand
   able to pick Windows), saved as order.json `platform`; the "is ready" email links /download?os=<platform> (+ the
   SmartScreen "More info -> Run anyway" tip for Windows); /download picks by user agent (?os= forces). Copy, FAQ,
   pricing, legal and the add page say Mac or Windows (macOS 12+, Windows 10/11).
-- Head tracking stays as is (5 heights, 17 head-turn videos): the owner wants it dialled in, not cheaper. Don't change it
-  unless asked. PRE-LAUNCH REMINDER (owner, Nov 23): before launch, remind the owner to try a cheaper head-tracking
-  version side by side (head tracking is ~$8 of a ~$13-15 pet: 17 head-turn videos at $0.40 + gaze images; e.g. fewer
-  tilted-row clips could save ~$4/pet). Test first (on Chunky's or Charlie's assets), compare, owner decides.
+- Head tracking (owner, Nov 25, after comparing Bella with 3 / 4 / 5 heights side by side): new pets get 4 heights
+  (`plan.ROWS` = up, slightly up, level, down: 13 head-turn videos, ~$5.90 vs ~$8). 'slightly down' is dropped: the pet
+  sits in the bottom-right corner, so the mouse is almost always above or level with its head. Pets made before keep 5
+  (order.json `head_rows` '5', set by the worker when an order already has made_at / remake), test runs `experiment.rows
+  = 'lite'` -> 3. look meta `v` = each row's height on the player's 0..2 scale (`plan.ROW_V`), so the player
+  (`rowAt` in petgen/engine/app.js) keeps level at eye level with uneven rows. Price $22 (was $25, owner Nov 25).
 
 ## Desktop Sidekicks: how an order flows (all live)
 1. **Site** (`site/`, Cloudflare Pages project `desktopsidekicks`, root `site`, builds on every push to
    main; desktopsidekicks.com). Create-your-pet form → `functions/api/order.js` saves photos to the
-   private R2 bucket `desktopsidekicks-orders` and opens Stripe Checkout ($25) → Stripe webhook
+   private R2 bucket `desktopsidekicks-orders` and opens Stripe Checkout ($22) → Stripe webhook
    (`functions/api/stripe-webhook.js`) marks it paid, writes `queue/paid/<id>`, emails a confirmation
    (Postmark, from hello@desktopsidekicks.com). Stripe is still in TEST mode (sandbox key).
 2. **Worker** (`petgen/worker.py`, DigitalOcean droplet `sidekicks-worker` 64.225.116.98, systemd
@@ -200,7 +202,7 @@ the droplet's /etc/sidekicks.env, and this cloud environment's network secrets. 
 - Retry cost: videos get 2 tries (`PETGEN_VIDEO_RETRIES`=1), images 3; a clip failing only the
   female-anatomy check gets one extra try with positive wording (`SEX_NOTE_STRONG`, attempt >= 3).
   Spending cap per pet run `PETGEN_BUDGET` (default $10, est.; the owner's 'Needs a look' threshold): over it, no more retries; best try kept
-  and the pet goes to the owner as Needs a look. Price: $25 (owner, Nov 23; was $20: ~$14 average AI cost left ~$5/pet).
+  and the pet goes to the owner as Needs a look. Price: $22 (owner, Nov 25; was $25, $20 before that). With 4 head heights a pet is ~$11-13 AI.
 - Lying check: lower than 0.88x the sitting height (front-on sphinx) or wider than tall (side-on).
 - Female pets: Stand, Poop, Lie down and Get up are made with **Seedance 2.5** (`plan.HQ_CLIPS_FEMALE`, GPTProto
   `dreamina-seedance-2-5-260628`, est. $0.20/s vs 2.0 Mini $0.08/s): tested on Chewie standing on her hind

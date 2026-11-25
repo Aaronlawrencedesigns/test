@@ -733,6 +733,8 @@ class Job:
             futs = {row: ex.submit(one_row, row) for row in self.rows}
             rows = [futs[r].result() for r in self.rows]
         self.look = media.save_look(rows, f'{self.pet}/look')
+        self.look['v'] = [plan.ROW_V[r] for r in self.rows]   # row heights for the player (4 heights aren't evenly spaced)
+        json.dump(self.look, open(f'{self.pet}/look/meta.json', 'w'))
         for r, row in zip(self.rows, rows):
             media.sheet(row, f'{self.work}/sheets/look_{r}.jpg', n=11)
         self.check_look_heights()

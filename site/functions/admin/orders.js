@@ -53,7 +53,7 @@ const HQ_FEMALE = new Set(['stand', 'poop', 'lie_down', 'get_up']);   // Seedanc
 const PRICE = { img: 0.0804, sec: 0.08, hqSec: 0.2, sweep: 0.4 };
 const NAMES = { wag: 'Happy wiggle', puppy: 'Puppy eyes', stand: 'Stand up', eat: 'Eat (Feed)', bark: 'Bark', poop: 'Poop (removed)',
   lie_down: 'Lie down', get_up: 'Get up', fall_asleep: 'Fall asleep', sleep_loop: 'Sleeping', wake_up: 'Wake up',
-  head: 'Head tracking (5 heights)', poses: 'Portrait + sit / lie / sleep poses' };
+  head: 'Head tracking', poses: 'Portrait + sit / lie / sleep poses' };
 function actionOf(item) {
   if (SECS[item]) return item;
   if (/^(sweep_|gaze_)/.test(item)) return 'head';
