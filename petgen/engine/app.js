@@ -75,6 +75,12 @@
   // Regenerating them? Update this from assets/look/meta.json.
   const LOOK = PET.look || {"rows": 5, "cols": 33, "x": 162, "y": 191, "w": 317, "h": 425, "frame": 640};
   const look = Array.from({ length: LOOK.rows }, () => []);
+  // fractional row index for a head height v (0 up .. 2 down) when rows sit at uneven heights vs (ascending)
+  function rowAt(vs, v) {
+    if (v <= vs[0]) return 0;
+    for (let r = 1; r < vs.length; r++) if (v <= vs[r]) return r - 1 + (v - vs[r - 1]) / (vs[r] - vs[r - 1]);
+    return vs.length - 1;
+  }
   const stills = {};
   const videos = {};
   // Safari (iPhone, iPad, Mac) can't play VP9 WebM with alpha: there each clip is a "stacked alpha" MP4 (colour on
@@ -583,7 +589,9 @@
       // hysteresis stops flicker when the cursor sits on a boundary.
       const M = LOOK;
       const x = (S.u / 4) * (M.cols - 1);
-      const y = (S.v / 2) * (M.rows - 1);
+      // M.v (newer pets): each row's height on the 0 (up) .. 2 (down) scale, e.g. 4 heights = [0, 0.5, 1, 2] (no
+      // 'slightly down'), so level stays at eye level; older pets have evenly spaced rows
+      const y = M.v && M.v.length === M.rows ? rowAt(M.v, S.v) : (S.v / 2) * (M.rows - 1);
       // hysteresis: a small hand tremor never flips between neighbouring frames (some neighbours come
       // from different clips and differ more, so a flip there reads as a glitch)
       const nc = S.lc != null && Math.abs(x - S.lc) < 0.85 ? S.lc : Math.round(x);

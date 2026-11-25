@@ -194,8 +194,14 @@ FEMALE_EDIT = ("Edit this photo. Keep EVERYTHING identical: the same {species}, 
 # Video model: keep the whole pet in shot (a cut-off pet can't be fixed afterwards)
 IN_FRAME = ' The whole {species} stays fully inside the frame at all times, with space around it; the camera does not zoom or move.'
 
-ROWS = ['up', 'hu', 'level', 'hd', 'down']   # head heights for head tracking, top to bottom
+# head heights for head tracking, top to bottom. Owner, Nov 25 (after comparing Bella's 3 / 4 / 5 heights side by side):
+# new pets get 4 heights (13 head-turn videos, ~$5.90 instead of ~$8). 'slightly down' is the one dropped: the pet sits
+# in the bottom-right corner, so the mouse is almost always above or level with its head. Pets made with 5 keep 5.
+ROWS = ['up', 'hu', 'level', 'down']
+ROWS_FULL = ['up', 'hu', 'level', 'hd', 'down']
 ROWS_LITE = ['up', 'level', 'down']
+ROW_V = {'up': 0, 'hu': 0.5, 'level': 1, 'hd': 1.5, 'down': 2}   # each height on the player's 0 (up) .. 2 (down) scale
+HEAD_ROWS = {'4': ROWS, '5': ROWS_FULL, '3': ROWS_LITE}   # order.json head_rows -> heights
 
 
 def image_items():
@@ -281,8 +287,8 @@ DEFAULT_ACTIONS = ['wag', 'puppy', 'stand', 'eat', 'bark', 'lie_down', 'get_up',
 # Every pet must ship with everything Chunky has (checked at packaging; missing = Needs review)
 REQUIRED_CLIPS = list(DEFAULT_ACTIONS)            # 10 animations (eat powers Feed mode)
 REQUIRED_STILLS = ['sit', 'lie', 'sleep']
-REQUIRED_ROWS = 5                                  # head-tracking heights
-FEATURES = ['head tracking (5 heights x 33 positions)', 'feed mode (treat tray, drag to feed, eat + wiggle)',
+REQUIRED_ROWS = 4                                  # head-tracking heights (older pets have 5)
+FEATURES = ['head tracking (follows the mouse, 33 positions)', 'feed mode (treat tray, drag to feed, eat + wiggle)',
             'naps when the mouse is still', 'gets up after lying down', 'bark only on request']
 
 # rough GPTProto prices (USD) for the cost estimate in the report

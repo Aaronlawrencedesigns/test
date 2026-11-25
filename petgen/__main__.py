@@ -26,7 +26,7 @@ def main(argv=None):
     mk.add_argument('--tail', choices=['yes', 'stub', 'none'], default='yes', help='does the pet have a tail?')
     mk.add_argument('--sex', choices=['male', 'female'], default='male')
     mk.add_argument('--actions', nargs='*', default=None, help=f'default: {" ".join(plan.DEFAULT_ACTIONS)}')
-    mk.add_argument('--rows', choices=['5', '3'], default='5', help='head heights for head tracking')
+    mk.add_argument('--rows', choices=['4', '5', '3'], default='4', help='head heights for head tracking')
     mk.add_argument('--host', choices=['git', 's3', 'none'], default='git')
     mk.add_argument('--repo', default='Aaronlawrencedesigns/test', help='owner/repo for --host git')
     mk.add_argument('--replay', help='JSON map of item key -> existing file (free test run)')
@@ -46,7 +46,7 @@ def main(argv=None):
     else:
         uploader = NoUploader()
     job = Job(a.name, a.photos, a.out, provider, uploader, species=a.species, actions=a.actions,
-              rows=plan.ROWS if a.rows == '5' else plan.ROWS_LITE, max_retries=a.max_retries, workers=a.workers, tail=a.tail, sex=a.sex)
+              rows=plan.HEAD_ROWS[a.rows], max_retries=a.max_retries, workers=a.workers, tail=a.tail, sex=a.sex)
     ok = job.run()
     sys.exit(0 if ok else 1)
 

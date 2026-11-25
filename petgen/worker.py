@@ -206,6 +206,11 @@ def make(oid):
         exp = (o.get('experiment') or {}).get('sit')
         new_girl = o.get('sex') == 'female' and (o.get('species') or 'dog') != 'cat' and not (o.get('remake') or o.get('remake_history') or o.get('made_at'))
         o['sit_style'] = exp or ('angled' if new_girl else 'front')
+    if not o.get('head_rows'):
+        # 4 head heights for new pets (owner, Nov 25); pets made before keep 5, so a re-make doesn't drop a height
+        # they already have. Test runs: experiment.rows = 'lite' -> 3.
+        made_before = o.get('remake') or o.get('remake_history') or o.get('made_at')
+        o['head_rows'] = '3' if (o.get('experiment') or {}).get('rows') == 'lite' else ('5' if made_before else '4')
     put_order(o)
 
     d = os.path.join(WORK, oid)
@@ -243,8 +248,8 @@ def make(oid):
               # owner's test runs (not customer orders): order.json experiment = {sit: 'angled', actions: [...]}
               sit_style=o['sit_style'],
               actions=(o.get('experiment') or {}).get('actions'), sit_image=sit_image,
-              # test runs: experiment.rows = 'lite' -> 3 head heights (up, level, down: 9 head-turn videos, not 17)
-              rows=plan.ROWS_LITE if (o.get('experiment') or {}).get('rows') == 'lite' else None)
+              # head heights: '4' new pets (13 head-turn videos), '5' pets made before (17), '3' lite test runs (9)
+              rows=plan.HEAD_ROWS.get(str(o['head_rows']), plan.ROWS))
     job.run()
     ok, failed, warn, cost = verdict(job)
 

@@ -6,7 +6,7 @@
 // Secrets (Pages > Settings > Variables and secrets): STRIPE_SECRET_KEY,
 // STRIPE_WEBHOOK_SECRET, POSTMARK_TOKEN.
 
-export const PRICE_CENTS = 2500;
+export const PRICE_CENTS = 2200;
 export const CURRENCY = 'usd';
 export const VIEWS = ['front', 'side', 'back', 'sit'];
 export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
